@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "38986827146",
+    "project_id": "fyp-mobile-app-and-web-portal",
+    "storage_bucket": "fyp-mobile-app-and-web-portal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:38986827146:android:b4c1ebff1ac628c9163473",
+        "android_client_info": {
+          "package_name": "com.example.device_protection"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiK_EhjjeS7IwA3QbKe85JvDjVYT43H_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
