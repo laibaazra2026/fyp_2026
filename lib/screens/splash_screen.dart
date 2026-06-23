@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -8,36 +9,44 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  double _logoScale = 0.0;
-  double _logoOpacity = 0.0;
-  double _textOpacity = 0.0;
-  double _textOffset = 50.0;
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Start animations after 100ms
-    Future.delayed(const Duration(milliseconds: 100), () {
-      setState(() {
-        _logoScale = 1.0;
-        _logoOpacity = 1.0;
-      });
-    });
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
 
-    // Text animation starts after logo
-    Future.delayed(const Duration(milliseconds: 500), () {
-      setState(() {
-        _textOpacity = 1.0;
-        _textOffset = 0.0;
-      });
-    });
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
 
-    // Navigate after 3 seconds
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
+
+    _animationController.forward();
+
+    // Navigate to Login after 3 seconds
     Timer(const Duration(seconds: 3), () {
-      // Navigation will be added later
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()), // ← NO const
+      );
     });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -51,14 +60,11 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // LOGO with Scale + Fade Animation
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.easeOutBack,
-                width: _logoScale == 0.0 ? 0.0 : 150.0,
-                height: _logoScale == 0.0 ? 0.0 : 150.0,
-                child: Opacity(
-                  opacity: _logoOpacity,
+              // Logo
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
@@ -67,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                     child: const Icon(
                       Icons.security,
-                      size: 80,
+                      size: 100,
                       color: Colors.white,
                     ),
                   ),
@@ -76,20 +82,17 @@ class _SplashScreenState extends State<SplashScreen> {
 
               const SizedBox(height: 30),
 
-              // APP NAME with Fade + Slide Animation
-              Opacity(
-                opacity: _textOpacity,
-                child: Transform.translate(
-                  offset: Offset(0, _textOffset),
-                  child: const Text(
-                    'DEVICE PROTECTION',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: 3,
-                      fontFamily: 'Poppins',
-                    ),
+              // App Name
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: const Text(
+                  'DEVICE PROTECTION',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 3,
+                    fontFamily: 'Poppins',
                   ),
                 ),
               ),
