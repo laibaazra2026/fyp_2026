@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.fyp_project"
+    namespace = "com.example.device_protection"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

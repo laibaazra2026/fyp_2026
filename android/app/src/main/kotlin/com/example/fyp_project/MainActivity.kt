@@ -1,4 +1,4 @@
-package com.example.fyp_project
+package com.example.device_protection
 
 import io.flutter.embedding.android.FlutterActivity
 
