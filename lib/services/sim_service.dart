@@ -1,28 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:telephony/telephony.dart';
+import 'package:sim_card_info/sim_card_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SimService {
-  final Telephony telephony = Telephony.instance;
+  final SimCardInfo simCardInfo = SimCardInfo();
 
   // ========== GET SIM CARD INFO ==========
   Future<String?> getSimSerialNumber() async {
     try {
-      bool hasPermission = await telephony.requestPhoneAndSmsPermissions;
-      if (!hasPermission) {
-        print('❌ Permission denied');
-        return null;
-      }
-
-      var simInfo = await telephony.getSimCardInfo();
-      if (simInfo != null) {
-        return simInfo.simSerialNumber;
+      List<SimCard>? sims = await simCardInfo.getSimCardInfo();
+      if (sims != null && sims.isNotEmpty) {
+        return sims.first.serialNumber;
       }
       return null;
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error getting SIM: $e');
       return null;
     }
   }
@@ -77,7 +71,7 @@ class SimService {
         'userId': user.uid,
         'type': 'SIM_CHANGE',
         'title': '⚠️ SIM Card Changed!',
-        'message': 'A new SIM card was detected.',
+        'message': 'A new SIM card was detected in your device.',
         'oldSim': oldSim,
         'newSim': newSim,
         'timestamp': FieldValue.serverTimestamp(),
