@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final SimService _simService = SimService();
-  String _simStatus = "Checking SIM...";
+  String _simStatus = "Checking device...";
   bool _isTheftMode = false;
 
   @override
@@ -120,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // SIM Status Card
+            // Device Status Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      Icons.sim_card,
+                      Icons.devices,
                       color: Colors.orange.shade700,
                       size: 30,
                     ),
@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'SIM Status',
+                          'Device Status',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           _simStatus,
                           style: TextStyle(
-                            color: _simStatus.contains('saved')
+                            color: _simStatus.contains('secure')
                                 ? Colors.green
                                 : Colors.orange,
                             fontSize: 14,
@@ -174,18 +174,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      bool changed = await _simService.checkSimChanged();
+                      bool changed = await _simService.checkDeviceChanged();
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('⚠️ SIM Card Changed!'),
+                            content: Text('⚠️ Device Changed!'),
                             backgroundColor: Colors.red,
                           ),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('✅ SIM is secure'),
+                            content: Text('✅ Device is secure'),
                             backgroundColor: Colors.green,
                           ),
                         );
@@ -199,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: Colors.orange.shade700,
                     ),
                     child: const Text(
-                      'Check SIM',
+                      'Check Device',
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -232,22 +232,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _FeatureCard(
                     icon: Icons.sim_card,
-                    title: 'SIM Alert',
+                    title: 'SIM/Device Alert',
                     subtitle: _simStatus,
                     color: Colors.orange,
                     onTap: () async {
-                      bool changed = await _simService.checkSimChanged();
+                      bool changed = await _simService.checkDeviceChanged();
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('⚠️ SIM Card Changed! Alert saved.'),
+                            content: Text('⚠️ Device Changed! Alert saved.'),
                             backgroundColor: Colors.red,
                           ),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('✅ SIM is secure'),
+                            content: Text('✅ Device is secure'),
                             backgroundColor: Colors.green,
                           ),
                         );
