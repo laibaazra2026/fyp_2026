@@ -11,7 +11,7 @@ android {
     namespace = "com.example.device_protection"
     compileSdk = 36     //changed
     ndkVersion = flutter.ndkVersion
-     useLibrary =  "org.appache.http.legacy"
+    
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
