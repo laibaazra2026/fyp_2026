@@ -8,83 +8,74 @@ import 'package:device_info_plus/device_info_plus.dart';
 class SimService {
   final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
 
-  // ========== GET DEVICE ID ==========
-  Future<String?> getDeviceId() async {
+  // ========== GET ANDROID ID ==========
+  Future<String?> getAndroidId() async {
     try {
       if (Platform.isAndroid) {
         AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-        return androidInfo.id;
-      } else if (Platform.isIOS) {
-        IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
-        return iosInfo.identifierForVendor;
+        return androidInfo.id; // This changes on factory reset only
       }
       return null;
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error getting Android ID: $e');
       return null;
     }
   }
 
-  // ========== SAVE DEVICE ID ==========
-  Future<void> saveDeviceId(String? deviceId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('device_id', deviceId ?? '');
-    print('✅ Device ID saved');
+  // ========== GET DEVICE NAME ==========
+  Future<String?> getDeviceName() async {
+    try {
+      if (Platform.isAndroid) {
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        return androidInfo.model; // e.g., "vivo 1938"
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting device name: $e');
+      return null;
+    }
   }
 
-  // ========== GET SAVED DEVICE ID ==========
-  Future<String?> getSavedDeviceId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('device_id');
-  }
-
-  // ========== CHECK DEVICE CHANGE ==========
+  // ========== CHECK SIM CHANGE BY COMPARING DEVICE NAME ==========
   Future<bool> checkDeviceChanged() async {
-    String? currentDeviceId = await getDeviceId();
-    if (currentDeviceId == null) return false;
+    String? currentName = await getDeviceName();
+    if (currentName == null) return false;
 
-    String? savedDeviceId = await getSavedDeviceId();
+    final prefs = await SharedPreferences.getInstance();
+    String? savedName = prefs.getString('device_name');
 
-    if (savedDeviceId == null || savedDeviceId.isEmpty) {
-      await saveDeviceId(currentDeviceId);
-      print('✅ First time saved');
+    if (savedName == null || savedName.isEmpty) {
+      await prefs.setString('device_name', currentName);
+      print('✅ First time device name saved: $currentName');
       return false;
     }
 
-    if (currentDeviceId != savedDeviceId) {
-      print('⚠️ DEVICE CHANGED!');
-      await _saveAlertToFirebase(currentDeviceId, savedDeviceId);
-      await saveDeviceId(currentDeviceId);
+    if (currentName != savedName) {
+      print('⚠️ DEVICE NAME CHANGED! $savedName -> $currentName');
+
+      // Save alert to Firebase
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('alerts').add({
+          'userId': user.uid,
+          'type': 'DEVICE_CHANGE',
+          'title': '⚠️ Device Changed!',
+          'message': 'Device name changed from $savedName to $currentName',
+          'oldDevice': savedName,
+          'newDevice': currentName,
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+        });
+        print('✅ Alert saved to Firebase!');
+      }
+
+      // Update saved name
+      await prefs.setString('device_name', currentName);
       return true;
     }
 
-    print('✅ Device is same');
+    print('✅ Device name is same: $currentName');
     return false;
-  }
-
-  // ========== SAVE ALERT ==========
-  Future<void> _saveAlertToFirebase(
-    String newDeviceId,
-    String oldDeviceId,
-  ) async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      await FirebaseFirestore.instance.collection('alerts').add({
-        'userId': user.uid,
-        'type': 'DEVICE_CHANGE',
-        'title': '⚠️ Device Changed!',
-        'message': 'A new device was detected.',
-        'oldDeviceId': oldDeviceId,
-        'newDeviceId': newDeviceId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'isRead': false,
-      });
-      print('✅ Alert saved');
-    } catch (e) {
-      print('❌ Firebase error: $e');
-    }
   }
 
   // ========== CHECK ON STARTUP ==========
@@ -102,7 +93,7 @@ class SimService {
       builder: (context) => AlertDialog(
         title: const Text('⚠️ Device Changed'),
         content: const Text(
-          'A new device was detected. Please secure your account.',
+          'A new device was detected. Alert saved to Firebase.',
         ),
         actions: [
           TextButton(
@@ -116,10 +107,11 @@ class SimService {
 
   // ========== GET STATUS ==========
   Future<String> getSimStatus() async {
-    String? deviceId = await getSavedDeviceId();
-    if (deviceId == null || deviceId.isEmpty) {
+    final prefs = await SharedPreferences.getInstance();
+    String? name = prefs.getString('device_name');
+    if (name == null || name.isEmpty) {
       return 'No device saved';
     }
-    return 'Device: ${deviceId.substring(0, 4)}...****';
+    return 'Device: $name';
   }
 }

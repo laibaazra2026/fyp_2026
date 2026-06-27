@@ -178,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('⚠️ Device Changed!'),
+                            content: Text('⚠️ Device Changed! Alert saved.'),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -244,6 +244,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             backgroundColor: Colors.red,
                           ),
                         );
+                        String status = await _simService.getSimStatus();
+                        setState(() {
+                          _simStatus = status;
+                        });
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
