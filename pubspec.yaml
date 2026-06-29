@@ -43,6 +43,8 @@ dependencies:
   geolocator: ^14.0.3
   permission_handler: ^12.0.3
   google_maps_flutter: ^2.17.1
+  camera: ^0.12.0+1
+  image_picker: ^1.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
