@@ -224,9 +224,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: 'Track your device',
                     color: Colors.blue,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('GPS Tracking - Coming Soon'),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: ((context) => const GPSScreen()),
                         ),
                       );
                     },
