@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locations - Device Protection</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #f5f5f5;
+            display: flex;
+        }
+        .sidebar {
+            width: 230px;
+            height: 100vh;
+            background: #841EA0;
+            color: white;
+            position: fixed;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 15px;
+        }
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 5px 0;
+            transition: background 0.3s;
+        }
+        .sidebar a:hover,
+        .sidebar .active {
+            background: #6A1B8A;
+        }
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+            width: 100%;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+        .logout-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background: #6A1B8A;
+        }
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #841EA0;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .location-link {
+            color: #841EA0;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .location-link:hover {
+            text-decoration: underline;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .refresh-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .refresh-btn:hover {
+            background: #6A1B8A;
+        }
+        .coordinates {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>🔒 Admin</h2>
+        <a href="dashboard.html">📊 Dashboard</a>
+        <a href="users.html">👥 Users</a>
+        <a href="alerts.html">⚠️ Alerts</a>
+        <a href="locations.html" class="active">📍 Locations</a>
+        <a href="intruders.html">📸 Intruders</a>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="header">
+            <h1>📍 GPS Locations</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="table-container">
+            <button class="refresh-btn" onclick="loadLocations()">🔄 Refresh</button>
+            <div id="loading" class="loading">Loading locations...</div>
+            <table id="locationTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>User</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Accuracy</th>
+                        <th>Time</th>
+                        <th>Map</th>
+                    </tr>
+                </thead>
+                <tbody id="locationBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ========== FIREBASE CONFIG ==========
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        // ===================================
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // ========== LOAD LOCATIONS ==========
+        async function loadLocations() {
+            try {
+                const snapshot = await db.collection('locations')
+                    .orderBy('timestamp', 'desc')
+                    .limit(50)
+                    .get();
+
+                const tbody = document.getElementById('locationBody');
+                tbody.innerHTML = '';
+                let count = 1;
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${count}</td>
+                        <td>${data.userId ? data.userId.substring(0, 8) + '...' : 'Unknown'}</td>
+                        <td><span class="coordinates">${data.latitude}</span></td>
+                        <td><span class="coordinates">${data.longitude}</span></td>
+                        <td>${data.accuracy || 'N/A'} m</td>
+                        <td>${data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</td>
+                        <td>
+                            <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" 
+                               target="_blank" 
+                               class="location-link">
+                               🗺️ View
+                            </a>
+                        </td>
+                    `;
+
+                    tbody.appendChild(row);
+                    count++;
+                });
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('locationTable').style.display = 'table';
+
+            } catch (error) {
+                console.error('Error loading locations:', error);
+                document.getElementById('loading').textContent = '❌ Error loading locations';
+            }
+        }
+
+        // ========== LOGOUT ==========
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // ========== LOAD ==========
+        loadLocations();
+    </script>
+
+</body>
+</html>
