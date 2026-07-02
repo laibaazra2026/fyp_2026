@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Users - Device Protection</title>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 230px;
+            height: 100vh;
+            background: #841EA0;
+            color: white;
+            position: fixed;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 15px;
+        }
+
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 5px 0;
+            transition: background 0.3s;
+        }
+
+        .sidebar a:hover {
+            background: #6A1B8A;
+        }
+
+        .sidebar .active {
+            background: #6A1B8A;
+        }
+
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+
+        .logout-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .logout-btn:hover {
+            background: #6A1B8A;
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #841EA0;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .badge-premium {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .badge-free {
+            background: #999;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>🔒 Admin</h2>
+        <a href="dashboard.html">📊 Dashboard</a>
+        <a href="users.html" class="active">👥 Users</a>
+        <a href="alerts.html">⚠️ Alerts</a>
+        <a href="locations.html">📍 Locations</a>
+        <a href="intruders.html">📸 Intruders</a>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="header">
+            <h1>👥 Registered Users</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="table-container">
+            <div id="loading" class="loading">Loading users...</div>
+            <table id="userTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Plan</th>
+                        <th>Joined</th>
+                    </tr>
+                </thead>
+                <tbody id="userBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ========== FIREBASE CONFIG ==========
+       const firebaseConfig = {
+  apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+  authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+  projectId: "fyp-mobile-app-and-web-portal",
+  storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+  messagingSenderId: "38986827146",
+  appId: "1:38986827146:web:9042f34efac22b99163473"
+};
+        // ===================================
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // ========== LOAD USERS ==========
+        async function loadUsers() {
+            try {
+                const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
+
+                const tbody = document.getElementById('userBody');
+                tbody.innerHTML = '';
+
+                let count = 1;
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const row = document.createElement('tr');
+
+                    const plan = data.isPremium ? 'Premium' : 'Free';
+                    const badgeClass = data.isPremium ? 'badge-premium' : 'badge-free';
+
+                    row.innerHTML = `
+                        <td>${count}</td>
+                        <td>${data.name || 'Unknown'}</td>
+                        <td>${data.email || 'No email'}</td>
+                        <td>${data.phone || 'N/A'}</td>
+                        <td><span class="badge ${badgeClass}">${plan}</span></td>
+                        <td>${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                    `;
+
+                    tbody.appendChild(row);
+                    count++;
+                });
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('userTable').style.display = 'table';
+
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('loading').textContent = '❌ Error loading users';
+            }
+        }
+
+        // ========== LOGOUT ==========
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // ========== LOAD ==========
+        loadUsers();
+    </script>
+
+</body>
+</html>
