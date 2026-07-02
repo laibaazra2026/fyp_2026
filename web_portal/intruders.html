@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intruders - Device Protection</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #f5f5f5;
+            display: flex;
+        }
+        .sidebar {
+            width: 230px;
+            height: 100vh;
+            background: #841EA0;
+            color: white;
+            position: fixed;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 15px;
+        }
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 5px 0;
+            transition: background 0.3s;
+        }
+        .sidebar a:hover,
+        .sidebar .active {
+            background: #6A1B8A;
+        }
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+            width: 100%;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+        .logout-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background: #6A1B8A;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .photo-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s;
+        }
+        .photo-card:hover {
+            transform: scale(1.02);
+        }
+        .photo-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .photo-info {
+            padding: 15px;
+        }
+        .photo-info p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .photo-info .time {
+            color: #999;
+            font-size: 12px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .refresh-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .refresh-btn:hover {
+            background: #6A1B8A;
+        }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>🔒 Admin</h2>
+        <a href="dashboard.html">📊 Dashboard</a>
+        <a href="users.html">👥 Users</a>
+        <a href="alerts.html">⚠️ Alerts</a>
+        <a href="locations.html">📍 Locations</a>
+        <a href="intruders.html" class="active">📸 Intruders</a>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="header">
+            <h1>📸 Intruder Photos</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <button class="refresh-btn" onclick="loadIntruders()">🔄 Refresh</button>
+
+        <div id="loading" class="loading">Loading photos...</div>
+        <div id="gallery" class="gallery"></div>
+    </div>
+
+    <script>
+        // ========== FIREBASE CONFIG ==========
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        // ===================================
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // ========== LOAD INTRUDER PHOTOS ==========
+        async function loadIntruders() {
+            try {
+                const snapshot = await db.collection('intruder_photos')
+                    .orderBy('timestamp', 'desc')
+                    .limit(30)
+                    .get();
+
+                const gallery = document.getElementById('gallery');
+                gallery.innerHTML = '';
+
+                if (snapshot.empty) {
+                    gallery.innerHTML = `<div class="empty">📷 No intruder photos captured yet</div>`;
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+
+                    const card = document.createElement('div');
+                    card.className = 'photo-card';
+
+                    const time = data.timestamp ? 
+                        new Date(data.timestamp.seconds * 1000).toLocaleString() : 
+                        'Unknown';
+
+                    card.innerHTML = `
+                        <img src="${data.photoUrl}" alt="Intruder Photo" 
+                             onerror="this.src='https://via.placeholder.com/250x200?text=Image+Not+Found'">
+                        <div class="photo-info">
+                            <p>📧 ${data.userEmail || 'Unknown User'}</p>
+                            <p class="time">🕐 ${time}</p>
+                        </div>
+                    `;
+
+                    gallery.appendChild(card);
+                });
+
+                document.getElementById('loading').style.display = 'none';
+
+            } catch (error) {
+                console.error('Error loading intruder photos:', error);
+                document.getElementById('loading').textContent = '❌ Error loading photos';
+            }
+        }
+
+        // ========== LOGOUT ==========
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // ========== LOAD ==========
+        loadIntruders();
+    </script>
+
+</body>
+</html>
