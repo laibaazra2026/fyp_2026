@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/sim_service.dart';
 import 'gps_screen.dart';
+import 'intruder_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -266,9 +267,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: 'Capture intruder',
                     color: Colors.red,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Intruder Capture - Coming Soon'),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const IntruderScreen(),
                         ),
                       );
                     },
