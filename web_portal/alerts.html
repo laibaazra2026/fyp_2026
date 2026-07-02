@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerts - Device Protection</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #f5f5f5;
+            display: flex;
+        }
+        .sidebar {
+            width: 230px;
+            height: 100vh;
+            background: #841EA0;
+            color: white;
+            position: fixed;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 15px;
+        }
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 5px 0;
+            transition: background 0.3s;
+        }
+        .sidebar a:hover,
+        .sidebar .active {
+            background: #6A1B8A;
+        }
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+            width: 100%;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+        .logout-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background: #6A1B8A;
+        }
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #841EA0;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .alert-type {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .alert-sim {
+            background: #ff9800;
+            color: white;
+        }
+        .alert-device {
+            background: #f44336;
+            color: white;
+        }
+        .alert-other {
+            background: #2196F3;
+            color: white;
+        }
+        .badge-unread {
+            background: #f44336;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+        .badge-read {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .refresh-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .refresh-btn:hover {
+            background: #6A1B8A;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>🔒 Admin</h2>
+        <a href="dashboard.html">📊 Dashboard</a>
+        <a href="users.html">👥 Users</a>
+        <a href="alerts.html" class="active">⚠️ Alerts</a>
+        <a href="locations.html">📍 Locations</a>
+        <a href="intruders.html">📸 Intruders</a>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="header">
+            <h1>⚠️ Security Alerts</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="table-container">
+            <button class="refresh-btn" onclick="loadAlerts()">🔄 Refresh</button>
+            <div id="loading" class="loading">Loading alerts...</div>
+            <table id="alertTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Type</th>
+                        <th>Message</th>
+                        <th>User</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="alertBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ========== FIREBASE CONFIG ==========
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        // ===================================
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // ========== LOAD ALERTS ==========
+        async function loadAlerts() {
+            try {
+                const snapshot = await db.collection('alerts')
+                    .orderBy('timestamp', 'desc')
+                    .limit(50)
+                    .get();
+
+                const tbody = document.getElementById('alertBody');
+                tbody.innerHTML = '';
+                let count = 1;
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+
+                    let typeClass = 'alert-other';
+                    if (data.type === 'SIM_CHANGE' || data.type === 'SIM_DEVICE_CHANGE') {
+                        typeClass = 'alert-sim';
+                    } else if (data.type === 'DEVICE_CHANGE') {
+                        typeClass = 'alert-device';
+                    }
+
+                    const statusBadge = data.isRead ?
+                        '<span class="badge-read">✅ Read</span>' :
+                        '<span class="badge-unread">🔴 Unread</span>';
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${count}</td>
+                        <td><span class="alert-type ${typeClass}">${data.type || 'Unknown'}</span></td>
+                        <td>${data.title || 'No title'}</td>
+                        <td>${data.userEmail || data.userId || 'Unknown'}</td>
+                        <td>${statusBadge}</td>
+                        <td>${data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</td>
+                    `;
+
+                    tbody.appendChild(row);
+                    count++;
+                });
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('alertTable').style.display = 'table';
+
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+                document.getElementById('loading').textContent = '❌ Error loading alerts';
+            }
+        }
+
+        // ========== LOGOUT ==========
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // ========== LOAD ==========
+        loadAlerts();
+    </script>
+
+</body>
+</html>
