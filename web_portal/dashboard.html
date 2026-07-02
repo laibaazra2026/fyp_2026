@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - Device Protection</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 230px;
+            height: 100vh;
+            background: #841EA0;
+            color: white;
+            position: fixed;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 22px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 15px;
+        }
+
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 5px 0;
+            transition: background 0.3s;
+        }
+
+        .sidebar a:hover {
+            background: #6A1B8A;
+        }
+
+        .sidebar .active {
+            background: #6A1B8A;
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+
+        .logout-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .logout-btn:hover {
+            background: #6A1B8A;
+        }
+
+        /* Cards */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            font-size: 32px;
+            color: #841EA0;
+        }
+
+        .card p {
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .card .icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        /* Welcome Section */
+        .welcome {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .welcome h2 {
+            color: #333;
+        }
+
+        .welcome p {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+                padding: 10px;
+            }
+            .sidebar h2 {
+                display: none;
+            }
+            .sidebar a {
+                font-size: 12px;
+                padding: 10px;
+                text-align: center;
+            }
+            .main {
+                margin-left: 70px;
+                padding: 15px;
+            }
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>🔒 Admin</h2>
+        <a href="dashboard.html" class="active">📊 Dashboard</a>
+        <a href="users.html">👥 Users</a>
+        <a href="alerts.html">⚠️ Alerts</a>
+        <a href="locations.html">📍 Locations</a>
+        <a href="intruders.html">📸 Intruders</a>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="header">
+            <h1>📊 Dashboard</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Welcome -->
+        <div class="welcome">
+            <h2>Welcome, Admin! 👋</h2>
+            <p>Here's an overview of your Device Protection system.</p>
+        </div>
+
+        <!-- Cards -->
+        <div class="cards">
+            <div class="card">
+                <div class="icon">👥</div>
+                <h2 id="totalUsers">0</h2>
+                <p>Total Users</p>
+            </div>
+            <div class="card">
+                <div class="icon">⚠️</div>
+                <h2 id="totalAlerts">0</h2>
+                <p>Total Alerts</p>
+            </div>
+            <div class="card">
+                <div class="icon">📍</div>
+                <h2 id="totalLocations">0</h2>
+                <p>Locations Tracked</p>
+            </div>
+            <div class="card">
+                <div class="icon">📸</div>
+                <h2 id="totalIntruders">0</h2>
+                <p>Intruder Photos</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== FIREBASE CONFIG (REPLACE WITH YOURS) ==========
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        // =========================================================
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Check if user is logged in
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // ========== LOAD DATA ==========
+        async function loadData() {
+            try {
+                // Total Users
+                const usersSnapshot = await db.collection('users').get();
+                document.getElementById('totalUsers').textContent = usersSnapshot.size;
+
+                // Total Alerts
+                const alertsSnapshot = await db.collection('alerts').get();
+                document.getElementById('totalAlerts').textContent = alertsSnapshot.size;
+
+                // Total Locations
+                const locationsSnapshot = await db.collection('locations').get();
+                document.getElementById('totalLocations').textContent = locationsSnapshot.size;
+
+                // Total Intruder Photos
+                const intrudersSnapshot = await db.collection('intruder_photos').get();
+                document.getElementById('totalIntruders').textContent = intrudersSnapshot.size;
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        // ========== LOGOUT ==========
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // ========== LOAD ON PAGE OPEN ==========
+        loadData();
+    </script>
+
+</body>
+</html>
