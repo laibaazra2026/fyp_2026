@@ -51,12 +51,12 @@ Technology Stack
 Project Structure:
 
 Getting Started
-Prerequisites
+
+Prerequisites:
 #Flutter SDK
 #Dart SDK
-#Android Studio or IntelliJ IDEA
-
-Firebase Project
+#VS Code (IDE)
+#Firebase Project
 #Installation
 #Clone the repository.
 Run:
@@ -69,9 +69,7 @@ flutter run
 
 Developed By:
 
-Laiba Mahnoor
-Azra Ismail
+Laiba Mahnoor & Azra Ismail
 
-Final Year Project (FYP)
-
+Final Year Project (FYP) 2026
 Department of Information Technology
