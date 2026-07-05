@@ -128,7 +128,7 @@ class CommandService {
     }
   }
 
-  // ========== RING PHONE ==========
+  // ========== RING PHONE (No package needed) ==========
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
       await _updateCommandStatus(docId, 'completed');
