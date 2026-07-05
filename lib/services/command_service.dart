@@ -63,22 +63,14 @@ class CommandService {
   Future<void> _enableTheftMode(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
-      if (user == null) {
-        print('❌ No user found');
-        return;
-      }
+      if (user == null) return;
 
-      // Update Firestore
       await _firestore.collection('users').doc(user.uid).update({
         'isTheftModeOn': true,
       });
 
-      // Update command status
       await _updateCommandStatus(docId, 'completed');
 
-      print('✅ Theft mode enabled remotely');
-
-      // Show confirmation
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('🛡️ Theft Mode Enabled Remotely!'),
@@ -87,16 +79,12 @@ class CommandService {
         ),
       );
 
-      // Show dialog
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           title: const Text('🛡️ Theft Mode Enabled'),
-          content: const Text(
-            'Theft mode has been enabled remotely.\n'
-            'Your device is now protected.',
-          ),
+          content: const Text('Theft mode has been enabled remotely.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -105,8 +93,10 @@ class CommandService {
           ],
         ),
       );
+
+      print('✅ Theft mode enabled remotely');
     } catch (e) {
-      print('❌ Error enabling theft mode: $e');
+      print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -133,7 +123,7 @@ class CommandService {
 
       print('✅ Phone locked remotely');
     } catch (e) {
-      print('❌ Error locking phone: $e');
+      print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -152,7 +142,7 @@ class CommandService {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Stop Ringing'),
+              child: const Text('Stop'),
             ),
           ],
         ),
@@ -160,7 +150,7 @@ class CommandService {
 
       print('🔔 Phone ringing remotely');
     } catch (e) {
-      print('❌ Error ringing phone: $e');
+      print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -179,7 +169,7 @@ class CommandService {
 
       print('📍 Location requested remotely');
     } catch (e) {
-      print('❌ Error getting location: $e');
+      print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -193,7 +183,7 @@ class CommandService {
           title: const Text('⚠️ WARNING'),
           content: const Text(
             'This will erase all data on this device.\n'
-            'Are you sure you want to continue?',
+            'Are you sure?',
           ),
           actions: [
             TextButton(
@@ -221,10 +211,9 @@ class CommandService {
         Navigator.pushReplacementNamed(context, '/login');
       } else {
         await _updateCommandStatus(docId, 'cancelled');
-        print('❌ Erase command cancelled');
       }
     } catch (e) {
-      print('❌ Error erasing data: $e');
+      print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
