@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/sim_service.dart';
 import 'gps_screen.dart';
 import 'intruder_screen.dart';
@@ -13,13 +14,17 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final SimService _simService = SimService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _simStatus = "Checking device...";
   bool _isTheftMode = false;
+  bool _isLoadingTheftMode = true;
 
   @override
   void initState() {
     super.initState();
     _checkSim();
+    _loadTheftModeStatus();
+    _listenToTheftModeChanges();
   }
 
   Future<void> _checkSim() async {
@@ -27,6 +32,54 @@ class _HomeScreenState extends State<HomeScreen> {
     String status = await _simService.getSimStatus();
     setState(() {
       _simStatus = status;
+    });
+  }
+
+  Future<void> _loadTheftModeStatus() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          _isTheftMode = doc.get('isTheftModeOn') ?? false;
+          _isLoadingTheftMode = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading theft mode: $e');
+    }
+  }
+
+  void _listenToTheftModeChanges() {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _firestore.collection('users').doc(user.uid).snapshots().listen((snapshot) {
+      if (snapshot.exists) {
+        bool newTheftMode = snapshot.get('isTheftModeOn') ?? false;
+        if (mounted && _isTheftMode != newTheftMode) {
+          setState(() {
+            _isTheftMode = newTheftMode;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                newTheftMode
+                    ? '🛡️ Theft Mode Enabled Remotely!'
+                    : '🔓 Theft Mode Disabled',
+              ),
+              backgroundColor: newTheftMode ? Colors.green : Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
     });
   }
 
@@ -95,10 +148,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Switch(
                     value: _isTheftMode,
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       setState(() {
                         _isTheftMode = value;
                       });
+
+                      // Save to Firebase
+                      User? user = FirebaseAuth.instance.currentUser;
+                      if (user != null) {
+                        await _firestore
+                            .collection('users')
+                            .doc(user.uid)
+                            .update({'isTheftModeOn': value});
+                      }
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:device_apps/device_apps.dart';
-import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -12,7 +9,12 @@ class CommandService {
   // ========== LISTEN FOR COMMANDS ==========
   void listenForCommands(BuildContext context) {
     User? user = _auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      print('❌ No user logged in');
+      return;
+    }
+
+    print('✅ Listening for commands...');
 
     _firestore
         .collection('commands')
@@ -20,19 +22,26 @@ class CommandService {
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .listen((snapshot) {
-      for (var doc in snapshot.docs) {
-        var data = doc.data();
-        _executeCommand(context, doc.id, data);
-      }
-    });
+          for (var doc in snapshot.docs) {
+            var data = doc.data();
+            print('📩 Command received: ${data['type']}');
+            _executeCommand(context, doc.id, data);
+          }
+        });
   }
 
   // ========== EXECUTE COMMAND ==========
   Future<void> _executeCommand(
-      BuildContext context, String docId, Map<String, dynamic> data) async {
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) async {
     String type = data['type'] ?? '';
 
     switch (type) {
+      case 'THEFT_MODE':
+        await _enableTheftMode(context, docId);
+        break;
       case 'LOCK':
         await _lockPhone(context, docId);
         break;
@@ -42,21 +51,71 @@ class CommandService {
       case 'GET_LOCATION':
         await _getLocation(context, docId);
         break;
-      case 'THEFT_MODE':
-        await _enableTheftMode(context, docId);
-        break;
       case 'ERASE_DATA':
         await _eraseData(context, docId);
         break;
       default:
-        print('Unknown command: $type');
+        print('❌ Unknown command: $type');
+    }
+  }
+
+  // ========== ENABLE THEFT MODE ==========
+  Future<void> _enableTheftMode(BuildContext context, String docId) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) {
+        print('❌ No user found');
+        return;
+      }
+
+      // Update Firestore
+      await _firestore.collection('users').doc(user.uid).update({
+        'isTheftModeOn': true,
+      });
+
+      // Update command status
+      await _updateCommandStatus(docId, 'completed');
+
+      print('✅ Theft mode enabled remotely');
+
+      // Show confirmation
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🛡️ Theft Mode Enabled Remotely!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Show dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('🛡️ Theft Mode Enabled'),
+          content: const Text(
+            'Theft mode has been enabled remotely.\n'
+            'Your device is now protected.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      print('❌ Error enabling theft mode: $e');
+      await _updateCommandStatus(docId, 'failed');
     }
   }
 
   // ========== LOCK PHONE ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
-      // Show dialog
+      await _updateCommandStatus(docId, 'completed');
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -72,8 +131,6 @@ class CommandService {
         ),
       );
 
-      // Update command status
-      await _updateCommandStatus(docId, 'completed');
       print('✅ Phone locked remotely');
     } catch (e) {
       print('❌ Error locking phone: $e');
@@ -84,14 +141,8 @@ class CommandService {
   // ========== RING PHONE ==========
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
-      // Request audio permission
-      PermissionStatus status = await Permission.audio.request();
-      if (!status.isGranted) {
-        print('❌ Audio permission denied');
-        return;
-      }
+      await _updateCommandStatus(docId, 'completed');
 
-      // Show dialog with ringing animation
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -100,22 +151,14 @@ class CommandService {
           content: const Text('Your device is ringing loudly!'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _updateCommandStatus(docId, 'completed');
-              },
-              child: const Text('Stop'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Stop Ringing'),
             ),
           ],
         ),
       );
 
-      // Play ringtone (using system ringtone)
-      // For actual ring, you would use a package like ringtone_player
       print('🔔 Phone ringing remotely');
-
-      // Update command status
-      await _updateCommandStatus(docId, 'completed');
     } catch (e) {
       print('❌ Error ringing phone: $e');
       await _updateCommandStatus(docId, 'failed');
@@ -125,63 +168,25 @@ class CommandService {
   // ========== GET LOCATION ==========
   Future<void> _getLocation(BuildContext context, String docId) async {
     try {
-      // Get current location
-      // You already have LocationService, reuse it
-      // For now, just save a location request
-
-      await _firestore.collection('locations').add({
-        'userId': _auth.currentUser?.uid,
-        'latitude': 0,
-        'longitude': 0,
-        'type': 'REMOTE_REQUEST',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
       await _updateCommandStatus(docId, 'completed');
-      print('✅ Location requested remotely');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('📍 Location request sent!'),
+          content: Text('📍 Location requested!'),
           backgroundColor: Colors.blue,
         ),
       );
+
+      print('📍 Location requested remotely');
     } catch (e) {
       print('❌ Error getting location: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== ENABLE THEFT MODE ==========
-  Future<void> _enableTheftMode(BuildContext context, String docId) async {
-    try {
-      // Update user's theft mode status
-      User? user = _auth.currentUser;
-      if (user != null) {
-        await _firestore.collection('users').doc(user.uid).update({
-          'isTheftModeOn': true,
-        });
-      }
-
-      await _updateCommandStatus(docId, 'completed');
-      print('✅ Theft mode enabled remotely');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🛡️ Theft Mode Enabled!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      print('❌ Error enabling theft mode: $e');
-      await _updateCommandStatus(docId, 'failed');
-    }
-  }
-
-  // ========== ERASE DATA (⚠️ WARNING) ==========
+  // ========== ERASE DATA ==========
   Future<void> _eraseData(BuildContext context, String docId) async {
     try {
-      // Show confirmation dialog
       bool? confirm = await showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -197,17 +202,13 @@ class CommandService {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text(
-                'Erase',
-                style: TextStyle(color: Colors.red),
-              ),
+              child: const Text('Erase', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
       );
 
       if (confirm == true) {
-        // Delete user data from Firestore
         User? user = _auth.currentUser;
         if (user != null) {
           await _firestore.collection('users').doc(user.uid).delete();
@@ -217,11 +218,10 @@ class CommandService {
         await _updateCommandStatus(docId, 'completed');
         print('✅ Data erased remotely');
 
-        // Navigate to login
         Navigator.pushReplacementNamed(context, '/login');
       } else {
         await _updateCommandStatus(docId, 'cancelled');
-        print('❌ Erase command cancelled by user');
+        print('❌ Erase command cancelled');
       }
     } catch (e) {
       print('❌ Error erasing data: $e');
@@ -235,5 +235,6 @@ class CommandService {
       'status': status,
       'executedAt': FieldValue.serverTimestamp(),
     });
+    print('✅ Command status updated to: $status');
   }
 }
