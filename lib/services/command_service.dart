@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ========== LISTEN FOR COMMANDS ==========
   void listenForCommands(BuildContext context) {
     User? user = _auth.currentUser;
     if (user == null) {
@@ -30,7 +30,6 @@ class CommandService {
         });
   }
 
-  // ========== EXECUTE COMMAND ==========
   Future<void> _executeCommand(
     BuildContext context,
     String docId,
@@ -59,7 +58,6 @@ class CommandService {
     }
   }
 
-  // ========== ENABLE THEFT MODE ==========
   Future<void> _enableTheftMode(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -93,15 +91,12 @@ class CommandService {
           ],
         ),
       );
-
-      print('✅ Theft mode enabled remotely');
     } catch (e) {
       print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== LOCK PHONE ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       await _updateCommandStatus(docId, 'completed');
@@ -120,15 +115,13 @@ class CommandService {
           ],
         ),
       );
-
-      print('✅ Phone locked remotely');
     } catch (e) {
       print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== RING PHONE (No package needed) ==========
+  // ========== RING PHONE (REAL RINGTONE!) ==========
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
       await _updateCommandStatus(docId, 'completed');
@@ -147,15 +140,12 @@ class CommandService {
           ],
         ),
       );
-
-      print('🔔 Phone ringing remotely');
     } catch (e) {
       print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== GET LOCATION ==========
   Future<void> _getLocation(BuildContext context, String docId) async {
     try {
       await _updateCommandStatus(docId, 'completed');
@@ -166,15 +156,12 @@ class CommandService {
           backgroundColor: Colors.blue,
         ),
       );
-
-      print('📍 Location requested remotely');
     } catch (e) {
       print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== ERASE DATA ==========
   Future<void> _eraseData(BuildContext context, String docId) async {
     try {
       bool? confirm = await showDialog(
@@ -206,7 +193,6 @@ class CommandService {
         }
 
         await _updateCommandStatus(docId, 'completed');
-        print('✅ Data erased remotely');
 
         Navigator.pushReplacementNamed(context, '/login');
       } else {
@@ -218,7 +204,6 @@ class CommandService {
     }
   }
 
-  // ========== UPDATE COMMAND STATUS ==========
   Future<void> _updateCommandStatus(String docId, String status) async {
     await _firestore.collection('commands').doc(docId).update({
       'status': status,

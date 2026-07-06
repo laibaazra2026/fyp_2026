@@ -48,6 +48,8 @@ dependencies:
   firebase_storage: ^13.4.3
   flutter_sound: ^9.30.0
   audioplayers: ^6.8.1
+  flutter_sound_platform_interface: ^9.30.0
+  flutter_ringtone_player: ^4.0.0+4
 dev_dependencies:
   flutter_test:
     sdk: flutter
