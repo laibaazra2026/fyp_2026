@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   void listenForCommands(BuildContext context) {
     User? user = _auth.currentUser;
@@ -125,6 +127,9 @@ class CommandService {
     try {
       await _updateCommandStatus(docId, 'completed');
 
+      // ✅ PLAY REAL RINGTONE
+      await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -133,8 +138,11 @@ class CommandService {
           content: const Text('Your device is ringing loudly!'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Stop'),
+              onPressed: () {
+                _audioPlayer.stop();
+                Navigator.pop(context);
+              },
+              child: const Text('Stop Ringing'),
             ),
           ],
         ),

@@ -27,7 +27,9 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     // Start listening for commands after app loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _commandService.listenForCommands(context);
+      Future.delayed(Duration(milliseconds: 500), () {
+        _commandService.listenForCommands(context);
+      });
     });
   }
 
