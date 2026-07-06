@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/sim_service.dart';
+import '../services/subscription_service.dart';
 import 'gps_screen.dart';
 import 'intruder_screen.dart';
+import 'subscription_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,9 +17,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final SimService _simService = SimService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SubscriptionService _subscriptionService = SubscriptionService();
   String _simStatus = "Checking device...";
   bool _isTheftMode = false;
   bool _isLoadingTheftMode = true;
+  String _currentPlan = 'free';
+  bool _isLoadingPlan = true;
 
   @override
   void initState() {
@@ -25,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _checkSim();
     _loadTheftModeStatus();
     _listenToTheftModeChanges();
+    _loadSubscriptionPlan();
   }
 
   Future<void> _checkSim() async {
@@ -80,6 +86,14 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       }
+    });
+  }
+
+  Future<void> _loadSubscriptionPlan() async {
+    String plan = await _subscriptionService.getCurrentPlan();
+    setState(() {
+      _currentPlan = plan;
+      _isLoadingPlan = false;
     });
   }
 
@@ -153,7 +167,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         _isTheftMode = value;
                       });
 
-                      // Save to Firebase
                       User? user = FirebaseAuth.instance.currentUser;
                       if (user != null) {
                         await _firestore
@@ -178,6 +191,87 @@ class _HomeScreenState extends State<HomeScreen> {
                     activeColor: Colors.white,
                     inactiveThumbColor: Colors.white,
                     inactiveTrackColor: Colors.grey.shade400,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ✅ SUBSCRIPTION PLAN CARD
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _currentPlan != 'free'
+                    ? Colors.green.shade50
+                    : Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _currentPlan != 'free'
+                      ? Colors.green.shade200
+                      : Colors.blue.shade200,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _currentPlan != 'free' ? Icons.star : Icons.star_border,
+                    color: _currentPlan != 'free' ? Colors.green : Colors.blue,
+                    size: 30,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _currentPlan != 'free'
+                              ? '🌟 Premium Plan'
+                              : 'Free Plan',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _currentPlan != 'free'
+                                ? Colors.green.shade700
+                                : Colors.blue.shade700,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          _currentPlan != 'free'
+                              ? 'All premium features are active'
+                              : 'Upgrade to Premium for advanced features',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _currentPlan != 'free'
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SubscriptionScreen(),
+                              ),
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _currentPlan != 'free'
+                          ? Colors.grey
+                          : Colors.purple.shade700,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      _currentPlan != 'free' ? 'Active' : 'Upgrade',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
