@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:mobile_phone_blocker/mobile_phone_blocker.dart';
 import 'dart:math';
+import '../screens/lock_screen.dart';
 
 class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -61,6 +62,7 @@ class CommandService {
     }
   }
 
+  // ========== ENABLE THEFT MODE ==========
   Future<void> _enableTheftMode(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -100,26 +102,80 @@ class CommandService {
     }
   }
 
+  // ========== GENERATE RANDOM 6-DIGIT PIN ==========
+  String _generateRandomPin() {
+    final random = Random();
+    String pin = '';
+    for (int i = 0; i < 6; i++) {
+      pin += random.nextInt(10).toString();
+    }
+    return pin;
+  }
+
+  // ========== SEND PIN TO USER'S EMAIL ==========
+  Future<void> _sendPinToUser(String pin) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) return;
+
+      String userEmail = user.email ?? 'No email';
+
+      await _firestore.collection('lock_pins').doc(user.uid).set({
+        'pin': pin,
+        'userEmail': userEmail,
+        'timestamp': FieldValue.serverTimestamp(),
+        'isUsed': false,
+      });
+
+      print('📧 PIN sent to: $userEmail');
+      print('🔑 PIN: $pin');
+    } catch (e) {
+      print('❌ Error sending PIN: $e');
+    }
+  }
+
+  // ========== LOCK PHONE (CUSTOM PIN) ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
+      // Get user's saved PIN from Firestore
+      User? user = _auth.currentUser;
+      if (user == null) {
+        await _updateCommandStatus(docId, 'failed');
+        return;
+      }
+
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      String lockPin = userDoc.get('lockPin') ?? '1234';
+
+      // Lock the device using DeviceControl
+      await DeviceControl.lockDevice();
+
+      // Update command status
       await _updateCommandStatus(docId, 'completed');
 
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('🔒 Phone Locked'),
-          content: const Text('Your device has been locked remotely.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
+      // Show custom lock screen with owner's PIN
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LockScreen(correctPin: lockPin),
         ),
       );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔒 Phone Locked!'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      print('🔒 Device locked with owner PIN');
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error locking phone: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -129,7 +185,6 @@ class CommandService {
     try {
       await _updateCommandStatus(docId, 'completed');
 
-      // ✅ PLAY REAL RINGTONE
       await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
 
       showDialog(
@@ -155,6 +210,7 @@ class CommandService {
     }
   }
 
+  // ========== GET LOCATION ==========
   Future<void> _getLocation(BuildContext context, String docId) async {
     try {
       await _updateCommandStatus(docId, 'completed');
@@ -171,6 +227,7 @@ class CommandService {
     }
   }
 
+  // ========== ERASE DATA ==========
   Future<void> _eraseData(BuildContext context, String docId) async {
     try {
       bool? confirm = await showDialog(
@@ -201,6 +258,9 @@ class CommandService {
           await _auth.signOut();
         }
 
+        // Wipe device data
+        await DeviceControl.wipeData();
+
         await _updateCommandStatus(docId, 'completed');
 
         Navigator.pushReplacementNamed(context, '/login');
@@ -213,6 +273,7 @@ class CommandService {
     }
   }
 
+  // ========== UPDATE COMMAND STATUS ==========
   Future<void> _updateCommandStatus(String docId, String status) async {
     await _firestore.collection('commands').doc(docId).update({
       'status': status,

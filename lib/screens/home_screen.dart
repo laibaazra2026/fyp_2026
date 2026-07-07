@@ -6,6 +6,7 @@ import '../services/subscription_service.dart';
 import 'gps_screen.dart';
 import 'intruder_screen.dart';
 import 'subscription_screen.dart';
+import 'set_pin_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -198,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // ✅ SUBSCRIPTION PLAN CARD
+            // Subscription Plan Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -441,6 +442,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Backup Feature - Premium Only'),
+                        ),
+                      );
+                    },
+                  ),
+                  // ✅ NEW: Set Lock PIN Card
+                  _FeatureCard(
+                    icon: Icons.lock_outline,
+                    title: 'Set Lock PIN',
+                    subtitle: 'Custom lock PIN',
+                    color: Colors.orange,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SetPinScreen(),
                         ),
                       );
                     },
