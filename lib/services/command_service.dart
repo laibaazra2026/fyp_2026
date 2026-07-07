@@ -111,7 +111,7 @@ class CommandService {
     return pin;
   }
 
-  // ========== LOCK PHONE ==========
+  // ========== LOCK PHONE (FIXED) ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       // Get user's saved PIN from Firestore
@@ -131,13 +131,17 @@ class CommandService {
       // Update command status
       await _updateCommandStatus(docId, 'completed');
 
-      // Show lock screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => LockScreen(correctPin: lockPin),
-        ),
-      );
+      // ✅ FIX: Use WidgetsBinding to navigate safely
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LockScreen(correctPin: lockPin),
+            ),
+          );
+        }
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
