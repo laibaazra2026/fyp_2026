@@ -48,6 +48,7 @@ dependencies:
   firebase_storage: ^13.4.3
   audioplayers: ^6.8.1
   mobile_phone_blocker: ^0.0.1
+  flutter_screen_lock: ^9.2.2+2
 dev_dependencies:
   flutter_test:
     sdk: flutter
