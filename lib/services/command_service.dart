@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:mobile_phone_blocker/mobile_phone_blocker.dart';
 import 'dart:math';
 import '../screens/lock_screen.dart';
 
@@ -112,29 +111,7 @@ class CommandService {
     return pin;
   }
 
-  // ========== SEND PIN TO USER'S EMAIL ==========
-  Future<void> _sendPinToUser(String pin) async {
-    try {
-      User? user = _auth.currentUser;
-      if (user == null) return;
-
-      String userEmail = user.email ?? 'No email';
-
-      await _firestore.collection('lock_pins').doc(user.uid).set({
-        'pin': pin,
-        'userEmail': userEmail,
-        'timestamp': FieldValue.serverTimestamp(),
-        'isUsed': false,
-      });
-
-      print('📧 PIN sent to: $userEmail');
-      print('🔑 PIN: $pin');
-    } catch (e) {
-      print('❌ Error sending PIN: $e');
-    }
-  }
-
-  // ========== LOCK PHONE (CUSTOM PIN) ==========
+  // ========== LOCK PHONE ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       // Get user's saved PIN from Firestore
@@ -151,13 +128,10 @@ class CommandService {
 
       String lockPin = userDoc.get('lockPin') ?? '1234';
 
-      // Lock the device using DeviceControl
-      await DeviceControl.lockDevice();
-
       // Update command status
       await _updateCommandStatus(docId, 'completed');
 
-      // Show custom lock screen with owner's PIN
+      // Show lock screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -258,11 +232,7 @@ class CommandService {
           await _auth.signOut();
         }
 
-        // Wipe device data
-        await DeviceControl.wipeData();
-
         await _updateCommandStatus(docId, 'completed');
-
         Navigator.pushReplacementNamed(context, '/login');
       } else {
         await _updateCommandStatus(docId, 'cancelled');
