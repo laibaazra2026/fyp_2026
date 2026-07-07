@@ -104,11 +104,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Device Protection'),
+        title: const Text(
+          'Device Protection',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.purple.shade700,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
             },
