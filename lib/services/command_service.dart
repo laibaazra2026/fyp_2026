@@ -131,7 +131,7 @@ class CommandService {
       // Update command status
       await _updateCommandStatus(docId, 'completed');
 
-      // ✅ FIX: Use WidgetsBinding to navigate safely
+      // ✅ Show lock screen (Fixed: No SnackBar)
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
           Navigator.push(
@@ -142,14 +142,6 @@ class CommandService {
           );
         }
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🔒 Phone Locked!'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
 
       print('🔒 Device locked with owner PIN');
     } catch (e) {
