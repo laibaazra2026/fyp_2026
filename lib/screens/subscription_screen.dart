@@ -29,65 +29,78 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subscription Plans'),
+        title: const Text(
+          'Subscription Plans',
+          style: TextStyle(color: Colors.white), // ✅ White title
+        ),
         backgroundColor: Colors.purple.shade700,
+        iconTheme: const IconThemeData(color: Colors.white), // ✅ White arrow
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Free Plan
-            _buildPlanCard(
-              name: 'Free',
-              price: 'Rs. 0',
-              features: ['GPS Tracking', 'SIM Alert', 'Intruder Capture'],
-              isCurrent: _currentPlan == 'free',
-              onTap: null,
-            ),
-            const SizedBox(height: 12),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.purple.shade700, Colors.purple.shade300],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Free Plan
+              _buildPlanCard(
+                name: 'Free',
+                price: 'Rs. 0',
+                features: ['GPS Tracking', 'SIM Alert', 'Intruder Capture'],
+                isCurrent: _currentPlan == 'free',
+                onTap: null,
+              ),
+              const SizedBox(height: 12),
 
-            // Premium Plan
-            _buildPlanCard(
-              name: 'Premium',
-              price: 'Rs. 99/month',
-              features: [
-                'All Free Features',
-                'Remote Lock/Erase',
-                'Contacts Backup',
-                'Cloud Storage',
-              ],
-              isCurrent: _currentPlan == 'premium',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('💳 Payment coming soon!'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
+              // Premium Plan
+              _buildPlanCard(
+                name: 'Premium',
+                price: 'Rs. 99/month',
+                features: [
+                  'All Free Features',
+                  'Remote Lock/Erase',
+                  'Contacts Backup',
+                  'Cloud Storage',
+                ],
+                isCurrent: _currentPlan == 'premium',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('💳 Payment coming soon!'),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
 
-            // Family Plan
-            _buildPlanCard(
-              name: 'Family',
-              price: 'Rs. 199/month',
-              features: [
-                'All Premium Features',
-                '5 Devices',
-                'Admin Dashboard',
-              ],
-              isCurrent: _currentPlan == 'family',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('💳 Payment coming soon!'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
-              },
-            ),
-          ],
+              // Family Plan
+              _buildPlanCard(
+                name: 'Family',
+                price: 'Rs. 199/month',
+                features: [
+                  'All Premium Features',
+                  '5 Devices',
+                  'Admin Dashboard',
+                ],
+                isCurrent: _currentPlan == 'family',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('💳 Payment coming soon!'),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -105,10 +118,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isCurrent ? Colors.purple : Colors.grey.shade300,
+          color: isCurrent ? Colors.white : Colors.grey.shade300,
           width: isCurrent ? 2 : 1,
         ),
       ),
+      color: isCurrent
+          ? Colors.white.withOpacity(0.95)
+          : Colors.white.withOpacity(0.85),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -171,7 +187,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text('Upgrade to $name'),
+                  child: Text(
+                    'Upgrade to $name',
+                    style: const TextStyle(
+                      color: Colors.white, // ✅ White text on button
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
           ],
