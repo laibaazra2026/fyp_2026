@@ -1,5 +1,6 @@
     PHONE THEFT & LOSS SECURITY WITH GPS TRACKING       
           APP NAME: DEVICE PROTECTION 
+          Gooogle Backend-As-A-Service: Firebase
 
 Overview:
 Device Protection System is a Flutter and Firebase-based mobile application designed to help users protect their Android devices from theft, loss, and unauthorized access. The application combines authentication, device security, real-time monitroing, payment support, subscription management and backup and restore of user data if the phone is factory reset by intruder.
