@@ -1,102 +1,117 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:sim_card_info/sim_card_info.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class SimService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
 
-  // ========== GET SIM INFO ==========
-  Future<Map<String, String>?> getSimInfo() async {
+  // ========== GET DEVICE ID ==========
+  Future<String?> getDeviceId() async {
     try {
-      List<SimCard>? sims = await SimCardInfo().getSimCardInfo();
-      if (sims != null && sims.isNotEmpty) {
-        return {
-          'carrierName': sims.first.carrierName ?? 'Unknown',
-          'simSerialNumber': sims.first.serialNumber ?? 'Unknown',
-          'phoneNumber': sims.first.number ?? 'Unknown',
-          'countryCode': sims.first.countryCode ?? 'Unknown',
-        };
+      if (Platform.isAndroid) {
+        AndroidDeviceInfo androidInfo = await _deviceInfo.androidInfo;
+        return androidInfo.id;
+      } else if (Platform.isIOS) {
+        IosDeviceInfo iosInfo = await _deviceInfo.iosInfo;
+        return iosInfo.identifierForVendor;
       }
       return null;
     } catch (e) {
-      print('❌ Error getting SIM info: $e');
+      print('❌ Error getting device ID: $e');
       return null;
     }
   }
 
-  // ========== SAVE SIM INFO ==========
-  Future<void> saveSimInfo(Map<String, String> simInfo) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('sim_serial', simInfo['simSerialNumber'] ?? '');
-    await prefs.setString('sim_carrier', simInfo['carrierName'] ?? '');
+  // ========== GET DEVICE MODEL ==========
+  Future<String?> getDeviceModel() async {
+    try {
+      if (Platform.isAndroid) {
+        AndroidDeviceInfo androidInfo = await _deviceInfo.androidInfo;
+        return androidInfo.model;
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting device model: $e');
+      return null;
+    }
   }
 
-  // ========== GET SAVED SIM ==========
-  Future<Map<String, String>?> getSavedSimInfo() async {
+  // ========== SAVE DEVICE INFO ==========
+  Future<void> saveDeviceInfo(String? deviceId, String? deviceModel) async {
     final prefs = await SharedPreferences.getInstance();
-    String? serial = prefs.getString('sim_serial');
-    if (serial == null || serial.isEmpty) {
+    await prefs.setString('device_id', deviceId ?? '');
+    await prefs.setString('device_model', deviceModel ?? '');
+    print('✅ Device info saved');
+  }
+
+  // ========== GET SAVED DEVICE INFO ==========
+  Future<Map<String, String>?> getSavedDeviceInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? deviceId = prefs.getString('device_id');
+    if (deviceId == null || deviceId.isEmpty) {
       return null;
     }
     return {
-      'simSerialNumber': serial,
-      'carrierName': prefs.getString('sim_carrier') ?? '',
+      'deviceId': deviceId,
+      'deviceModel': prefs.getString('device_model') ?? '',
     };
   }
 
   // ========== DETECT SIM CHANGE ==========
   Future<bool> detectSimChange() async {
-    // Get current SIM
-    Map<String, String>? currentSim = await getSimInfo();
-    if (currentSim == null) {
-      print('❌ Could not read SIM');
+    String? currentDeviceId = await getDeviceId();
+    String? currentDeviceModel = await getDeviceModel();
+
+    if (currentDeviceId == null || currentDeviceModel == null) {
+      print('❌ Could not get device info');
       return false;
     }
 
-    // Get saved SIM
-    Map<String, String>? savedSim = await getSavedSimInfo();
+    Map<String, String>? savedInfo = await getSavedDeviceInfo();
 
-    // First time - save SIM
-    if (savedSim == null) {
-      await saveSimInfo(currentSim);
-      print('✅ First time SIM saved: ${currentSim['carrierName']}');
+    // First time - save device info
+    if (savedInfo == null) {
+      await saveDeviceInfo(currentDeviceId, currentDeviceModel);
+      print('✅ First time device info saved');
       return false;
     }
 
-    // Compare SIM serial numbers
-    String currentSerial = currentSim['simSerialNumber'] ?? '';
-    String savedSerial = savedSim['simSerialNumber'] ?? '';
+    String savedDeviceId = savedInfo['deviceId'] ?? '';
+    String savedModel = savedInfo['deviceModel'] ?? '';
 
-    if (currentSerial != savedSerial &&
-        currentSerial.isNotEmpty &&
-        savedSerial.isNotEmpty) {
-      // ✅ SIM CHANGED!
-      print('⚠️ SIM CHANGE DETECTED!');
-      print('   Old SIM: $savedSerial');
-      print('   New SIM: $currentSerial');
-
-      await _handleSimChange(currentSim, savedSim);
-      await saveSimInfo(currentSim);
+    // Check if device changed
+    if (currentDeviceId != savedDeviceId || currentDeviceModel != savedModel) {
+      print('⚠️ DEVICE/SIM CHANGE DETECTED!');
+      await _handleDeviceChange(
+        currentDeviceId,
+        savedDeviceId,
+        currentDeviceModel,
+        savedModel,
+      );
+      await saveDeviceInfo(currentDeviceId, currentDeviceModel);
       return true;
     }
 
-    print('✅ SIM is same: ${currentSim['carrierName']}');
+    print('✅ Device is same');
     return false;
   }
 
-  // ========== HANDLE SIM CHANGE (SEND ALERT) ==========
-  Future<void> _handleSimChange(
-    Map<String, String> newSim,
-    Map<String, String> oldSim,
+  // ========== HANDLE DEVICE CHANGE ==========
+  Future<void> _handleDeviceChange(
+    String newId,
+    String oldId,
+    String newModel,
+    String oldModel,
   ) async {
     try {
       User? user = _auth.currentUser;
       if (user == null) return;
 
-      // Get user data
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
           .doc(user.uid)
@@ -104,29 +119,28 @@ class SimService {
       String userEmail = userDoc.get('email') ?? 'Unknown';
       String userName = userDoc.get('name') ?? 'User';
 
-      // ✅ SAVE SIM CHANGE ALERT TO FIRESTORE
       await _firestore.collection('sim_alerts').add({
         'userId': user.uid,
         'userEmail': userEmail,
         'userName': userName,
-        'type': 'SIM_CHANGE',
-        'title': '⚠️ SIM Card Changed',
-        'message': 'A new SIM card was detected in the device.',
-        'oldSimSerial': oldSim['simSerialNumber'],
-        'newSimSerial': newSim['simSerialNumber'],
-        'oldCarrier': oldSim['carrierName'],
-        'newCarrier': newSim['carrierName'],
+        'type': 'DEVICE_CHANGE',
+        'title': '⚠️ SIM/Device Changed',
+        'message': 'A new SIM or device was detected.',
+        'oldDeviceId': oldId,
+        'newDeviceId': newId,
+        'oldModel': oldModel,
+        'newModel': newModel,
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
       });
 
-      print('✅ SIM change alert saved to Firebase!');
+      print('✅ SIM/Device change alert saved!');
     } catch (e) {
-      print('❌ Error saving SIM alert: $e');
+      print('❌ Error: $e');
     }
   }
 
-  // ========== CHECK ON APP START ==========
+  // ========== CHECK ON STARTUP ==========
   Future<void> checkOnStartup(BuildContext context) async {
     bool changed = await detectSimChange();
     if (changed) {
@@ -134,16 +148,16 @@ class SimService {
     }
   }
 
-  // ========== SHOW ALERT DIALOG ==========
+  // ========== SHOW ALERT ==========
   void _showAlertDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('⚠️ SIM Card Changed'),
+        title: const Text('⚠️ SIM/Device Changed'),
         content: const Text(
-          'A new SIM card has been detected in your device.\n'
-          'This alert has been logged in the admin panel.',
+          'A new SIM or device has been detected.\n'
+          'Alert saved to admin panel.',
         ),
         actions: [
           TextButton(
@@ -155,36 +169,12 @@ class SimService {
     );
   }
 
-  // ========== GET SIM STATUS ==========
+  // ========== GET STATUS ==========
   Future<String> getSimStatus() async {
-    Map<String, String>? savedSim = await getSavedSimInfo();
-    if (savedSim == null) {
-      return 'No SIM saved';
+    Map<String, String>? savedInfo = await getSavedDeviceInfo();
+    if (savedInfo == null) {
+      return 'No device saved';
     }
-    return 'SIM: ${savedSim['carrierName']} (${savedSim['simSerialNumber']?.substring(0, 4)}...****)';
-  }
-
-  // ========== GET ALL SIM ALERTS ==========
-  Future<List<Map<String, dynamic>>> getSimAlerts() async {
-    try {
-      User? user = _auth.currentUser;
-      if (user == null) return [];
-
-      QuerySnapshot snapshot = await _firestore
-          .collection('sim_alerts')
-          .where('userId', isEqualTo: user.uid)
-          .orderBy('timestamp', descending: true)
-          .limit(50)
-          .get();
-
-      return snapshot.docs.map((doc) {
-        var data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    } catch (e) {
-      print('❌ Error getting SIM alerts: $e');
-      return [];
-    }
+    return 'Device: ${savedInfo['deviceModel'] ?? 'Unknown'}';
   }
 }

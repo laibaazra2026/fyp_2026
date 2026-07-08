@@ -327,7 +327,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           _simStatus,
                           style: TextStyle(
-                            color: _simStatus.contains('secure')
+                            color: _simStatus.contains('saved')
                                 ? Colors.green
                                 : Colors.orange,
                             fontSize: 14,
@@ -338,11 +338,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      bool changed = await _simService.checkDeviceChanged();
+                      bool changed = await _simService.detectSimChange();
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('⚠️ Device Changed! Alert saved.'),
+                            content: Text(
+                              '⚠️ SIM/Device Changed! Alert saved.',
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -401,11 +403,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: _simStatus,
                     color: Colors.orange,
                     onTap: () async {
-                      bool changed = await _simService.checkDeviceChanged();
+                      bool changed = await _simService.detectSimChange();
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('⚠️ Device Changed! Alert saved.'),
+                            content: Text(
+                              '⚠️ SIM/Device Changed! Alert saved.',
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -450,7 +454,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-                  // ✅ NEW: Set Lock PIN Card
                   _FeatureCard(
                     icon: Icons.lock_outline,
                     title: 'Set Lock PIN',
