@@ -49,6 +49,7 @@ dependencies:
   audioplayers: ^6.8.1
   mobile_phone_blocker: ^0.0.1
   flutter_screen_lock: ^9.2.2+2
+  sim_card_info: ^1.0.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
