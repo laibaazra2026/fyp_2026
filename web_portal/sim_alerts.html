@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIM Logs - Device Protection</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #f5f5f5;
+            display: flex;
+        }
+        .sidebar {
+            width: 230px;
+            height: 100vh;
+            background: #841EA0;
+            color: white;
+            position: fixed;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 15px;
+        }
+        .sidebar a {
+            display: block;
+            color: white;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 5px 0;
+            transition: background 0.3s;
+        }
+        .sidebar a:hover,
+        .sidebar .active {
+            background: #6A1B8A;
+        }
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+            width: 100%;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+        .logout-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+        .stat-card h3 {
+            font-size: 28px;
+            color: #841EA0;
+        }
+        .stat-card p {
+            color: #888;
+            font-size: 14px;
+        }
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #841EA0;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .alert-new {
+            background: #ff9800;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+        .alert-old {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+        .refresh-btn {
+            background: #841EA0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 18px;
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .badge-sim {
+            background: #ff9800;
+            color: white;
+        }
+        .badge-device {
+            background: #f44336;
+            color: white;
+        }
+        .badge-read {
+            background: #4CAF50;
+            color: white;
+        }
+        .badge-unread {
+            background: #f44336;
+            color: white;
+        }
+        .sim-change {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+                padding: 10px;
+            }
+            .sidebar h2 {
+                display: none;
+            }
+            .sidebar a {
+                font-size: 12px;
+                padding: 10px;
+                text-align: center;
+            }
+            .main {
+                margin-left: 70px;
+                padding: 15px;
+            }
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== SIDEBAR ========== -->
+    <div class="sidebar">
+        <h2>🔒 Admin</h2>
+        <a href="dashboard.html">📊 Dashboard</a>
+        <a href="users.html">👥 Users</a>
+        <a href="alerts.html">⚠️ Alerts</a>
+        <a href="sim_alerts.html" class="active">📱 SIM Logs</a>
+        <a href="locations.html">📍 Locations</a>
+        <a href="intruders.html">📸 Intruders</a>
+        <a href="commands.html">🎮 Commands</a>
+    </div>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main">
+        <div class="header">
+            <h1>📱 SIM Change Logs</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- ========== STATS ========== -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="totalAlerts">0</h3>
+                <p>Total SIM Changes</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="todayAlerts">0</h3>
+                <p>Today's Changes</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="unreadAlerts">0</h3>
+                <p>Unread Alerts</p>
+            </div>
+        </div>
+
+        <!-- ========== TABLE ========== -->
+        <div class="table-container">
+            <button class="refresh-btn" onclick="loadSimAlerts()">🔄 Refresh</button>
+            <div id="loading" class="loading">Loading SIM logs...</div>
+            <div id="empty" class="empty" style="display:none;">
+                📱 No SIM change logs yet<br>
+                <small>When someone changes their SIM, it will appear here.</small>
+            </div>
+            <table id="simTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>User</th>
+                        <th>Old SIM</th>
+                        <th>New SIM</th>
+                        <th>Old Carrier</th>
+                        <th>New Carrier</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="simBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ========== FIREBASE CONFIG ==========
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // ========== AUTH CHECK ==========
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // ========== LOAD SIM ALERTS ==========
+        async function loadSimAlerts() {
+            try {
+                const loading = document.getElementById('loading');
+                const empty = document.getElementById('empty');
+                const table = document.getElementById('simTable');
+                const tbody = document.getElementById('simBody');
+
+                loading.style.display = 'block';
+                empty.style.display = 'none';
+                table.style.display = 'none';
+
+                const snapshot = await db.collection('sim_alerts')
+                    .orderBy('timestamp', 'desc')
+                    .limit(100)
+                    .get();
+
+                // Update stats
+                document.getElementById('totalAlerts').textContent = snapshot.size;
+
+                let todayCount = 0;
+                let unreadCount = 0;
+                const today = new Date().toDateString();
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const timestamp = data.timestamp ? new Date(data.timestamp.seconds * 1000) : null;
+                    if (timestamp && timestamp.toDateString() === today) {
+                        todayCount++;
+                    }
+                    if (!data.isRead) {
+                        unreadCount++;
+                    }
+                });
+
+                document.getElementById('todayAlerts').textContent = todayCount;
+                document.getElementById('unreadAlerts').textContent = unreadCount;
+
+                tbody.innerHTML = '';
+                let count = 1;
+
+                if (snapshot.empty) {
+                    loading.style.display = 'none';
+                    empty.style.display = 'block';
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+
+                    // Determine if this is a new SIM change (vs device change)
+                    const isSimChange = data.type === 'SIM_CHANGE';
+
+                    const row = document.createElement('tr');
+                    row.className = isSimChange ? 'sim-change' : '';
+
+                    // Format timestamp
+                    let timeStr = 'N/A';
+                    if (data.timestamp) {
+                        const date = new Date(data.timestamp.seconds * 1000);
+                        timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    }
+
+                    // Status badge
+                    let statusBadge = '';
+                    if (data.isRead) {
+                        statusBadge = '<span class="badge badge-read">✅ Read</span>';
+                    } else {
+                        statusBadge = '<span class="badge badge-unread">🔴 Unread</span>';
+                    }
+
+                    // Type badge
+                    let typeBadge = '<span class="badge badge-sim">SIM</span>';
+                    if (data.type === 'DEVICE_CHANGE') {
+                        typeBadge = '<span class="badge badge-device">Device</span>';
+                    }
+
+                    row.innerHTML = `
+                        <td>${count}</td>
+                        <td><strong>${data.userName || data.userEmail || 'Unknown'}</strong></td>
+                        <td><code>${data.oldSimSerial ? data.oldSimSerial.substring(0, 8) + '...' : 'N/A'}</code></td>
+                        <td><code style="color:#ff9800;font-weight:bold;">${data.newSimSerial ? data.newSimSerial.substring(0, 8) + '...' : 'N/A'}</code></td>
+                        <td>${data.oldCarrier || 'N/A'}</td>
+                        <td><strong style="color:#ff9800;">${data.newCarrier || 'N/A'}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td>${timeStr}</td>
+                    `;
+
+                    // Mark as read on hover (optional)
+                    row.onclick = async function() {
+                        if (!data.isRead) {
+                            await db.collection('sim_alerts').doc(doc.id).update({
+                                'isRead': true
+                            });
+                            loadSimAlerts();
+                        }
+                    };
+
+                    tbody.appendChild(row);
+                    count++;
+                });
+
+                loading.style.display = 'none';
+                table.style.display = 'table';
+
+            } catch (error) {
+                console.error('Error loading SIM alerts:', error);
+                document.getElementById('loading').textContent = '❌ Error loading SIM logs: ' + error.message;
+                document.getElementById('loading').style.display = 'block';
+            }
+        }
+
+        // ========== LOGOUT ==========
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // ========== LOAD ON PAGE OPEN ==========
+        loadSimAlerts();
+    </script>
+
+</body>
+</html>
