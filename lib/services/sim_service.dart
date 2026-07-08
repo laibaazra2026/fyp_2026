@@ -41,11 +41,30 @@ class SimService {
     }
   }
 
+  // ========== GET DEVICE NAME ==========
+  Future<String?> getDeviceName() async {
+    try {
+      if (Platform.isAndroid) {
+        AndroidDeviceInfo androidInfo = await _deviceInfo.androidInfo;
+        return androidInfo.device;
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting device name: $e');
+      return null;
+    }
+  }
+
   // ========== SAVE DEVICE INFO ==========
-  Future<void> saveDeviceInfo(String? deviceId, String? deviceModel) async {
+  Future<void> saveDeviceInfo(
+    String? deviceId,
+    String? deviceModel,
+    String? deviceName,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('device_id', deviceId ?? '');
     await prefs.setString('device_model', deviceModel ?? '');
+    await prefs.setString('device_name', deviceName ?? '');
     print('✅ Device info saved');
   }
 
@@ -58,14 +77,16 @@ class SimService {
     }
     return {
       'deviceId': deviceId,
-      'deviceModel': prefs.getString('device_model') ?? '',
+      'deviceModel': prefs.getString('device_model') ?? 'Unknown',
+      'deviceName': prefs.getString('device_name') ?? 'Unknown',
     };
   }
 
-  // ========== DETECT SIM CHANGE ==========
+  // ========== DETECT SIM/DEVICE CHANGE ==========
   Future<bool> detectSimChange() async {
     String? currentDeviceId = await getDeviceId();
     String? currentDeviceModel = await getDeviceModel();
+    String? currentDeviceName = await getDeviceName();
 
     if (currentDeviceId == null || currentDeviceModel == null) {
       print('❌ Could not get device info');
@@ -76,7 +97,11 @@ class SimService {
 
     // First time - save device info
     if (savedInfo == null) {
-      await saveDeviceInfo(currentDeviceId, currentDeviceModel);
+      await saveDeviceInfo(
+        currentDeviceId,
+        currentDeviceModel,
+        currentDeviceName,
+      );
       print('✅ First time device info saved');
       return false;
     }
@@ -92,8 +117,13 @@ class SimService {
         savedDeviceId,
         currentDeviceModel,
         savedModel,
+        currentDeviceName,
       );
-      await saveDeviceInfo(currentDeviceId, currentDeviceModel);
+      await saveDeviceInfo(
+        currentDeviceId,
+        currentDeviceModel,
+        currentDeviceName,
+      );
       return true;
     }
 
@@ -107,6 +137,7 @@ class SimService {
     String oldId,
     String newModel,
     String oldModel,
+    String? deviceName,
   ) async {
     try {
       User? user = _auth.currentUser;
@@ -125,16 +156,17 @@ class SimService {
         'userName': userName,
         'type': 'DEVICE_CHANGE',
         'title': '⚠️ SIM/Device Changed',
-        'message': 'A new SIM or device was detected.',
+        'message': 'A new SIM or device was detected on $deviceName.',
         'oldDeviceId': oldId,
         'newDeviceId': newId,
         'oldModel': oldModel,
         'newModel': newModel,
+        'deviceName': deviceName ?? 'Unknown',
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
       });
 
-      print('✅ SIM/Device change alert saved!');
+      print('✅ SIM/Device change alert saved to sim_alerts!');
     } catch (e) {
       print('❌ Error: $e');
     }
@@ -175,6 +207,6 @@ class SimService {
     if (savedInfo == null) {
       return 'No device saved';
     }
-    return 'Device: ${savedInfo['deviceModel'] ?? 'Unknown'}';
+    return 'Device: ${savedInfo['deviceModel'] ?? 'Unknown'} (${savedInfo['deviceName'] ?? ''})';
   }
 }
