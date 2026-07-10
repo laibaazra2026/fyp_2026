@@ -21,8 +21,8 @@
         android:icon="@mipmap/ic_launcher">
         <service
             android:name=".LockService"
-            android:enbaled="true"
-            android:expoted="false"/>
+            android:enabled="true"
+            android:exported="false"/>
         <receiver
             android:name=".DeviceAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
