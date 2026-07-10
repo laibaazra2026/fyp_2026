@@ -84,7 +84,7 @@ class IntruderService {
 
       print('✅ Intruder photo saved to Firestore');
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error saving to Firestore: $e');
     }
   }
 
@@ -107,17 +107,15 @@ class IntruderService {
         return data;
       }).toList();
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error getting photos: $e');
       return [];
     }
   }
 
+  // ========== SHOW MESSAGE ==========
   void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 }
