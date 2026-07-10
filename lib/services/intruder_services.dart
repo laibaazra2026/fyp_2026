@@ -16,11 +16,21 @@ class IntruderService {
     'com.example.device_protection/lock',
   );
 
+  // ========== START LOCK SERVICE ==========
+  Future<void> startLockService() async {
+    try {
+      await _channel.invokeMethod('startLockService');
+      print('✅ LockService started');
+    } catch (e) {
+      print('❌ Error starting LockService: $e');
+    }
+  }
+
   // ========== START LISTENING ==========
   void startListening() {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'capturePhoto') {
-        // ✅ SILENTLY CAPTURE PHOTO (No UI)
+        // ✅ Capture photo silently
         await captureIntruderPhotoSilently();
       }
     });
@@ -64,6 +74,11 @@ class IntruderService {
     } catch (e) {
       print('❌ Error capturing photo: $e');
     }
+  }
+
+  // ========== CAPTURE INTRUDER PHOTO (For testing) ==========
+  Future<void> captureIntruderPhoto() async {
+    await captureIntruderPhotoSilently();
   }
 
   // ========== SAVE TO FIRESTORE ==========
