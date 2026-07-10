@@ -16,37 +16,21 @@ class IntruderService {
     'com.example.device_protection/lock',
   );
 
-  int _wrongAttempts = 0;
-
-  // ========== RESET ATTEMPTS ==========
-  void resetAttempts() {
-    _wrongAttempts = 0;
-  }
-
   // ========== START LISTENING ==========
   void startListening() {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'capturePhoto') {
-        await captureIntruderPhoto();
+        // ✅ SILENTLY CAPTURE PHOTO (No UI)
+        await captureIntruderPhotoSilently();
       }
     });
   }
 
-  // ========== RECORD WRONG ATTEMPT ==========
-  Future<void> recordWrongAttempt() async {
-    _wrongAttempts++;
-    print('⚠️ Wrong attempt $_wrongAttempts');
-
-    if (_wrongAttempts >= 3) {
-      print('📸 3 wrong attempts! Capturing intruder photo...');
-      await captureIntruderPhoto();
-      resetAttempts();
-    }
-  }
-
-  // ========== CAPTURE INTRUDER PHOTO ==========
-  Future<void> captureIntruderPhoto() async {
+  // ========== CAPTURE INTRUDER PHOTO SILENTLY ==========
+  Future<void> captureIntruderPhotoSilently() async {
     try {
+      print('📸 Capturing intruder photo silently...');
+
       // Check camera permission
       PermissionStatus status = await Permission.camera.request();
       if (!status.isGranted) {
@@ -76,9 +60,9 @@ class IntruderService {
       // Save to Firestore
       await _saveToFirestore(base64Image);
 
-      print('📸 Intruder photo captured and saved!');
+      print('📸 Intruder photo captured and saved silently!');
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error capturing photo: $e');
     }
   }
 
