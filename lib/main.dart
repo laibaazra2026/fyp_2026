@@ -28,13 +28,14 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    // ✅ Start listening for remote commands
+    // ✅ Start command listener
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandService.listenForCommands(context);
     });
 
-    // ✅ Start intruder detection (background)
+    // ✅ Start intruder service and lock detection
     _intruderService.startListening();
+    _intruderService.startLockService();
   }
 
   @override
