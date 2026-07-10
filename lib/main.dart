@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/command_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,8 +12,24 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final CommandService _commandService = CommandService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Start listening for commands after app loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _commandService.listenForCommands(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +37,6 @@ class MyApp extends StatelessWidget {
       title: 'Device Protection',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.purple, fontFamily: 'Poppins'),
-      // ✅ ALWAYS SHOW SPLASH SCREEN FIRST
       home: const SplashScreen(),
     );
   }
