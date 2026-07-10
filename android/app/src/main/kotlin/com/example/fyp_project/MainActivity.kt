@@ -2,7 +2,6 @@ package com.example.device_protection
 
 import android.app.KeyguardManager
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -18,18 +17,22 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "hasDeviceLock" -> {
-                        val hasLock = hasDeviceLock()
-                        result.success(hasLock)
-                    }
                     "onWrongAttempt" -> {
                         wrongAttemptCount++
+                        println("⚠️ Wrong attempt $wrongAttemptCount")
+                        
                         if (wrongAttemptCount >= 3) {
-                            // ✅ Capture photo
-                            captureIntruderPhoto()
+                            println("📸 3 wrong attempts! Capturing photo...")
+                            // Send to Flutter to capture photo
+                            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+                                .invokeMethod("capturePhoto", null)
                             wrongAttemptCount = 0
                         }
                         result.success(true)
+                    }
+                    "hasDeviceLock" -> {
+                        val hasLock = hasDeviceLock()
+                        result.success(hasLock)
                     }
                     else -> result.notImplemented()
                 }
@@ -39,11 +42,5 @@ class MainActivity : FlutterActivity() {
     private fun hasDeviceLock(): Boolean {
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         return keyguardManager.isDeviceSecure
-    }
-
-    private fun captureIntruderPhoto() {
-        // Send to Flutter to capture photo
-        MethodChannel(flutterEngine?.dartExecutor?.binaryMessenger, CHANNEL)
-            .invokeMethod("capturePhoto", null)
     }
 }

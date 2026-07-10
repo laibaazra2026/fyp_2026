@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/intruder_services.dart';
 
@@ -42,7 +43,14 @@ class _IntruderScreenState extends State<IntruderScreen> {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
               onPressed: () {
-                _intruderService.captureIntruderPhoto(context);
+                // ✅ FIXED: Removed context parameter
+                _intruderService.captureIntruderPhoto();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('📸 Capturing photo...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
               },
               icon: const Icon(Icons.camera),
               label: const Text('Test Capture'),
@@ -73,25 +81,45 @@ class _IntruderScreenState extends State<IntruderScreen> {
                     ),
                   )
                 : GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
                     itemCount: _photos.length,
                     itemBuilder: (context, index) {
                       var photo = _photos[index];
+
+                      String base64Image = photo['imageBase64'] ?? '';
+
                       return Card(
                         clipBehavior: Clip.antiAlias,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              child: Image.network(
-                                photo['photoUrl'],
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                              ),
+                              child: base64Image.isNotEmpty
+                                  ? Image.memory(
+                                      base64Decode(base64Image),
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return const Center(
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                size: 40,
+                                              ),
+                                            );
+                                          },
+                                    )
+                                  : const Center(
+                                      child: Icon(
+                                        Icons.image_not_supported,
+                                        size: 40,
+                                      ),
+                                    ),
                             ),
                             Padding(
                               padding: const EdgeInsets.all(4.0),

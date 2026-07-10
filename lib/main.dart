@@ -33,9 +33,8 @@ class _MyAppState extends State<MyApp> {
       _commandService.listenForCommands(context);
     });
 
-    // ✅ Initialize intruder service (optional, for future use)
-    // Intruder capture is triggered from the lock screen
-    print('✅ Intruder service initialized');
+    // ✅ Start intruder detection
+    _intruderService.startListening();
   }
 
   @override

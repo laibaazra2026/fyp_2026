@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,6 +12,10 @@ class IntruderService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ImagePicker _picker = ImagePicker();
 
+  static const MethodChannel _channel = MethodChannel(
+    'com.example.device_protection/lock',
+  );
+
   int _wrongAttempts = 0;
 
   // ========== RESET ATTEMPTS ==========
@@ -18,25 +23,34 @@ class IntruderService {
     _wrongAttempts = 0;
   }
 
+  // ========== START LISTENING ==========
+  void startListening() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'capturePhoto') {
+        await captureIntruderPhoto();
+      }
+    });
+  }
+
   // ========== RECORD WRONG ATTEMPT ==========
-  Future<void> recordWrongAttempt(BuildContext context) async {
+  Future<void> recordWrongAttempt() async {
     _wrongAttempts++;
     print('⚠️ Wrong attempt $_wrongAttempts');
 
     if (_wrongAttempts >= 3) {
       print('📸 3 wrong attempts! Capturing intruder photo...');
-      await captureIntruderPhoto(context);
+      await captureIntruderPhoto();
       resetAttempts();
     }
   }
 
   // ========== CAPTURE INTRUDER PHOTO ==========
-  Future<void> captureIntruderPhoto(BuildContext context) async {
+  Future<void> captureIntruderPhoto() async {
     try {
       // Check camera permission
       PermissionStatus status = await Permission.camera.request();
       if (!status.isGranted) {
-        _showMessage(context, '❌ Camera permission denied');
+        print('❌ Camera permission denied');
         return;
       }
 
@@ -50,7 +64,7 @@ class IntruderService {
       );
 
       if (image == null) {
-        _showMessage(context, '❌ No image captured');
+        print('❌ No image captured');
         return;
       }
 
@@ -62,9 +76,9 @@ class IntruderService {
       // Save to Firestore
       await _saveToFirestore(base64Image);
 
-      _showMessage(context, '📸 Intruder photo captured and saved!');
+      print('📸 Intruder photo captured and saved!');
     } catch (e) {
-      _showMessage(context, '❌ Error: $e');
+      print('❌ Error: $e');
     }
   }
 
@@ -110,12 +124,5 @@ class IntruderService {
       print('❌ Error getting photos: $e');
       return [];
     }
-  }
-
-  // ========== SHOW MESSAGE ==========
-  void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-    );
   }
 }
