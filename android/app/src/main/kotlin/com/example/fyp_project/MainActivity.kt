@@ -1,49 +1,49 @@
 package com.example.device_protection
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
+import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity: FlutterActivity() {
+class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.device_protection/lock"
+    private var wrongAttemptCount = 0
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
-                if (call.method == "lockDevice") {
-                    lockDevice(result)
-                } else {
-                    result.notImplemented()
+                when (call.method) {
+                    "hasDeviceLock" -> {
+                        val hasLock = hasDeviceLock()
+                        result.success(hasLock)
+                    }
+                    "onWrongAttempt" -> {
+                        wrongAttemptCount++
+                        if (wrongAttemptCount >= 3) {
+                            // ✅ Capture photo
+                            captureIntruderPhoto()
+                            wrongAttemptCount = 0
+                        }
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
                 }
             }
     }
 
-    private fun lockDevice(result: MethodChannel.Result) {
-        try {
-            val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            val cn = ComponentName(this, DeviceAdminReceiver::class.java)
+    private fun hasDeviceLock(): Boolean {
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        return keyguardManager.isDeviceSecure
+    }
 
-            if (dpm.isAdminActive(cn)) {
-                dpm.lockNow()
-                result.success(true)
-                println("✅ Device locked successfully!")
-            } else {
-                // Request admin
-                val intent = android.content.Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-                intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn)
-                startActivity(intent)
-                result.success(false)
-                println("⚠️ Device Admin requested")
-            }
-        } catch (e: Exception) {
-            result.error("LOCK_ERROR", e.message, null)
-            println("❌ Lock error: ${e.message}")
-        }
+    private fun captureIntruderPhoto() {
+        // Send to Flutter to capture photo
+        MethodChannel(flutterEngine?.dartExecutor?.binaryMessenger, CHANNEL)
+            .invokeMethod("capturePhoto", null)
     }
 }
