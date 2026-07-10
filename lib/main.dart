@@ -5,6 +5,7 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/command_service.dart';
+import 'services/intruder_services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,14 +22,20 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final CommandService _commandService = CommandService();
+  final IntruderService _intruderService = IntruderService();
 
   @override
   void initState() {
     super.initState();
-    // Start listening for commands after app loads
+
+    // ✅ Start listening for remote commands
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandService.listenForCommands(context);
     });
+
+    // ✅ Initialize intruder service (optional, for future use)
+    // Intruder capture is triggered from the lock screen
+    print('✅ Intruder service initialized');
   }
 
   @override
