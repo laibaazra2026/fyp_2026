@@ -33,7 +33,7 @@ class _MyAppState extends State<MyApp> {
       _commandService.listenForCommands(context);
     });
 
-    // ✅ Start intruder detection
+    // ✅ Start intruder detection (background)
     _intruderService.startListening();
   }
 

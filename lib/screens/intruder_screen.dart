@@ -38,17 +38,16 @@ class _IntruderScreenState extends State<IntruderScreen> {
       ),
       body: Column(
         children: [
-          // Capture Button
+          // Capture Button (For Testing)
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
               onPressed: () {
-                // ✅ FIXED: Removed context parameter
                 _intruderService.captureIntruderPhoto();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('📸 Capturing photo...'),
-                    duration: Duration(seconds: 1),
+                    duration: Duration(seconds: 2),
                   ),
                 );
               },
@@ -76,7 +75,7 @@ class _IntruderScreenState extends State<IntruderScreen> {
                         Icon(Icons.photo_library, size: 80, color: Colors.grey),
                         SizedBox(height: 16),
                         Text('No intruder photos yet'),
-                        Text('Tap "Test Capture" to test'),
+                        Text('Try wrong PIN 3 times on lock screen'),
                       ],
                     ),
                   )
@@ -92,9 +91,14 @@ class _IntruderScreenState extends State<IntruderScreen> {
                       var photo = _photos[index];
 
                       String base64Image = photo['imageBase64'] ?? '';
+                      String userEmail = photo['userEmail'] ?? 'Unknown';
+                      String timestamp = photo['timestamp'] != null
+                          ? '${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).hour}:${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).minute}'
+                          : 'Unknown';
 
                       return Card(
                         clipBehavior: Clip.antiAlias,
+                        elevation: 4,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -110,6 +114,7 @@ class _IntruderScreenState extends State<IntruderScreen> {
                                               child: Icon(
                                                 Icons.broken_image,
                                                 size: 40,
+                                                color: Colors.red,
                                               ),
                                             );
                                           },
@@ -118,16 +123,32 @@ class _IntruderScreenState extends State<IntruderScreen> {
                                       child: Icon(
                                         Icons.image_not_supported,
                                         size: 40,
+                                        color: Colors.grey,
                                       ),
                                     ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Text(
-                                photo['timestamp'] != null
-                                    ? '${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).hour}:${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).minute}'
-                                    : 'Unknown',
-                                style: const TextStyle(fontSize: 10),
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    userEmail,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '🕐 $timestamp',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
