@@ -2,6 +2,7 @@ package com.example.device_protection
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -17,12 +18,13 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "capturePhoto" -> {
+                        // This will be called from Flutter
+                        result.success(true)
+                    }
                     "onWrongAttempt" -> {
                         wrongAttemptCount++
-                        println("⚠️ Wrong attempt $wrongAttemptCount")
-                        
                         if (wrongAttemptCount >= 3) {
-                            println("📸 3 wrong attempts! Capturing photo...")
                             // Send to Flutter to capture photo
                             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
                                 .invokeMethod("capturePhoto", null)
