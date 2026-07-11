@@ -1,21 +1,27 @@
 package com.example.device_protection
 
-import android.app.KeyguardManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.embedding.engine.FlutterEngine
 
 class LockService : Service() {
     companion object {
         private const val TAG = "LockService"
+        private const val NOTIFICATION_ID = 1001
+        private const val CHANNEL_ID = "device_protection_channel"
         var wrongAttempts = 0
-        var lastScreenState = false
     }
 
     private val screenReceiver = object : BroadcastReceiver() {
@@ -27,12 +33,10 @@ class LockService : Service() {
                 }
                 Intent.ACTION_SCREEN_OFF -> {
                     Log.d(TAG, "Screen OFF")
-                    lastScreenState = false
                 }
                 Intent.ACTION_USER_PRESENT -> {
-                    Log.d(TAG, "User present (phone unlocked successfully)")
+                    Log.d(TAG, "Phone unlocked successfully")
                     wrongAttempts = 0
-                    lastScreenState = true
                 }
             }
         }
@@ -40,21 +44,28 @@ class LockService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, createNotification())
+        
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_USER_PRESENT)
         }
         registerReceiver(screenReceiver, filter)
-        Log.d(TAG, "LockService created")
+        Log.d(TAG, "✅ LockService started as FOREGROUND SERVICE")
     }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
 
     private fun checkLockState() {
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         
         if (keyguardManager.isKeyguardLocked) {
-            // Phone is locked, someone is trying to unlock
-            Log.d(TAG, "Phone is locked, someone is trying to unlock")
             wrongAttempts++
             Log.d(TAG, "Wrong attempt: $wrongAttempts")
             
@@ -63,14 +74,11 @@ class LockService : Service() {
                 captureIntruderPhoto()
                 wrongAttempts = 0
             }
-        } else {
-            Log.d(TAG, "Phone is not locked")
         }
     }
 
     private fun captureIntruderPhoto() {
         try {
-            // Send signal to Flutter to capture photo
             val channel = MethodChannel(
                 (applicationContext as? android.app.Application)?.let {
                     (it as? io.flutter.embedding.engine.FlutterEngine)?.dartExecutor?.binaryMessenger
@@ -84,17 +92,45 @@ class LockService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Device Protection Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Keeps device protection running in the background"
+                setShowBadge(false)
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    private fun createNotification(): Notification {
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("🛡️ Device Protection")
+            .setContentText("Monitoring your device for security threats")
+            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
     }
 
     override fun onDestroy() {
+        try {
+            unregisterReceiver(screenReceiver)
+        } catch (e: IllegalArgumentException) {
+            Log.d(TAG, "Receiver already unregistered")
+        }
         super.onDestroy()
-        unregisterReceiver(screenReceiver)
         Log.d(TAG, "LockService destroyed")
     }
 }

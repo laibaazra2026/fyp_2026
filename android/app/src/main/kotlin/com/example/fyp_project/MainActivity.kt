@@ -19,7 +19,6 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "capturePhoto" -> {
-                        // This will be handled in Flutter
                         result.success(true)
                     }
                     else -> result.notImplemented()
@@ -29,7 +28,11 @@ class MainActivity : FlutterActivity() {
 
     private fun startLockService() {
         val intent = Intent(this, LockService::class.java)
-        startService(intent)
-        println("✅ LockService started")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+        println("✅ LockService started as foreground service")
     }
 }
