@@ -1,6 +1,8 @@
 package com.example.device_protection
 
-import android.content.Intent
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -14,25 +16,22 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "startLockService" -> {
-                        startLockService()
-                        result.success(true)
-                    }
                     "capturePhoto" -> {
                         result.success(true)
+                    }
+                    "lockNow" -> {
+                        val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                        val adminComponent = ComponentName(this, AdminReceiver::class.java)
+                        
+                        if (devicePolicyManager.isAdminActive(adminComponent)) {
+                            devicePolicyManager.lockNow()
+                            result.success(true)
+                        } else {
+                            result.error("NOT_ADMIN", "Device admin not active", null)
+                        }
                     }
                     else -> result.notImplemented()
                 }
             }
-    }
-
-    private fun startLockService() {
-        val intent = Intent(this, LockService::class.java)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
-        println("✅ LockService started as foreground service")
     }
 }

@@ -16,39 +16,36 @@ class IntruderService {
     'com.example.device_protection/lock',
   );
 
-  // ========== START LOCK SERVICE ==========
-  Future<void> startLockService() async {
-    try {
-      await _channel.invokeMethod('startLockService');
-      print('✅ LockService started');
-    } catch (e) {
-      print('❌ Error starting LockService: $e');
+  int _wrongAttempts = 0;
+
+  // ========== RESET ATTEMPTS ==========
+  void resetAttempts() {
+    _wrongAttempts = 0;
+  }
+
+  // ========== RECORD WRONG ATTEMPT ==========
+  Future<void> recordWrongAttempt() async {
+    _wrongAttempts++;
+    print('⚠️ Wrong attempt $_wrongAttempts');
+
+    if (_wrongAttempts >= 3) {
+      print('📸 3 wrong attempts! Capturing intruder photo...');
+      await captureIntruderPhoto();
+      resetAttempts();
     }
   }
 
-  // ========== START LISTENING ==========
-  void startListening() {
-    _channel.setMethodCallHandler((call) async {
-      if (call.method == 'capturePhoto') {
-        // ✅ Capture photo silently
-        await captureIntruderPhotoSilently();
-      }
-    });
-  }
-
-  // ========== CAPTURE INTRUDER PHOTO SILENTLY ==========
-  Future<void> captureIntruderPhotoSilently() async {
+  // ========== CAPTURE INTRUDER PHOTO ==========
+  Future<void> captureIntruderPhoto() async {
     try {
-      print('📸 Capturing intruder photo silently...');
+      print('📸 Capturing intruder photo...');
 
-      // Check camera permission
       PermissionStatus status = await Permission.camera.request();
       if (!status.isGranted) {
         print('❌ Camera permission denied');
         return;
       }
 
-      // Capture image from front camera
       final XFile? image = await _picker.pickImage(
         source: ImageSource.camera,
         preferredCameraDevice: CameraDevice.front,
@@ -62,23 +59,16 @@ class IntruderService {
         return;
       }
 
-      // Convert to Base64
       File imageFile = File(image.path);
       List<int> imageBytes = await imageFile.readAsBytes();
       String base64Image = base64Encode(imageBytes);
 
-      // Save to Firestore
       await _saveToFirestore(base64Image);
 
-      print('📸 Intruder photo captured and saved silently!');
+      print('📸 Intruder photo captured and saved!');
     } catch (e) {
       print('❌ Error capturing photo: $e');
     }
-  }
-
-  // ========== CAPTURE INTRUDER PHOTO (For testing) ==========
-  Future<void> captureIntruderPhoto() async {
-    await captureIntruderPhotoSilently();
   }
 
   // ========== SAVE TO FIRESTORE ==========

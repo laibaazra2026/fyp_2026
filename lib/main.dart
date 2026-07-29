@@ -5,7 +5,6 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/command_service.dart';
-import 'services/intruder_services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,20 +21,17 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final CommandService _commandService = CommandService();
-  final IntruderService _intruderService = IntruderService();
+  // final IntruderService _intruderService = IntruderService();  // ← REMOVE
 
   @override
   void initState() {
     super.initState();
 
-    // ✅ Start command listener
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandService.listenForCommands(context);
     });
 
-    // ✅ Start intruder service and lock detection
-    _intruderService.startListening();
-    _intruderService.startLockService();
+    // _intruderService.startListening();  // ← REMOVE
   }
 
   @override
