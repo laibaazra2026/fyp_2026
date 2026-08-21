@@ -16,12 +16,9 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "capturePhoto" -> {
-                        result.success(true)
-                    }
-                    "lockDevice" -> { // <-- Changed from "lockNow" to match Flutter
+                    "lockDevice" -> {
                         val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-                        val adminComponent = ComponentName(this, DeviceAdminReceiver::class.java)
+                        val adminComponent = ComponentName(this, MyAdminReceiver::class.java)
                         
                         if (devicePolicyManager.isAdminActive(adminComponent)) {
                             devicePolicyManager.lockNow()

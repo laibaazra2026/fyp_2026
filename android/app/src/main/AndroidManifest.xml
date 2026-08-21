@@ -15,22 +15,24 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     
 
-
     <application
         android:label="device_protection"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        
+        <!-- ✅ FIXED RECEIVER TAG -->
         <receiver
-            android:name="device.policy.manager.DeviceAdmin"
+            android:name=".MyAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:exported="true">
             <meta-data
                 android:name="android.app.device_admin"
-                android:resource="@xml/device_admin_receiver" />
+                android:resource="@xml/device_admin" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

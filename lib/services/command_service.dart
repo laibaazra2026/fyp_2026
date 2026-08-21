@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:device_policy_manager/device_policy_manager.dart';
-import '../screens/lock_screen.dart';
 import 'package:flutter/services.dart';
 import '../main.dart'; // ✅ IMPORT MAIN TO ACCESS THE GLOBAL NAVIGATOR KEY
 
@@ -84,7 +83,7 @@ class CommandService {
     }
   }
 
-  // ========== LOCK PHONE (FIXED WITH GLOBAL NAVIGATOR) ==========
+  // ========== LOCK PHONE (ONLY REAL PHYSICAL LOCK, NO CUSTOM UI) ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -93,35 +92,15 @@ class CommandService {
         return;
       }
 
-      DocumentSnapshot userDoc = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      String lockPin = '1234';
-      if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>?;
-        if (data != null && data.containsKey('lockPin')) {
-          lockPin = data['lockPin'] ?? '1234';
-        }
-      }
-
       await _updateCommandStatus(docId, 'completed');
 
-      // ✅ 1. Push LockScreen safely using the Global Navigator Key
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(
-          builder: (context) => LockScreen(correctPin: lockPin),
-        ),
-      );
-
-      // ✅ 2. Trigger native device lock via Method Channel
+      // ✅ Trigger ONLY the native physical screen lock via Method Channel
       try {
         const platform = MethodChannel('com.example.device_protection/lock');
         await platform.invokeMethod('lockDevice');
-        print('✅ Device locked via Method Channel');
+        print('✅ Physical device locked successfully');
       } catch (e) {
-        print('⚠️ Admin not active or lock failed. Prompting user...');
+        print('⚠️ Admin not active or lock failed: $e');
         await DevicePolicyManager.requestPermession(
           "Please enable Device Admin to allow remote locking.",
         );
@@ -141,7 +120,6 @@ class CommandService {
       await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
 
       // ✅ Use global navigator key for the dialog just to be extra safe against background context errors
-      navigatorKey.currentState?.context;
       if (navigatorKey.currentContext != null) {
         showDialog(
           context: navigatorKey.currentContext!,
