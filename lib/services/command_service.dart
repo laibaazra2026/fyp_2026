@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'dart:math';
 import '../screens/lock_screen.dart';
 import 'package:flutter/services.dart';
 
@@ -51,12 +50,6 @@ class CommandService {
       case 'RING':
         await _ringPhone(context, docId);
         break;
-      case 'GET_LOCATION':
-        await _getLocation(context, docId);
-        break;
-      case 'ERASE_DATA':
-        await _eraseData(context, docId);
-        break;
       default:
         print('❌ Unknown command: $type');
     }
@@ -74,45 +67,21 @@ class CommandService {
 
       await _updateCommandStatus(docId, 'completed');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🛡️ Theft Mode Enabled Remotely!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('🛡️ Theft Mode Enabled'),
-          content: const Text('Theft mode has been enabled remotely.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🛡️ Theft Mode Enabled Remotely!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== GENERATE RANDOM 6-DIGIT PIN ==========
-  String _generateRandomPin() {
-    final random = Random();
-    String pin = '';
-    for (int i = 0; i < 6; i++) {
-      pin += random.nextInt(10).toString();
-    }
-    return pin;
-  }
-
-  // ========== LOCK PHONE (REAL LOCK WITH DEVICE ADMIN) ==========
   // ========== LOCK PHONE (USING METHOD CHANNEL) ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
@@ -127,7 +96,13 @@ class CommandService {
           .doc(user.uid)
           .get();
 
-      String lockPin = userDoc.get('lockPin') ?? '1234';
+      String lockPin = '1234';
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey('lockPin')) {
+          lockPin = data['lockPin'] ?? '1234';
+        }
+      }
 
       await _updateCommandStatus(docId, 'completed');
 
@@ -141,16 +116,16 @@ class CommandService {
       }
 
       // ✅ Show lock screen overlay
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
+      if (context.mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => LockScreen(correctPin: lockPin),
             ),
           );
-        }
-      });
+        });
+      }
     } catch (e) {
       print('❌ Error: $e');
       await _updateCommandStatus(docId, 'failed');
@@ -165,87 +140,24 @@ class CommandService {
       // ✅ Play ringtone
       await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
 
-      // Show dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('🔔 Phone Ringing'),
-          content: const Text('Your device is ringing loudly!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _audioPlayer.stop();
-                Navigator.pop(context);
-              },
-              child: const Text('Stop Ringing'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      print('❌ Error: $e');
-      await _updateCommandStatus(docId, 'failed');
-    }
-  }
-
-  // ========== GET LOCATION ==========
-  Future<void> _getLocation(BuildContext context, String docId) async {
-    try {
-      await _updateCommandStatus(docId, 'completed');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('📍 Location requested!'),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    } catch (e) {
-      print('❌ Error: $e');
-      await _updateCommandStatus(docId, 'failed');
-    }
-  }
-
-  // ========== ERASE DATA ==========
-  Future<void> _eraseData(BuildContext context, String docId) async {
-    try {
-      bool? confirm = await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('⚠️ WARNING'),
-          content: const Text(
-            'This will erase all data on this device.\n'
-            'Are you sure?',
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('🔔 Phone Ringing'),
+            content: const Text('Your device is ringing loudly!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  _audioPlayer.stop();
+                  Navigator.pop(context);
+                },
+                child: const Text('Stop Ringing'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Erase', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        ),
-      );
-
-      if (confirm == true) {
-        User? user = _auth.currentUser;
-        if (user != null) {
-          await _firestore.collection('users').doc(user.uid).delete();
-          await _auth.signOut();
-        }
-
-        // Try to wipe data using DeviceApps
-        try {} catch (e) {
-          print('⚠️ Wipe data not available: $e');
-        }
-
-        await _updateCommandStatus(docId, 'completed');
-        Navigator.pushReplacementNamed(context, '/login');
-      } else {
-        await _updateCommandStatus(docId, 'cancelled');
+        );
       }
     } catch (e) {
       print('❌ Error: $e');

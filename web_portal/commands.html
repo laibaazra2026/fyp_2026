@@ -5,12 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remote Commands - Device Protection</title>
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -102,12 +99,6 @@
             font-size: 14px;
             margin-top: 5px;
         }
-        .danger {
-            border: 2px solid #f44336;
-        }
-        .danger h3 {
-            color: #f44336;
-        }
         .response-msg {
             margin-top: 20px;
             padding: 15px;
@@ -174,20 +165,6 @@
                 <div class="icon">🔔</div>
                 <h3>Ring Phone</h3>
                 <p>Make the phone ring loudly</p>
-            </div>
-
-            <!-- Get Location -->
-            <div class="command-card" onclick="sendCommand('GET_LOCATION')">
-                <div class="icon">📍</div>
-                <h3>Get Location</h3>
-                <p>Request current GPS</p>
-            </div>
-
-            <!-- Erase Data -->
-            <div class="command-card danger" onclick="sendCommand('ERASE_DATA')">
-                <div class="icon">🗑️</div>
-                <h3>Erase Data</h3>
-                <p>⚠️ Wipe all data</p>
             </div>
         </div>
 
