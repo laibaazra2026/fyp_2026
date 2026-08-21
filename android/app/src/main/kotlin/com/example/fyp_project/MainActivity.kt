@@ -19,7 +19,7 @@ class MainActivity : FlutterActivity() {
                     "capturePhoto" -> {
                         result.success(true)
                     }
-                    "lockNow" -> {
+                    "lockDevice" -> { // <-- Changed from "lockNow" to match Flutter
                         val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
                         val adminComponent = ComponentName(this, DeviceAdminReceiver::class.java)
                         
