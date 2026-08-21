@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:device_policy_manager/device_policy_manager.dart';
 import '../screens/lock_screen.dart';
 import 'package:flutter/services.dart';
 
@@ -82,7 +83,7 @@ class CommandService {
     }
   }
 
-  // ========== LOCK PHONE (USING METHOD CHANNEL) ==========
+  // ========== LOCK PHONE (FIXED CRASH ORDER) ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -106,25 +107,26 @@ class CommandService {
 
       await _updateCommandStatus(docId, 'completed');
 
-      // ✅ LOCK USING METHOD CHANNEL
+      // ✅ 1. Show the Lock Screen UI overlay FIRST while the app is active
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LockScreen(correctPin: lockPin),
+          ),
+        );
+      }
+
+      // ✅ 2. THEN try to lock the device via Method Channel / Device Admin
       try {
         const platform = MethodChannel('com.example.device_protection/lock');
         await platform.invokeMethod('lockDevice');
         print('✅ Device locked via Method Channel');
       } catch (e) {
-        print('❌ Lock failed: $e');
-      }
-
-      // ✅ Show lock screen overlay
-      if (context.mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LockScreen(correctPin: lockPin),
-            ),
-          );
-        });
+        print('⚠️ Admin not active or lock failed. Prompting user...');
+        await DevicePolicyManager.requestPermession(
+          "Please enable Device Admin to allow remote locking.",
+        );
       }
     } catch (e) {
       print('❌ Error: $e');
