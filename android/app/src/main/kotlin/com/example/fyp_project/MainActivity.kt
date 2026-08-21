@@ -21,7 +21,7 @@ class MainActivity : FlutterActivity() {
                     }
                     "lockNow" -> {
                         val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-                        val adminComponent = ComponentName(this, AdminReceiver::class.java)
+                        val adminComponent = ComponentName(this, DeviceAdminReceiver::class.java)
                         
                         if (devicePolicyManager.isAdminActive(adminComponent)) {
                             devicePolicyManager.lockNow()
