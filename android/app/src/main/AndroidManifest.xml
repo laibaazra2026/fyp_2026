@@ -21,7 +21,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <receiver
-            android:name=".DeviceAdminReceiver"
+            android:name="device.policy.manager.DeviceAdmin"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:exported="true">
             <meta-data
