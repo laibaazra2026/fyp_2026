@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:device_policy_manager/device_policy_manager.dart';
 import '../screens/lock_screen.dart';
 import 'package:flutter/services.dart';
+import '../main.dart'; // ✅ IMPORT MAIN TO ACCESS THE GLOBAL NAVIGATOR KEY
 
 class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -83,7 +84,7 @@ class CommandService {
     }
   }
 
-  // ========== LOCK PHONE (FIXED CRASH ORDER) ==========
+  // ========== LOCK PHONE (FIXED WITH GLOBAL NAVIGATOR) ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -107,17 +108,14 @@ class CommandService {
 
       await _updateCommandStatus(docId, 'completed');
 
-      // ✅ 1. Show the Lock Screen UI overlay FIRST while the app is active
-      if (context.mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LockScreen(correctPin: lockPin),
-          ),
-        );
-      }
+      // ✅ 1. Push LockScreen safely using the Global Navigator Key
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (context) => LockScreen(correctPin: lockPin),
+        ),
+      );
 
-      // ✅ 2. THEN try to lock the device via Method Channel / Device Admin
+      // ✅ 2. Trigger native device lock via Method Channel
       try {
         const platform = MethodChannel('com.example.device_protection/lock');
         await platform.invokeMethod('lockDevice');
@@ -142,9 +140,11 @@ class CommandService {
       // ✅ Play ringtone
       await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
 
-      if (context.mounted) {
+      // ✅ Use global navigator key for the dialog just to be extra safe against background context errors
+      navigatorKey.currentState?.context;
+      if (navigatorKey.currentContext != null) {
         showDialog(
-          context: context,
+          context: navigatorKey.currentContext!,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
             title: const Text('🔔 Phone Ringing'),

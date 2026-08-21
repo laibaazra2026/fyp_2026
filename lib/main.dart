@@ -6,6 +6,9 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/command_service.dart';
 
+// ✅ 1. DECLARE THE GLOBAL NAVIGATOR KEY HERE
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -21,7 +24,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final CommandService _commandService = CommandService();
-  // final IntruderService _intruderService = IntruderService();  // ← REMOVE
 
   @override
   void initState() {
@@ -30,13 +32,12 @@ class _MyAppState extends State<MyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandService.listenForCommands(context);
     });
-
-    // _intruderService.startListening();  // ← REMOVE
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // ✅ 2. ATTACH THE KEY HERE
       title: 'Device Protection',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.purple, fontFamily: 'Poppins'),
