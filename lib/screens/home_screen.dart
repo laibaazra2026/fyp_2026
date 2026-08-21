@@ -4,6 +4,7 @@ import 'login_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/sim_service.dart';
 import '../services/subscription_service.dart';
+import '../services/command_service.dart';
 import 'gps_screen.dart';
 import 'intruder_screen.dart';
 import 'subscription_screen.dart';
@@ -20,6 +21,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final SimService _simService = SimService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SubscriptionService _subscriptionService = SubscriptionService();
+  final CommandService _commandService =
+      CommandService(); // ✅ 2. CREATE INSTANCE
+
   String _simStatus = "Checking device...";
   bool _isTheftMode = false;
   bool _isLoadingTheftMode = true;
@@ -33,6 +37,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadTheftModeStatus();
     _listenToTheftModeChanges();
     _loadSubscriptionPlan();
+
+    // ✅ 3. START LISTENING FOR REMOTE COMMANDS (LOCK, RING, ETC.)
+    _commandService.listenForCommands(context);
   }
 
   Future<void> _checkSim() async {
@@ -483,7 +490,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ========== FEATURE CARD WIDGET ==========
 class _FeatureCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -501,6 +507,7 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('Command Service initialized.');
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
