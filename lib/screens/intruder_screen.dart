@@ -42,14 +42,18 @@ class _IntruderScreenState extends State<IntruderScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
-              onPressed: () {
-                _intruderService.captureIntruderPhoto();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('📸 Capturing photo...'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+              onPressed: () async {
+                await _intruderService.captureIntruderPhoto();
+                // Reload photos automatically after capture
+                await _loadPhotos();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('📸 Photo captured & uploaded!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
               },
               icon: const Icon(Icons.camera),
               label: const Text('Test Capture'),
@@ -74,8 +78,18 @@ class _IntruderScreenState extends State<IntruderScreen> {
                       children: [
                         Icon(Icons.photo_library, size: 80, color: Colors.grey),
                         SizedBox(height: 16),
-                        Text('No intruder photos yet'),
-                        Text('Try wrong PIN 3 times on lock screen'),
+                        Text(
+                          'No intruder photos yet',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'Tap "Test Capture" above to add photos',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   )
@@ -93,7 +107,7 @@ class _IntruderScreenState extends State<IntruderScreen> {
                       String base64Image = photo['imageBase64'] ?? '';
                       String userEmail = photo['userEmail'] ?? 'Unknown';
                       String timestamp = photo['timestamp'] != null
-                          ? '${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).hour}:${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).minute}'
+                          ? '${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).minute.toString().padLeft(2, '0')}'
                           : 'Unknown';
 
                       return Card(
