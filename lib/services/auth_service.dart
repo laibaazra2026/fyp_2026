@@ -5,12 +5,33 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // ========== STRICT PASSWORD VALIDATION HELPER ==========
+  String? validatePasswordRules(String password) {
+    if (password.isEmpty) return 'Password cannot be empty.';
+    if (password.length < 8)
+      return 'Password must be at least 8 characters long.';
+    if (password.contains(' ')) return 'Password cannot contain spaces.';
+    if (!password.contains(RegExp(r'[A-Z]')))
+      return 'Must contain at least one uppercase letter.';
+    if (!password.contains(RegExp(r'[a-z]')))
+      return 'Must contain at least one lowercase letter.';
+    if (!password.contains(RegExp(r'[0-9]')))
+      return 'Must contain at least one number.';
+    return null; // Valid!
+  }
+
   // ========== LOGIN ==========
   Future<UserCredential> login({
     required String email,
     required String password,
   }) async {
     try {
+      // Validate password rules before hitting Firebase
+      String? validationError = validatePasswordRules(password);
+      if (validationError != null) {
+        throw Exception(validationError);
+      }
+
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -25,7 +46,7 @@ class AuthService {
 
       return userCredential;
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
@@ -35,9 +56,14 @@ class AuthService {
     required String password,
     required String name,
     required String phone,
-    // ✅ NO altPhone
   }) async {
     try {
+      // Validate password rules before creating user
+      String? validationError = validatePasswordRules(password);
+      if (validationError != null) {
+        throw Exception(validationError);
+      }
+
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
 
@@ -48,7 +74,6 @@ class AuthService {
         'name': name,
         'email': email,
         'phone': phone,
-        // ✅ NO altPhone
         'isPremium': false,
         'isTheftModeOn': false,
         'emailVerified': false,
@@ -57,7 +82,7 @@ class AuthService {
 
       return userCredential;
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 
@@ -66,7 +91,7 @@ class AuthService {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 

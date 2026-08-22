@@ -41,11 +41,25 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    // Optional frontend check for spaces or short lengths before hitting Auth service
+    String? passwordError = _auth.validatePasswordRules(
+      _passwordController.text,
+    );
+    if (passwordError != null) {
+      setState(() {
+        _errorMessage = passwordError;
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
       await _auth.login(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -67,10 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
           _errorMessage =
               '⚠️ Please verify your email first.\nCheck your inbox and click the verification link.';
         });
-      } else if (error.contains('user-not-found')) {
+      } else if (error.contains('user-not-found') ||
+          error.contains('invalid-credential')) {
         setState(() {
           _errorMessage =
-              '❌ No account found with this email.\nPlease Sign Up first.';
+              '❌ Invalid email or password.\nPlease check your credentials.';
         });
       } else if (error.contains('wrong-password')) {
         setState(() {
@@ -97,7 +112,9 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -119,27 +136,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Logo
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: const Color(0xFF841EA0).withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.security,
                         size: 60,
-                        color: const Color(0xFF841EA0),
+                        color: Color(0xFF841EA0),
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    Text(
+                    const Text(
                       'Welcome Back!',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF841EA0),
+                        color: Color(0xFF841EA0),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -157,9 +173,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: 'Email Address',
-                        prefixIcon: Icon(
+                        prefixIcon: const Icon(
                           Icons.email,
-                          color: const Color(0xFF841EA0),
+                          color: Color(0xFF841EA0),
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -173,10 +189,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(
+                        labelText: 'Password (8+ chars, A-Z, 0-9)',
+                        prefixIcon: const Icon(
                           Icons.lock,
-                          color: const Color(0xFF841EA0),
+                          color: Color(0xFF841EA0),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -205,13 +221,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ForgotPasswordScreen(),
+                              builder: (context) =>
+                                  const ForgotPasswordScreen(),
                             ),
                           );
                         },
-                        child: Text(
+                        child: const Text(
                           'Forgot Password?',
-                          style: TextStyle(color: const Color(0xFF841EA0)),
+                          style: TextStyle(color: Color(0xFF841EA0)),
                         ),
                       ),
                     ),
@@ -300,14 +317,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => SignupScreen(),
+                                builder: (context) => const SignupScreen(),
                               ),
                             );
                           },
-                          child: Text(
+                          child: const Text(
                             'Sign Up',
                             style: TextStyle(
-                              color: const Color(0xFF841EA0),
+                              color: Color(0xFF841EA0),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
