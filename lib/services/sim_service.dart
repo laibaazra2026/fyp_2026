@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter_sms/flutter_sms.dart';
 
 class SimService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -83,7 +84,7 @@ class SimService {
   }
 
   // ========== DETECT SIM/DEVICE CHANGE ==========
-  Future<bool> detectSimChange() async {
+  Future<bool> detectSimChange(BuildContext context) async {
     String? currentDeviceId = await getDeviceId();
     String? currentDeviceModel = await getDeviceModel();
     String? currentDeviceName = await getDeviceName();
@@ -112,6 +113,8 @@ class SimService {
     // Check if device changed
     if (currentDeviceId != savedDeviceId || currentDeviceModel != savedModel) {
       print('⚠️ DEVICE/SIM CHANGE DETECTED!');
+
+      // 1. Log to Firebase for Admin Portal
       await _handleDeviceChange(
         currentDeviceId,
         savedDeviceId,
@@ -119,6 +122,11 @@ class SimService {
         savedModel,
         currentDeviceName,
       );
+
+      // 2. Send Alternative SMS Alert to Emergency Contact
+      await _sendEmergencySmsAlert(currentDeviceModel);
+
+      // Save new baseline info
       await saveDeviceInfo(
         currentDeviceId,
         currentDeviceModel,
@@ -131,7 +139,7 @@ class SimService {
     return false;
   }
 
-  // ========== HANDLE DEVICE CHANGE ==========
+  // ========== HANDLE DEVICE CHANGE (ADMIN LOG) ==========
   Future<void> _handleDeviceChange(
     String newId,
     String oldId,
@@ -147,34 +155,70 @@ class SimService {
           .collection('users')
           .doc(user.uid)
           .get();
-      String userEmail = userDoc.get('email') ?? 'Unknown';
-      String userName = userDoc.get('name') ?? 'User';
+      String userEmail = userDoc.exists
+          ? (userDoc.get('email') ?? 'Unknown')
+          : 'Unknown';
+      String userName = userDoc.exists
+          ? (userDoc.get('name') ?? 'User')
+          : 'User';
 
+      // Matches fields required by sim_alerts.html
       await _firestore.collection('sim_alerts').add({
         'userId': user.uid,
         'userEmail': userEmail,
         'userName': userName,
-        'type': 'DEVICE_CHANGE',
+        'type': 'SIM_CHANGE',
         'title': '⚠️ SIM/Device Changed',
         'message': 'A new SIM or device was detected on $deviceName.',
-        'oldDeviceId': oldId,
-        'newDeviceId': newId,
-        'oldModel': oldModel,
-        'newModel': newModel,
-        'deviceName': deviceName ?? 'Unknown',
+        'oldSimSerial': oldId,
+        'newSimSerial': newId,
+        'oldCarrier': oldModel,
+        'newCarrier': newModel,
+        'deviceModel': deviceName ?? 'Unknown',
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
       });
 
       print('✅ SIM/Device change alert saved to sim_alerts!');
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error writing alert: $e');
+    }
+  }
+
+  // ========== SEND ALTERNATIVE SMS ALERT ==========
+  Future<void> _sendEmergencySmsAlert(String newModel) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) return;
+
+      // Fetch user's alternative emergency contact from their Firestore profile
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      String? emergencyPhone = userDoc.exists
+          ? userDoc.get('emergencyPhone')
+          : null;
+
+      if (emergencyPhone == null || emergencyPhone.isEmpty) {
+        print('⚠️ No emergency contact configured.');
+        return;
+      }
+
+      List<String> recipients = [emergencyPhone];
+      String message =
+          "🚨 Security Alert: Your device SIM/hardware has changed! New Model: $newModel. Check your admin panel.";
+
+      String result = await sendSMS(message: message, recipients: recipients);
+      print('📱 SMS Alert Result: $result');
+    } catch (error) {
+      print('❌ Failed to send emergency SMS: $error');
     }
   }
 
   // ========== CHECK ON STARTUP ==========
   Future<void> checkOnStartup(BuildContext context) async {
-    bool changed = await detectSimChange();
+    bool changed = await detectSimChange(context);
     if (changed) {
       _showAlertDialog(context);
     }
@@ -188,8 +232,9 @@ class SimService {
       builder: (context) => AlertDialog(
         title: const Text('⚠️ SIM/Device Changed'),
         content: const Text(
-          'A new SIM or device has been detected.\n'
-          'Alert saved to admin panel.',
+          'A new SIM or device has been detected.\n\n'
+          '• Alert saved to admin panel.\n'
+          '• Emergency SMS dispatched.',
         ),
         actions: [
           TextButton(

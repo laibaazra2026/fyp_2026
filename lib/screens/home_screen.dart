@@ -21,8 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final SimService _simService = SimService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SubscriptionService _subscriptionService = SubscriptionService();
-  final CommandService _commandService =
-      CommandService(); // ✅ 2. CREATE INSTANCE
+  final CommandService _commandService = CommandService();
 
   String _simStatus = "Checking device...";
   bool _isTheftMode = false;
@@ -38,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _listenToTheftModeChanges();
     _loadSubscriptionPlan();
 
-    // ✅ 3. START LISTENING FOR REMOTE COMMANDS (LOCK, RING, ETC.)
+    // ✅ Start listening for remote commands (lock, ring, etc.)
     _commandService.listenForCommands(context);
   }
 
@@ -350,7 +349,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      bool changed = await _simService.detectSimChange();
+                      // ✅ Passed context here
+                      bool changed = await _simService.detectSimChange(context);
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -415,7 +415,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: _simStatus,
                     color: Colors.orange,
                     onTap: () async {
-                      bool changed = await _simService.detectSimChange();
+                      // ✅ Passed context here too
+                      bool changed = await _simService.detectSimChange(context);
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -507,7 +508,6 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('Command Service initialized.');
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
