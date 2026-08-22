@@ -208,8 +208,11 @@
                         new Date(data.timestamp.seconds * 1000).toLocaleString() : 
                         'Unknown';
 
+                    // ✅ FIXED: Convert Base64 field to renderable Data URL
+                    const imageSrc = data.imageBase64 ? `data:image/jpeg;base64,${data.imageBase64}` : '';
+
                     card.innerHTML = `
-                        <img src="${data.photoUrl}" alt="Intruder Photo" 
+                        <img src="${imageSrc}" alt="Intruder Photo" 
                              onerror="this.src='https://via.placeholder.com/250x200?text=Image+Not+Found'">
                         <div class="photo-info">
                             <p>📧 ${data.userEmail || 'Unknown User'}</p>
