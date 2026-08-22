@@ -50,6 +50,7 @@ dependencies:
   mobile_phone_blocker: ^0.0.1
   flutter_screen_lock: ^9.2.2+2
   device_policy_manager: ^1.0.0
+  flutter_sms: ^3.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
