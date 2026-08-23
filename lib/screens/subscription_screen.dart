@@ -39,8 +39,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.purple.shade700,
-        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        // Cross / Close button explicitly added at the top right as requested
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -54,18 +60,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           child: Column(
             children: [
               const SizedBox(height: 20),
+              // Professionally aligned pricing & subscription title header
               const Text(
-                'Unlock Full Protection 🚀',
+                'Choose Your Protection Plan',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Swipe and choose the plan that fits your security needs',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  'Select a tier that matches your security needs and unlock advanced safety features.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
               ),
               const SizedBox(height: 30),
 
@@ -79,7 +95,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     });
                   },
                   children: [
-                    // Tier 1: Free (Only GPS, Intruder Capture, View Dashboard)
+                    // Tier 1: Free
                     _buildTierCard(
                       name: 'Free Tier',
                       price: 'Rs. 0',
@@ -94,14 +110,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       onTap: null,
                     ),
 
-                    // Tier 2: Premium (Free features + Remote Commands only)
+                    // Tier 2: Premium (Updated text: Lock/Ring/Enable Theft Mode)
                     _buildTierCard(
                       name: 'Premium Tier',
                       price: 'Rs. 99 / month',
                       subtitle: 'Advanced Control',
                       features: [
                         'All Free Features',
-                        'Remote Commands (Lock/Erase)',
+                        'Remote Commands (Lock / Ring / Enable Theft Mode)',
                       ],
                       isCurrent: _currentPlan == 'premium',
                       buttonText: 'Upgrade to Premium',
@@ -122,16 +138,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       },
                     ),
 
-                    // Tier 3: Family / Pro (Premium features + Cloud Backup & Contacts)
+                    // Tier 3: Family / Pro (Updated text: Backup & Restore only)
                     _buildTierCard(
                       name: 'Family / Pro Tier',
                       price: 'Rs. 199 / month',
                       subtitle: 'Ultimate Protection',
-                      features: [
-                        'All Premium Features',
-                        'Cloud Backup & Restore',
-                        'Contacts & Call History Backup',
-                      ],
+                      features: ['All Premium Features', 'Backup & Restore'],
                       isCurrent: _currentPlan == 'family',
                       buttonText: 'Upgrade to Family',
                       onTap: () async {
@@ -262,6 +274,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Icon(
                           Icons.check_circle,
