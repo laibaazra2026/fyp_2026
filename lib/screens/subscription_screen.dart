@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
 import '../services/subscription_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -11,6 +12,7 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
   final PageController _pageController = PageController(viewportFraction: 0.85);
+  late ConfettiController _confettiController;
 
   String _currentPlan = 'free';
   int _currentPage = 0;
@@ -18,7 +20,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 4),
+    );
+    _confettiController
+        .play(); // Play celebration immediately when screen opens
     _loadCurrentPlan();
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCurrentPlan() async {
@@ -40,7 +54,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
         backgroundColor: Colors.purple.shade700,
         elevation: 0,
-        // Cross / Close button explicitly added at the top right
         actions: [
           IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
@@ -48,148 +61,190 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.purple.shade700, Colors.purple.shade900],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              // Professionally aligned pricing & subscription title header
-              const Text(
-                'Choose Your Protection Plan',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.purple.shade700, Colors.purple.shade900],
               ),
-              const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  'Select a tier that matches your security needs and unlock advanced safety features.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    height: 1.4,
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+
+                  // Fancy Multi-Colored Gradient Header Text
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [
+                        Colors.yellowAccent,
+                        Colors.pinkAccent,
+                        Colors.cyanAccent,
+                      ],
+                    ).createShader(bounds),
+                    child: const Text(
+                      'Choose Your Protection Plan',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 30),
 
-              // Horizontal Swipeable Cards Carousel (PageView)
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentPage = index;
-                    });
-                  },
-                  children: [
-                    // Tier 1: Free
-                    _buildTierCard(
-                      name: 'Free Tier',
-                      price: 'Rs. 0',
-                      subtitle: 'Basic Security',
-                      features: [
-                        'GPS Tracking',
-                        'Intruder Capture',
-                        'View Dashboard',
-                      ],
-                      isCurrent: _currentPlan == 'free',
-                      buttonText: 'Current Plan',
-                      onTap: null,
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      'Select a tier that matches your security needs and unlock advanced safety features.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
+                  ),
+                  const SizedBox(height: 30),
 
-                    // Tier 2: Premium (Remote commands updated with Lock/Ring/Enable Theft Mode)
-                    _buildTierCard(
-                      name: 'Premium Tier',
-                      price: 'Rs. 99 / month',
-                      subtitle: 'Advanced Control',
-                      features: [
-                        'All Free Features',
-                        'Remote Commands (Lock / Ring / Enable Theft Mode)',
-                      ],
-                      isCurrent: _currentPlan == 'premium',
-                      buttonText: 'Upgrade to Premium',
-                      onTap: () async {
-                        await _subscriptionService.updateSubscription(
-                          'premium',
-                          99.0,
-                        );
-                        setState(() => _currentPlan = 'premium');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              '🎉 Upgraded to Premium Successfully!',
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
+                  // Horizontal Swipeable Cards Carousel (PageView)
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                        });
                       },
-                    ),
+                      children: [
+                        // Tier 1: Free
+                        _buildTierCard(
+                          name: 'Free Tier',
+                          price: 'Rs. 0',
+                          subtitle: 'Basic Security',
+                          features: [
+                            'GPS Tracking',
+                            'Intruder Capture',
+                            'View Dashboard',
+                          ],
+                          isCurrent: _currentPlan == 'free',
+                          buttonText: 'Current Plan',
+                          onTap: null,
+                        ),
 
-                    // Tier 3: Family / Pro (Backup & Restore)
-                    _buildTierCard(
-                      name: 'Family / Pro Tier',
-                      price: 'Rs. 199 / month',
-                      subtitle: 'Ultimate Protection',
-                      features: ['All Premium Features', 'Backup & Restore'],
-                      isCurrent: _currentPlan == 'family',
-                      buttonText: 'Upgrade to Family',
-                      onTap: () async {
-                        await _subscriptionService.updateSubscription(
-                          'family',
-                          199.0,
-                        );
-                        setState(() => _currentPlan = 'family');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              '🎉 Upgraded to Family Tier Successfully!',
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
+                        // Tier 2: Premium
+                        _buildTierCard(
+                          name: 'Premium Tier',
+                          price: 'Rs. 99 / month',
+                          subtitle: 'Advanced Control',
+                          features: [
+                            'All Free Features',
+                            'Remote Commands (Lock / Ring / Enable Theft Mode)',
+                          ],
+                          isCurrent: _currentPlan == 'premium',
+                          buttonText: 'Upgrade to Premium',
+                          onTap: () async {
+                            await _subscriptionService.updateSubscription(
+                              'premium',
+                              99.0,
+                            );
+                            setState(() => _currentPlan = 'premium');
+                            _confettiController.play();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '🎉 Upgraded to Premium Successfully!',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                        ),
+
+                        // Tier 3: Family / Pro
+                        _buildTierCard(
+                          name: 'Family / Pro Tier',
+                          price: 'Rs. 199 / month',
+                          subtitle: 'Ultimate Protection',
+                          features: [
+                            'All Premium Features',
+                            'Backup & Restore',
+                          ],
+                          isCurrent: _currentPlan == 'family',
+                          buttonText: 'Upgrade to Family',
+                          onTap: () async {
+                            await _subscriptionService.updateSubscription(
+                              'family',
+                              199.0,
+                            );
+                            setState(() => _currentPlan = 'family');
+                            _confettiController.play();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '🎉 Upgraded to Family Tier Successfully!',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Page Indicator Dots
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(3, (index) {
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: _currentPage == index ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentPage == index
+                              ? Colors.white
+                              : Colors.white38,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 30),
+                ],
               ),
-
-              const SizedBox(height: 20),
-
-              // Page Indicator Dots
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _currentPage == index ? 24 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _currentPage == index
-                          ? Colors.white
-                          : Colors.white38,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 30),
-            ],
+            ),
           ),
-        ),
+
+          // Confetti Animation Falling From Top to Bottom
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirection: 1.57, // Falling downwards
+              particleDrag: 0.05,
+              emissionFrequency: 0.05, // Fixed property name
+              numberOfParticles: 20,
+              gravity: 0.2,
+              shouldLoop: false,
+              colors: const [
+                Colors.green,
+                Colors.blue,
+                Colors.pink,
+                Colors.orange,
+                Colors.yellow,
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
