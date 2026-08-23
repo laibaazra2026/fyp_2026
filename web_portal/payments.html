@@ -1,136 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Subscriptions - Device Protection</title>
-  <!-- Bootstrap CSS for layout structure -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- FontAwesome for matching icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    body {
-      background-color: #f4f6f9;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      overflow-x: hidden;
-    }
-    /* Matching the Purple Sidebar Theme */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100vh;
-      width: 250px;
-      background-color: #7b1fa2; /* Rich purple matching your admin panel */
-      color: white;
-      padding-top: 20px;
-      z-index: 100;
-    }
-    .sidebar .brand {
-      font-size: 1.5rem;
-      font-weight: bold;
-      padding: 0 20px 20px 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .sidebar a {
-      color: rgba(255, 255, 255, 0.8);
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 20px;
-      font-size: 0.95rem;
-      transition: all 0.3s ease;
-    }
-    .sidebar a:hover, .sidebar a.active {
-      color: white;
-      background-color: rgba(255, 255, 255, 0.15);
-    }
-    /* Main Content Styling */
-    .main-content {
-      margin-left: 250px;
-      padding: 20px;
-    }
-    .top-navbar {
-      background: white;
-      padding: 15px 25px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      margin-bottom: 25px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .card {
-      border: none;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-      background: white;
-    }
-    .table-container {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paid Subscriptions - Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f5f5; display: flex; }
+        .sidebar { width: 230px; height: 100vh; background: #841EA0; color: white; position: fixed; padding: 20px; }
+        .sidebar h2 { margin-bottom: 30px; font-size: 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 15px; }
+        .sidebar a { display: block; color: white; padding: 12px 15px; text-decoration: none; border-radius: 10px; margin: 5px 0; }
+        .sidebar a:hover, .sidebar .active { background: #6A1B8A; }
+        .main { margin-left: 250px; padding: 30px; width: 100%; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .table-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background: #f9f9f9; color: #333; }
+        .badge { background: #841EA0; color: white; padding: 5px 10px; border-radius: 6px; font-weight: bold; }
+    </style>
 </head>
 <body>
 
-  <!-- Sidebar Navigation matching your theme -->
-  <div class="sidebar">
-    <div class="brand">
-      <i class="fa-solid fa-shield-halved text-warning"></i> Admin
-    </div>
-    <a href="dashboard.html"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
-    <a href="users.html"><i class="fa-solid fa-users"></i> Users</a>
-    <a href="alerts.html"><i class="fa-solid fa-triangle-exclamation"></i> Alerts</a>
-    <a href="locations.html"><i class="fa-solid fa-location-crosshairs"></i> Locations</a>
-    <a href="intruders.html"><i class="fa-solid fa-camera"></i> Intruders</a>
-    <a href="commands.html"><i class="fa-solid fa-gamepad"></i> Commands</a>
-    <a href="sim_logs.html"><i class="fa-solid fa-sim-card"></i> SIM Logs</a>
-    <a href="backups.html"><i class="fa-solid fa-cloud-arrow-down"></i> Backups</a>
-    <a href="payments.html" class="active"><i class="fa-solid fa-credit-card"></i> Subscriptions</a>
-  </div>
-
-  <!-- Main Content Area -->
-  <div class="main-content">
-    
-    <!-- Top Bar -->
-    <div class="top-navbar">
-      <h4 class="mb-0 fw-bold text-dark">Subscription Management</h4>
-      <span class="badge bg-purple text-white p-2" style="background-color: #7b1fa2;">Admin Session Active</span>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>🔒 Admin</h2>
+        <a href="dashboard.html">📊 Dashboard</a>
+        <a href="users.html">👥 Users</a>
+        <a href="alerts.html">⚠️ Alerts</a>
+        <a href="locations.html">📍 Locations</a>
+        <a href="intruders.html">📸 Intruders</a>
+        <a href="commands.html">🎮 Commands</a>
+        <a href="sim_alerts.html">📱 SIM Logs</a>
+        <a href="backups.html">☁️ Backups</a>
+        <a href="payments.html" class="active">💳 Subscriptions</a>
     </div>
 
-    <!-- Subscriptions Table Section -->
-    <div class="table-container">
-      <h5 class="fw-bold mb-4 text-secondary"><i class="fa-solid fa-table-list me-2"></i> User Subscriptions Table</h5>
-      
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>USER UID</th>
-              <th>CURRENT PLAN</th>
-              <th>PRICE PAID</th>
-              <th>ACTIONS (OVERRIDE TIER)</th>
-            </tr>
-          </thead>
-          <tbody id="subscriptionTableBody">
-            <!-- Rows will be dynamically loaded here or show 'No users found' -->
-            <tr>
-              <td colspan="4" class="text-center text-muted py-4">No users found.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- Main Content -->
+    <div class="main">
+        <div class="header">
+            <h1>💎 Paid Subscriptions Log</h1>
+        </div>
+
+        <div class="table-card">
+            <h3>Active Paid Users (Sandbox / JazzCash Verified)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>User Email</th>
+                        <th>Purchased Plan</th>
+                        <th>Date & Time of Purchase</th>
+                    </tr>
+                </thead>
+                <tbody id="paidTableBody">
+                    <tr><td colspan="4" style="text-align:center;">Loading paid records...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-  </div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:9042f34efac22b99163473"
+        };
 
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                loadPaidUsersTable();
+            }
+        });
+
+        async function loadPaidUsersTable() {
+            const tableBody = document.getElementById('paidTableBody');
+            try {
+                // Fetch users from Firestore
+                const snapshot = await db.collection('users').get();
+                tableBody.innerHTML = '';
+
+                let paidCount = 0;
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const plan = data.subscriptionPlan || 'Free';
+
+                    // FILTER: Only show users whose plan is NOT 'Free' (i.e. Premium or Family)
+                    if (plan !== 'Free' && plan !== '') {
+                        paidCount++;
+                        const email = data.email || 'N/A';
+                        
+                        // Format Firestore Timestamp into a readable date and time string
+                        let formattedDate = 'N/A';
+                        if (data.subscribedAt && data.subscribedAt.toDate) {
+                            formattedDate = data.subscribedAt.toDate().toLocaleString();
+                        }
+
+                        tableBody.innerHTML += `
+                            <tr>
+                                <td><small>${doc.id}</small></td>
+                                <td>${email}</td>
+                                <td><span class="badge">${plan}</span></td>
+                                <td>${formattedDate}</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                if (paidCount === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">No paid subscriptions found yet. Use the mobile app sandbox to purchase a plan!</td></tr>';
+                }
+
+            } catch (error) {
+                console.error('Error loading paid users:', error);
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error loading records</td></tr>';
+            }
+        }
+    </script>
 </body>
 </html>

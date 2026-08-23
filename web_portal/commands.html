@@ -40,6 +40,7 @@
             text-decoration: none;
             border-radius: 10px;
             margin: 5px 0;
+            transition: background 0.3s;
         }
         .sidebar a:hover,
         .sidebar .active {
@@ -67,6 +68,30 @@
             padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
+        }
+        .logout-btn:hover {
+            background: #6A1B8A;
+        }
+        .user-select-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        .user-select-card label {
+            font-weight: 600;
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .user-select-card select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+            background: #fff;
         }
         .commands-grid {
             display: grid;
@@ -119,6 +144,28 @@
             text-align: center;
             padding: 20px;
             color: #888;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+                padding: 10px;
+            }
+            .sidebar h2 {
+                display: none;
+            }
+            .sidebar a {
+                font-size: 12px;
+                padding: 10px;
+                text-align: center;
+            }
+            .main {
+                margin-left: 70px;
+                padding: 15px;
+            }
+            .commands-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -143,6 +190,14 @@
         <div class="header">
             <h1>🎮 Remote Commands</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Target User Selection Card -->
+        <div class="user-select-card">
+            <label for="targetUser">Select Target User / Device:</label>
+            <select id="targetUser">
+                <option value="" disabled selected>Loading users...</option>
+            </select>
         </div>
 
         <div id="responseMsg" class="response-msg"></div>
@@ -170,7 +225,7 @@
             </div>
         </div>
 
-        <div id="loading" class="loading">Click a command to send to device</div>
+        <div id="loading" class="loading">Select a user above and click a command to send to device</div>
     </div>
 
     <script>
@@ -193,15 +248,38 @@
             if (!user) {
                 window.location.href = 'index.html';
             } else {
-                console.log('✅ Logged in as:', user.email);
+                loadUsersDropdown();
             }
         });
 
+        // ========== LOAD USERS INTO DROPDOWN ==========
+        async function loadUsersDropdown() {
+            const select = document.getElementById('targetUser');
+            try {
+                const snapshot = await db.collection('users').get();
+                select.innerHTML = '<option value="" disabled selected>-- Select a Target User --</option>';
+                
+                if (snapshot.empty) {
+                    select.innerHTML = '<option value="" disabled>No users found in database</option>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const email = data.email || doc.id;
+                    select.innerHTML += `<option value="${doc.id}">${email} (${doc.id})</option>`;
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+                select.innerHTML = '<option value="" disabled>Error loading users</option>';
+            }
+        }
+
         // ========== SEND COMMAND ==========
         async function sendCommand(type) {
-            const user = auth.currentUser;
-            if (!user) {
-                alert('Please login first');
+            const targetUserId = document.getElementById('targetUser').value;
+            if (!targetUserId) {
+                alert('Please select a target user from the dropdown first!');
                 return;
             }
 
@@ -209,21 +287,9 @@
             const responseMsg = document.getElementById('responseMsg');
 
             try {
-                // Get user document
-                const usersSnapshot = await db.collection('users')
-                    .where('email', '==', user.email)
-                    .limit(1)
-                    .get();
-
-                let userId = user.uid;
-                if (!usersSnapshot.empty) {
-                    userId = usersSnapshot.docs[0].id;
-                }
-
-                // Send command to Firestore
+                // Send command to Firestore mapped directly to the selected target user's UID
                 await db.collection('commands').add({
-                    'userId': userId,
-                    'userEmail': user.email,
+                    'userId': targetUserId,
                     'type': type,
                     'status': 'pending',
                     'timestamp': firebase.firestore.FieldValue.serverTimestamp(),
@@ -232,12 +298,12 @@
 
                 loading.innerHTML = '✅ Command sent to device!';
                 responseMsg.className = 'response-msg success';
-                responseMsg.textContent = '✅ Command sent successfully! Waiting for execution...';
+                responseMsg.textContent = `✅ ${type} command sent successfully to user!`;
                 responseMsg.style.display = 'block';
 
                 setTimeout(() => {
                     responseMsg.style.display = 'none';
-                    loading.innerHTML = 'Click a command to send to device';
+                    loading.innerHTML = 'Select a user above and click a command to send to device';
                 }, 5000);
 
             } catch (error) {

@@ -23,8 +23,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 4),
     );
-    _confettiController
-        .play(); // Play celebration immediately when screen opens
+    // Confetti plays immediately when the user enters the subscription page!
+    _confettiController.play();
     _loadCurrentPlan();
   }
 
@@ -42,6 +42,138 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (plan == 'premium') _currentPage = 1;
       if (plan == 'family') _currentPage = 2;
     });
+  }
+
+  // Show Payment Method Bottom Sheet when user taps upgrade
+  void _showPaymentMethodDialog(String planName, double price) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Payment Method for $planName',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Amount to pay: Rs. ${price.toStringAsFixed(0)}',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+
+              // 1. JazzCash Option
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.red,
+                  ),
+                ),
+                title: const Text(
+                  'JazzCash Mobile Account',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Simulated Instant Payment'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _processUpgrade(planName, price, 'JazzCash');
+                },
+              ),
+              const Divider(),
+
+              // 2. EasyPaisa Option
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.phone_android, color: Colors.green),
+                ),
+                title: const Text(
+                  'EasyPaisa Wallet',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Simulated Instant Payment'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _processUpgrade(planName, price, 'EasyPaisa');
+                },
+              ),
+              const Divider(),
+
+              // 3. Sandbox Fast Test Option
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.bolt, color: Colors.purple),
+                ),
+                title: const Text(
+                  'Sandbox Fast Test',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Bypass for Evaluators / FYP Panel'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _processUpgrade(planName, price, 'Sandbox Test');
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Process Upgrade & Save Payment Details + Timestamp
+  Future<void> _processUpgrade(
+    String planName,
+    double price,
+    String paymentMethod,
+  ) async {
+    // Save details to Firestore via subscription service
+    await _subscriptionService.updateSubscriptionWithMethod(
+      planName.toLowerCase(),
+      price,
+      paymentMethod,
+    );
+
+    setState(() => _currentPlan = planName.toLowerCase());
+
+    // Play confetti again on successful purchase for extra celebration!
+    _confettiController.play();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '🎉 Upgraded to $planName via $paymentMethod Successfully!',
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
@@ -124,7 +256,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       children: [
                         // Tier 1: Free
                         _buildTierCard(
-                          name: 'Free Tier',
+                          name: 'Free',
                           price: 'Rs. 0',
                           subtitle: 'Basic Security',
                           features: [
@@ -139,7 +271,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                         // Tier 2: Premium
                         _buildTierCard(
-                          name: 'Premium Tier',
+                          name: 'Premium',
                           price: 'Rs. 99 / month',
                           subtitle: 'Advanced Control',
                           features: [
@@ -148,27 +280,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ],
                           isCurrent: _currentPlan == 'premium',
                           buttonText: 'Upgrade to Premium',
-                          onTap: () async {
-                            await _subscriptionService.updateSubscription(
-                              'premium',
-                              99.0,
-                            );
-                            setState(() => _currentPlan = 'premium');
-                            _confettiController.play();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  '🎉 Upgraded to Premium Successfully!',
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
+                          onTap: () =>
+                              _showPaymentMethodDialog('Premium', 99.0),
                         ),
 
                         // Tier 3: Family / Pro
                         _buildTierCard(
-                          name: 'Family / Pro Tier',
+                          name: 'Family',
                           price: 'Rs. 199 / month',
                           subtitle: 'Ultimate Protection',
                           features: [
@@ -177,22 +295,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ],
                           isCurrent: _currentPlan == 'family',
                           buttonText: 'Upgrade to Family',
-                          onTap: () async {
-                            await _subscriptionService.updateSubscription(
-                              'family',
-                              199.0,
-                            );
-                            setState(() => _currentPlan = 'family');
-                            _confettiController.play();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  '🎉 Upgraded to Family Tier Successfully!',
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
+                          onTap: () =>
+                              _showPaymentMethodDialog('Family', 199.0),
                         ),
                       ],
                     ),
@@ -224,14 +328,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
 
-          // Confetti Animation Falling From Top to Bottom
+          // Confetti Animation Falling (Triggers immediately upon opening and when upgrading)
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
               confettiController: _confettiController,
-              blastDirection: 1.57, // Falling downwards
+              blastDirection: 1.57,
               particleDrag: 0.05,
-              emissionFrequency: 0.05, // Fixed property name
+              emissionFrequency: 0.05,
               numberOfParticles: 20,
               gravity: 0.2,
               shouldLoop: false,
