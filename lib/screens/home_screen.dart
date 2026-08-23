@@ -9,6 +9,7 @@ import 'gps_screen.dart';
 import 'intruder_screen.dart';
 import 'subscription_screen.dart';
 import 'set_pin_screen.dart';
+import 'backup_restore_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,8 +108,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    User? user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -214,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // Subscription Plan Card
+            // Subscription Plan Card (Kept visible, but doesn't block backup now)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -349,7 +348,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      // ✅ Passed context here
                       bool changed = await _simService.detectSimChange(context);
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -415,7 +413,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: _simStatus,
                     color: Colors.orange,
                     onTap: () async {
-                      // ✅ Passed context here too
                       bool changed = await _simService.detectSimChange(context);
                       if (changed) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -454,15 +451,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
+                  // ✅ Opens Backup & Restore Directly for Testing
                   _FeatureCard(
                     icon: Icons.cloud_upload,
                     title: 'Backup & Restore',
-                    subtitle: 'Premium feature',
+                    subtitle: 'Test module now',
                     color: Colors.purple,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Backup Feature - Premium Only'),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BackupRestoreScreen(),
                         ),
                       );
                     },
