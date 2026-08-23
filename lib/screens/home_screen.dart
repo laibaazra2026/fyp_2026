@@ -42,29 +42,42 @@ class _HomeScreenState extends State<HomeScreen> {
     _commandService.listenForCommands(context);
   }
 
-  // Automatically prompt free users after login
+  // Automatically prompt free users after login to view subscription options
   Future<void> _checkAndPromptFreeUser() async {
     if (_currentPlan == 'free') {
-      Future.delayed(const Duration(milliseconds: 600), () {
+      Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted && _currentPlan == 'free') {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('🌟 Upgrade Your Protection'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                '🌟 Unlock Full Protection',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: const Text(
-                'Remote Commands, Cloud Backup, and Restore require a Premium or Family tier. Swipe through plans to upgrade!',
+                'Explore our Free, Premium, and Family tiers to get advanced remote commands and backup features. Swipe through to check them out!',
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Later'),
+                  onPressed: () =>
+                      Navigator.pop(context), // Dismiss/cross button
+                  child: const Text(
+                    'Later',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.purple.shade700,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.pop(context); // Close dialog
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -73,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ).then((_) => _loadSubscriptionPlan());
                   },
                   child: const Text(
-                    'View Plans',
+                    'View All Plans',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),

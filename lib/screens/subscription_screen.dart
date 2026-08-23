@@ -79,7 +79,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     });
                   },
                   children: [
-                    // Tier 1: Free
+                    // Tier 1: Free (Only GPS, Intruder Capture, View Dashboard)
                     _buildTierCard(
                       name: 'Free Tier',
                       price: 'Rs. 0',
@@ -88,14 +88,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         'GPS Tracking',
                         'Intruder Capture',
                         'View Dashboard',
-                        'SIM Alert',
                       ],
                       isCurrent: _currentPlan == 'free',
                       buttonText: 'Current Plan',
                       onTap: null,
                     ),
 
-                    // Tier 2: Premium (Remote Commands + Free)
+                    // Tier 2: Premium (Free features + Remote Commands only)
                     _buildTierCard(
                       name: 'Premium Tier',
                       price: 'Rs. 99 / month',
@@ -103,8 +102,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       features: [
                         'All Free Features',
                         'Remote Commands (Lock/Erase)',
-                        'Priority Device Monitoring',
-                        'Real-time Alert Stream',
                       ],
                       isCurrent: _currentPlan == 'premium',
                       buttonText: 'Upgrade to Premium',
@@ -125,7 +122,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       },
                     ),
 
-                    // Tier 3: Family / Pro (Backup & Restore + All Features)
+                    // Tier 3: Family / Pro (Premium features + Cloud Backup & Contacts)
                     _buildTierCard(
                       name: 'Family / Pro Tier',
                       price: 'Rs. 199 / month',
@@ -134,7 +131,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         'All Premium Features',
                         'Cloud Backup & Restore',
                         'Contacts & Call History Backup',
-                        'Priority Secure Cloud Storage',
                       ],
                       isCurrent: _currentPlan == 'family',
                       buttonText: 'Upgrade to Family',
