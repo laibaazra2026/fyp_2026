@@ -40,7 +40,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
         backgroundColor: Colors.purple.shade700,
         elevation: 0,
-        // Cross / Close button explicitly added at the top right as requested
+        // Cross / Close button explicitly added at the top right
         actions: [
           IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
@@ -110,7 +110,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       onTap: null,
                     ),
 
-                    // Tier 2: Premium (Updated text: Lock/Ring/Enable Theft Mode)
+                    // Tier 2: Premium (Remote commands updated with Lock/Ring/Enable Theft Mode)
                     _buildTierCard(
                       name: 'Premium Tier',
                       price: 'Rs. 99 / month',
@@ -138,7 +138,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       },
                     ),
 
-                    // Tier 3: Family / Pro (Updated text: Backup & Restore only)
+                    // Tier 3: Family / Pro (Backup & Restore)
                     _buildTierCard(
                       name: 'Family / Pro Tier',
                       price: 'Rs. 199 / month',
