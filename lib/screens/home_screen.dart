@@ -26,9 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _simStatus = "Checking device...";
   bool _isTheftMode = false;
-  bool _isLoadingTheftMode = true;
   String _currentPlan = 'free';
-  bool _isLoadingPlan = true;
 
   @override
   void initState() {
@@ -36,10 +34,55 @@ class _HomeScreenState extends State<HomeScreen> {
     _checkSim();
     _loadTheftModeStatus();
     _listenToTheftModeChanges();
-    _loadSubscriptionPlan();
+    _loadSubscriptionPlan().then((_) {
+      _checkAndPromptFreeUser();
+    });
 
-    // ✅ Start listening for remote commands (lock, ring, etc.)
+    // Start listening for remote commands (lock, ring, etc.)
     _commandService.listenForCommands(context);
+  }
+
+  // Automatically prompt free users after login
+  Future<void> _checkAndPromptFreeUser() async {
+    if (_currentPlan == 'free') {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted && _currentPlan == 'free') {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('🌟 Upgrade Your Protection'),
+              content: const Text(
+                'Remote Commands, Cloud Backup, and Restore require a Premium or Family tier. Swipe through plans to upgrade!',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Later'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade700,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SubscriptionScreen(),
+                      ),
+                    ).then((_) => _loadSubscriptionPlan());
+                  },
+                  child: const Text(
+                    'View Plans',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      });
+    }
   }
 
   Future<void> _checkSim() async {
@@ -63,7 +106,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (doc.exists) {
         setState(() {
           _isTheftMode = doc.get('isTheftModeOn') ?? false;
-          _isLoadingTheftMode = false;
         });
       }
     } catch (e) {
@@ -102,7 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
     String plan = await _subscriptionService.getCurrentPlan();
     setState(() {
       _currentPlan = plan;
-      _isLoadingPlan = false;
     });
   }
 
@@ -213,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // Subscription Plan Card (Kept visible, but doesn't block backup now)
+            // Subscription Plan Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -240,9 +281,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _currentPlan != 'free'
-                              ? '🌟 Premium Plan'
-                              : 'Free Plan',
+                          _currentPlan == 'family'
+                              ? '🌟 Family / Pro Tier'
+                              : _currentPlan == 'premium'
+                              ? '⭐ Premium Tier'
+                              : 'Free Tier',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: _currentPlan != 'free'
@@ -253,8 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Text(
                           _currentPlan != 'free'
-                              ? 'All premium features are active'
-                              : 'Upgrade to Premium for advanced features',
+                              ? 'Advanced features are unlocked'
+                              : 'Upgrade to unlock Remote Commands & Backup',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -264,27 +307,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: _currentPlan != 'free'
-                        ? null
-                        : () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const SubscriptionScreen(),
-                              ),
-                            );
-                          },
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SubscriptionScreen(),
+                        ),
+                      ).then((_) => _loadSubscriptionPlan());
+                    },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _currentPlan != 'free'
-                          ? Colors.grey
-                          : Colors.purple.shade700,
+                      backgroundColor: Colors.purple.shade700,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: Text(
-                      _currentPlan != 'free' ? 'Active' : 'Upgrade',
+                      _currentPlan != 'free' ? 'Manage' : 'Upgrade',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
@@ -396,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _FeatureCard(
                     icon: Icons.gps_fixed,
                     title: 'GPS Tracking',
-                    subtitle: 'Track your device',
+                    subtitle: 'Free Tier Feature',
                     color: Colors.blue,
                     onTap: () {
                       Navigator.push(
@@ -440,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _FeatureCard(
                     icon: Icons.camera_alt,
                     title: 'Intruder Capture',
-                    subtitle: 'Capture intruder',
+                    subtitle: 'Free Tier Feature',
                     color: Colors.red,
                     onTap: () {
                       Navigator.push(
@@ -451,19 +489,39 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-                  // ✅ Opens Backup & Restore Directly for Testing
+                  // Protected Backup & Restore (Family/Pro Tier Feature Guard)
                   _FeatureCard(
                     icon: Icons.cloud_upload,
                     title: 'Backup & Restore',
-                    subtitle: 'Test module now',
+                    subtitle: _currentPlan == 'family'
+                        ? 'Unlocked'
+                        : 'Family Tier',
                     color: Colors.purple,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BackupRestoreScreen(),
-                        ),
-                      );
+                    onTap: () async {
+                      String plan = await _subscriptionService.getCurrentPlan();
+                      if (plan == 'family') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const BackupRestoreScreen(),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🔒 Requires Family / Pro Tier'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SubscriptionScreen(),
+                          ),
+                        ).then((_) {
+                          _loadSubscriptionPlan();
+                        });
+                      }
                     },
                   ),
                   _FeatureCard(

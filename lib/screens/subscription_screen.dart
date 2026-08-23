@@ -10,7 +10,10 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
+  final PageController _pageController = PageController(viewportFraction: 0.85);
+
   String _currentPlan = 'free';
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -22,6 +25,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String plan = await _subscriptionService.getCurrentPlan();
     setState(() {
       _currentPlan = plan;
+      if (plan == 'premium') _currentPage = 1;
+      if (plan == 'family') _currentPage = 2;
     });
   }
 
@@ -31,74 +36,149 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       appBar: AppBar(
         title: const Text(
           'Subscription Plans',
-          style: TextStyle(color: Colors.white), // ✅ White title
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.purple.shade700,
-        iconTheme: const IconThemeData(color: Colors.white), // ✅ White arrow
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
       ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.purple.shade700, Colors.purple.shade300],
+            colors: [Colors.purple.shade700, Colors.purple.shade900],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        child: SafeArea(
           child: Column(
             children: [
-              // Free Plan
-              _buildPlanCard(
-                name: 'Free',
-                price: 'Rs. 0',
-                features: ['GPS Tracking', 'SIM Alert', 'Intruder Capture'],
-                isCurrent: _currentPlan == 'free',
-                onTap: null,
+              const SizedBox(height: 20),
+              const Text(
+                'Unlock Full Protection 🚀',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              const Text(
+                'Swipe and choose the plan that fits your security needs',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 30),
 
-              // Premium Plan
-              _buildPlanCard(
-                name: 'Premium',
-                price: 'Rs. 99/month',
-                features: [
-                  'All Free Features',
-                  'Remote Lock/Erase',
-                  'Contacts Backup',
-                  'Cloud Storage',
-                ],
-                isCurrent: _currentPlan == 'premium',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('💳 Payment coming soon!'),
-                      backgroundColor: Colors.blue,
+              // Horizontal Swipeable Cards Carousel (PageView)
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPage = index;
+                    });
+                  },
+                  children: [
+                    // Tier 1: Free
+                    _buildTierCard(
+                      name: 'Free Tier',
+                      price: 'Rs. 0',
+                      subtitle: 'Basic Security',
+                      features: [
+                        'GPS Tracking',
+                        'Intruder Capture',
+                        'View Dashboard',
+                        'SIM Alert',
+                      ],
+                      isCurrent: _currentPlan == 'free',
+                      buttonText: 'Current Plan',
+                      onTap: null,
+                    ),
+
+                    // Tier 2: Premium (Remote Commands + Free)
+                    _buildTierCard(
+                      name: 'Premium Tier',
+                      price: 'Rs. 99 / month',
+                      subtitle: 'Advanced Control',
+                      features: [
+                        'All Free Features',
+                        'Remote Commands (Lock/Erase)',
+                        'Priority Device Monitoring',
+                        'Real-time Alert Stream',
+                      ],
+                      isCurrent: _currentPlan == 'premium',
+                      buttonText: 'Upgrade to Premium',
+                      onTap: () async {
+                        await _subscriptionService.updateSubscription(
+                          'premium',
+                          99.0,
+                        );
+                        setState(() => _currentPlan = 'premium');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              '🎉 Upgraded to Premium Successfully!',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+                    ),
+
+                    // Tier 3: Family / Pro (Backup & Restore + All Features)
+                    _buildTierCard(
+                      name: 'Family / Pro Tier',
+                      price: 'Rs. 199 / month',
+                      subtitle: 'Ultimate Protection',
+                      features: [
+                        'All Premium Features',
+                        'Cloud Backup & Restore',
+                        'Contacts & Call History Backup',
+                        'Priority Secure Cloud Storage',
+                      ],
+                      isCurrent: _currentPlan == 'family',
+                      buttonText: 'Upgrade to Family',
+                      onTap: () async {
+                        await _subscriptionService.updateSubscription(
+                          'family',
+                          199.0,
+                        );
+                        setState(() => _currentPlan = 'family');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              '🎉 Upgraded to Family Tier Successfully!',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Page Indicator Dots
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _currentPage == index ? 24 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _currentPage == index
+                          ? Colors.white
+                          : Colors.white38,
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   );
-                },
+                }),
               ),
-              const SizedBox(height: 12),
-
-              // Family Plan
-              _buildPlanCard(
-                name: 'Family',
-                price: 'Rs. 199/month',
-                features: [
-                  'All Premium Features',
-                  '5 Devices',
-                  'Admin Dashboard',
-                ],
-                isCurrent: _currentPlan == 'family',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('💳 Payment coming soon!'),
-                      backgroundColor: Colors.blue,
-                    ),
-                  );
-                },
-              ),
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -106,27 +186,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPlanCard({
+  Widget _buildTierCard({
     required String name,
     required String price,
+    required String subtitle,
     required List<String> features,
     required bool isCurrent,
-    VoidCallback? onTap,
+    required String buttonText,
+    required VoidCallback? onTap,
   }) {
-    return Card(
-      elevation: isCurrent ? 4 : 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isCurrent ? Colors.white : Colors.grey.shade300,
-          width: isCurrent ? 2 : 1,
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      color: isCurrent
-          ? Colors.white.withOpacity(0.95)
-          : Colors.white.withOpacity(0.85),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -135,47 +218,77 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               children: [
                 Text(
                   name,
-                  style: TextStyle(
-                    fontSize: 20,
+                  style: const TextStyle(
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: isCurrent ? Colors.purple : Colors.black,
+                    color: Colors.black87,
                   ),
                 ),
                 if (isCurrent)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 10,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.green,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
-                      'Current',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
+                      'ACTIVE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
               ],
             ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
             Text(
               price,
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 8),
-            ...features.map(
-              (feature) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check, color: Colors.green, size: 16),
-                    const SizedBox(width: 8),
-                    Text(feature),
-                  ],
-                ),
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.purple.shade700,
               ),
             ),
-            if (onTap != null && !isCurrent) const SizedBox(height: 12),
+            const Divider(height: 30),
+            Expanded(
+              child: ListView(
+                children: features.map((feature) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            feature,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 10),
             if (onTap != null && !isCurrent)
               SizedBox(
                 width: double.infinity,
@@ -183,14 +296,38 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   onPressed: onTap,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.purple.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    buttonText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: null,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: Text(
-                    'Upgrade to $name',
-                    style: const TextStyle(
-                      color: Colors.white, // ✅ White text on button
+                    isCurrent ? 'Current Active Plan' : buttonText,
+                    style: TextStyle(
+                      color: isCurrent ? Colors.green : Colors.grey,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
