@@ -52,6 +52,7 @@ dependencies:
   device_policy_manager: ^1.0.0
   flutter_sms: ^3.0.1
   sim_reader: ^1.0.4
+  flutter_contacts: ^2.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
