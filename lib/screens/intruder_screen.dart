@@ -1,172 +1,181 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../services/intruder_services.dart';
+import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class IntruderScreen extends StatefulWidget {
-  const IntruderScreen({super.key});
+class IntruderScreen extends StatelessWidget {
+  const IntruderScreen({Key? key}) : super(key: key);
 
-  @override
-  State<IntruderScreen> createState() => _IntruderScreenState();
-}
+  static const platform = MethodChannel('device_protection/admin');
 
-class _IntruderScreenState extends State<IntruderScreen> {
-  final IntruderService _intruderService = IntruderService();
-  List<Map<String, dynamic>> _photos = [];
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPhotos();
-  }
-
-  Future<void> _loadPhotos() async {
-    setState(() => _isLoading = true);
-    _photos = await _intruderService.getIntruderPhotos();
-    setState(() => _isLoading = false);
+  Future<void> _enableDeviceAdmin(BuildContext context) async {
+    try {
+      await platform.invokeMethod('enableAdmin');
+    } on PlatformException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to open admin settings: ${e.message}")),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final User? user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Intruder Capture'),
-        backgroundColor: Colors.purple.shade700,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadPhotos),
-        ],
+        title: const Text('Intruder Logs'),
+        backgroundColor: const Color(0xFF841EA0),
+        foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
-          // Capture Button (For Testing)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+          // Activation Banner / Button
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            color: const Color(0xFF841EA0).withOpacity(0.1),
             child: ElevatedButton.icon(
-              onPressed: () async {
-                await _intruderService.captureIntruderPhoto();
-                // Reload photos automatically after capture
-                await _loadPhotos();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('📸 Photo captured & uploaded!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.camera),
-              label: const Text('Test Capture'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 14,
+                backgroundColor: const Color(0xFF841EA0),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
+              ),
+              onPressed: () => _enableDeviceAdmin(context),
+              icon: const Icon(Icons.admin_panel_settings),
+              label: const Text(
+                'Activate Device Admin Permission',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),
 
-          // Photos Grid
+          // Intruder Logs List
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _photos.isEmpty
+            child: user == null
                 ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.photo_library, size: 80, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
-                          'No intruder photos yet',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          'Tap "Test Capture" above to add photos',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
+                    child: Text('Please log in to view intruder records.'),
                   )
-                : GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                    itemCount: _photos.length,
-                    itemBuilder: (context, index) {
-                      var photo = _photos[index];
+                : StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('intruder_photos')
+                        .where('userId', isEqualTo: user.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                      String base64Image = photo['imageBase64'] ?? '';
-                      String userEmail = photo['userEmail'] ?? 'Unknown';
-                      String timestamp = photo['timestamp'] != null
-                          ? '${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).hour.toString().padLeft(2, '0')}:${DateTime.fromMillisecondsSinceEpoch(photo['timestamp'].seconds * 1000).minute.toString().padLeft(2, '0')}'
-                          : 'Unknown';
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.security,
+                                size: 80,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No intruders detected yet!',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
-                      return Card(
-                        clipBehavior: Clip.antiAlias,
-                        elevation: 4,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: base64Image.isNotEmpty
-                                  ? Image.memory(
-                                      base64Decode(base64Image),
-                                      fit: BoxFit.cover,
+                      final docs = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final data =
+                              docs[index].data() as Map<String, dynamic>;
+                          final imageUrl = data['url'] ?? '';
+                          final timestamp = data['timestamp'] != null
+                              ? (data['timestamp'] as Timestamp)
+                                    .toDate()
+                                    .toString()
+                              : 'Unknown time';
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (imageUrl.isNotEmpty)
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(12),
+                                    ),
+                                    child: Image.network(
+                                      imageUrl,
+                                      height: 220,
                                       width: double.infinity,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return const Center(
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 40,
-                                                color: Colors.red,
+                                      fit: BoxFit.cover,
+                                      loadingBuilder:
+                                          (context, child, progress) {
+                                            if (progress == null) return child;
+                                            return Container(
+                                              height: 220,
+                                              color: Colors.grey[200],
+                                              child: const Center(
+                                                child:
+                                                    CircularProgressIndicator(),
                                               ),
                                             );
                                           },
-                                    )
-                                  : const Center(
-                                      child: Icon(
-                                        Icons.image_not_supported,
-                                        size: 40,
-                                        color: Colors.grey,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                height: 220,
+                                                color: Colors.grey[300],
+                                                child: const Center(
+                                                  child: Text(
+                                                    'Failed to load image',
+                                                  ),
+                                                ),
+                                              ),
+                                    ),
+                                  ),
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.warning_amber_rounded,
+                                        color: Colors.red,
                                       ),
-                                    ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    userEmail,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Captured at:\n$timestamp',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    '🕐 $timestamp',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
