@@ -1,4 +1,4 @@
-package com.example.fyp_mobile_app_and_web_portal // Match your exact package name if different
+package com.example.fyp_mobile_app_and_web_portal 
 
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context
