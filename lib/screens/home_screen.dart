@@ -8,7 +8,6 @@ import '../services/command_service.dart';
 import 'gps_screen.dart';
 import 'intruder_screen.dart';
 import 'subscription_screen.dart';
-import 'set_pin_screen.dart';
 import 'backup_restore_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -62,8 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context), // Dismiss/cross button
+                  onPressed: () => Navigator.pop(context),
                   child: const Text(
                     'Later',
                     style: TextStyle(color: Colors.grey),
@@ -77,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   onPressed: () {
-                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -160,15 +158,34 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // Strict Guard: Blocks any security module if Theft Mode is OFF
+  void _guardAgainstTheftMode(VoidCallback action, String moduleName) {
+    if (!_isTheftMode) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '⚠️ $moduleName blocked: Please turn ON Theft Mode first!',
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return; // Stop module execution completely
+    }
+    action(); // Run if Theft Mode is ON
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         title: const Text(
-          'Device Protection',
-          style: TextStyle(color: Colors.white),
+          'Device Protection Dashboard',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.purple.shade700,
+        elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -187,16 +204,23 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Theft Mode Toggle
+            // 1. Theft Mode Toggle Banner
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: _isTheftMode
-                      ? [Colors.red, Colors.red.shade700]
-                      : [Colors.green, Colors.green.shade700],
+                      ? [Colors.red.shade600, Colors.red.shade800]
+                      : [Colors.green.shade600, Colors.green.shade800],
                 ),
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -212,19 +236,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Text(
                           _isTheftMode
-                              ? '🛡️ Theft Mode ON'
-                              : '🔓 Theft Mode OFF',
+                              ? '🛡️ Theft Mode is ACTIVE'
+                              : '🔓 Theft Mode is OFF',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           _isTheftMode
-                              ? 'Your device is being monitored'
-                              : 'Enable to protect your device',
-                          style: const TextStyle(color: Colors.white70),
+                              ? 'All security modules are running'
+                              : 'Turn on to enable security features',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -265,11 +293,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Subscription Plan Card
+            // 2. Subscription Plan Card
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: _currentPlan != 'free'
                     ? Colors.green.shade50
@@ -286,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     _currentPlan != 'free' ? Icons.star : Icons.star_border,
                     color: _currentPlan != 'free' ? Colors.green : Colors.blue,
-                    size: 30,
+                    size: 28,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -298,21 +326,21 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? '🌟 Family / Pro Tier'
                               : _currentPlan == 'premium'
                               ? '⭐ Premium Tier'
-                              : 'Free Tier',
+                              : 'Free Tier Plan',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: _currentPlan != 'free'
                                 ? Colors.green.shade700
                                 : Colors.blue.shade700,
-                            fontSize: 16,
+                            fontSize: 15,
                           ),
                         ),
                         Text(
                           _currentPlan != 'free'
-                              ? 'Advanced features are unlocked'
-                              : 'Upgrade to unlock Remote Commands & Backup',
+                              ? 'Advanced features unlocked'
+                              : 'Upgrade to unlock backups & commands',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -333,222 +361,152 @@ class _HomeScreenState extends State<HomeScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     child: Text(
                       _currentPlan != 'free' ? 'Manage' : 'Upgrade',
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Device Status Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.shade200,
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.devices,
-                      color: Colors.orange.shade700,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Device Status',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          _simStatus,
-                          style: TextStyle(
-                            color: _simStatus.contains('saved')
-                                ? Colors.green
-                                : Colors.orange,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      bool changed = await _simService.detectSimChange(context);
-                      if (changed) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              '⚠️ SIM/Device Changed! Alert saved.',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ Device is secure'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                      String status = await _simService.getSimStatus();
-                      setState(() {
-                        _simStatus = status;
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700,
-                    ),
-                    child: const Text(
-                      'Check Device',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
+            // Section Header
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Security Modules',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
             ),
+            const SizedBox(height: 8),
 
-            const SizedBox(height: 20),
-
-            // Features Grid
+            // 3. Features Grid (Properly Aligned & Guarded)
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.1,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 1.15,
                 children: [
+                  // GPS Tracking Module
                   _FeatureCard(
                     icon: Icons.gps_fixed,
                     title: 'GPS Tracking',
-                    subtitle: 'Free Tier Feature',
+                    subtitle: 'Live Map Location',
                     color: Colors.blue,
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: ((context) => const GPSScreen()),
-                        ),
-                      );
+                      _guardAgainstTheftMode(() {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: ((context) => const GPSScreen()),
+                          ),
+                        );
+                      }, 'GPS Tracking');
                     },
                   ),
+
+                  // SIM / Device Alert Module
                   _FeatureCard(
                     icon: Icons.sim_card,
                     title: 'SIM/Device Alert',
                     subtitle: _simStatus,
                     color: Colors.orange,
                     onTap: () async {
-                      bool changed = await _simService.detectSimChange(context);
-                      if (changed) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              '⚠️ SIM/Device Changed! Alert saved.',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
+                      _guardAgainstTheftMode(() async {
+                        bool changed = await _simService.detectSimChange(
+                          context,
                         );
+                        if (changed) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                '⚠️ SIM/Device Changed! Alert saved.',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('✅ Device is secure'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
                         String status = await _simService.getSimStatus();
                         setState(() {
                           _simStatus = status;
                         });
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ Device is secure'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
+                      }, 'SIM/Device Alert');
                     },
                   ),
+
+                  // Intruder Capture Module
                   _FeatureCard(
                     icon: Icons.camera_alt,
                     title: 'Intruder Capture',
-                    subtitle: 'Free Tier Feature',
+                    subtitle: 'Failed unlock snaps',
                     color: Colors.red,
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const IntruderScreen(),
-                        ),
-                      );
+                      _guardAgainstTheftMode(() {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const IntruderScreen(),
+                          ),
+                        );
+                      }, 'Intruder Capture');
                     },
                   ),
-                  // Protected Backup & Restore (Family/Pro Tier Feature Guard)
+
+                  // Protected Backup & Restore Module (Family/Pro Tier Guard)
                   _FeatureCard(
                     icon: Icons.cloud_upload,
-                    title: 'Backup & Restore',
+                    title: 'Media Backup',
                     subtitle: _currentPlan == 'family'
                         ? 'Unlocked'
-                        : 'Family Tier',
+                        : 'Family Tier Only',
                     color: Colors.purple,
                     onTap: () async {
-                      String plan = await _subscriptionService.getCurrentPlan();
-                      if (plan == 'family') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BackupRestoreScreen(),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🔒 Requires Family / Pro Tier'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SubscriptionScreen(),
-                          ),
-                        ).then((_) {
-                          _loadSubscriptionPlan();
-                        });
-                      }
-                    },
-                  ),
-                  _FeatureCard(
-                    icon: Icons.lock_outline,
-                    title: 'Set Lock PIN',
-                    subtitle: 'Custom lock PIN',
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SetPinScreen(),
-                        ),
-                      );
+                      _guardAgainstTheftMode(() async {
+                        String plan = await _subscriptionService
+                            .getCurrentPlan();
+                        if (plan == 'family') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const BackupRestoreScreen(),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('🔒 Requires Family / Pro Tier'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SubscriptionScreen(),
+                            ),
+                          ).then((_) {
+                            _loadSubscriptionPlan();
+                          });
+                        }
+                      }, 'Media Backup');
                     },
                   ),
                 ],
@@ -579,7 +537,8 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4,
+      elevation: 3,
+      shadowColor: Colors.black12,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: onTap,
@@ -590,19 +549,20 @@ class _FeatureCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 36, color: color),
+                child: Icon(icon, size: 30, color: color),
               ),
               const SizedBox(height: 8),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -611,7 +571,7 @@ class _FeatureCard extends StatelessWidget {
                 subtitle,
                 style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
