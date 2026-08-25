@@ -10,21 +10,26 @@ class IntruderCaptureActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = FirebaseFirestore.instance
-        val userId = FirebaseAuth.instance.currentUser?.uid ?: "test_user"
+        val db = FirebaseFirestore.getInstance()
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val userId = currentUser?.uid ?: "anonymous_user"
+        val userEmail = currentUser?.email ?: "unknown@example.com"
 
-        val data = hashMapOf(
+        val intruderData = hashMapOf(
             "userId" to userId,
-            "timestamp" to com.google.firebase.Timestamp.now(),
-            "status" to "Wrong password entered - test capture"
+            "userEmail" to userEmail,
+            "status" to "Wrong password attempt detected",
+            "date" to System.currentTimeMillis()
         )
 
-        db.collection("intruder_photos").add(data)
+        db.collection("intruder_photos")
+            .add(intruderData)
             .addOnSuccessListener {
-                Log.d("IntruderCapture", "Test log recorded successfully!")
+                Log.d("IntruderCapture", "Intruder log successfully recorded!")
                 finish()
             }
-            .addOnFailureListener {
+            .addOnFailureListener { e: Exception ->
+                Log.e("IntruderCapture", "Error recording intruder", e)
                 finish()
             }
     }
