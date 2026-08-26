@@ -186,12 +186,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
         backgroundColor: Colors.purple.shade700,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Stack(
         children: [
@@ -242,7 +240,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
                   // Horizontal Swipeable Cards Carousel (PageView)
                   Expanded(
@@ -302,7 +300,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Page Indicator Dots
                   Row(
@@ -322,13 +320,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       );
                     }),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
 
-          // Confetti Animation Falling (Triggers immediately upon opening and when upgrading)
+          // Confetti Animation Falling
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
@@ -363,7 +361,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     required VoidCallback? onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -426,7 +424,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 color: Colors.purple.shade700,
               ),
             ),
-            const Divider(height: 30),
+            const Divider(height: 24),
             Expanded(
               child: ListView(
                 children: features.map((feature) {

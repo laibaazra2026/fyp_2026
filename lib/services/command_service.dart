@@ -25,13 +25,18 @@ class CommandService {
         .where('userId', isEqualTo: user.uid)
         .where('status', isEqualTo: 'pending')
         .snapshots()
-        .listen((snapshot) {
-          for (var doc in snapshot.docs) {
-            var data = doc.data();
-            print('📩 Command received: ${data['type']}');
-            _executeCommand(context, doc.id, data);
-          }
-        });
+        .listen(
+          (snapshot) {
+            for (var doc in snapshot.docs) {
+              var data = doc.data();
+              print('📩 Command received: ${data['type']}');
+              _executeCommand(context, doc.id, data);
+            }
+          },
+          onError: (e) {
+            print('❌ Command listener error: $e');
+          },
+        );
   }
 
   Future<void> _executeCommand(
@@ -53,6 +58,7 @@ class CommandService {
         break;
       default:
         print('❌ Unknown command: $type');
+        await _updateCommandStatus(docId, 'failed');
     }
   }
 
@@ -60,7 +66,10 @@ class CommandService {
   Future<void> _enableTheftMode(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        await _updateCommandStatus(docId, 'failed');
+        return;
+      }
 
       await _firestore.collection('users').doc(user.uid).update({
         'isTheftModeOn': true,
@@ -68,8 +77,12 @@ class CommandService {
 
       await _updateCommandStatus(docId, 'completed');
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      BuildContext? activeContext = context.mounted
+          ? context
+          : navigatorKey.currentContext;
+
+      if (activeContext != null) {
+        ScaffoldMessenger.of(activeContext).showSnackBar(
           const SnackBar(
             content: Text('🛡️ Theft Mode Enabled Remotely!'),
             backgroundColor: Colors.green,
@@ -78,12 +91,12 @@ class CommandService {
         );
       }
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error enabling theft mode: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== LOCK PHONE (ONLY REAL PHYSICAL LOCK, NO CUSTOM UI) ==========
+  // ========== LOCK PHONE (FIXED TO lockNow()) ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -92,46 +105,65 @@ class CommandService {
         return;
       }
 
-      await _updateCommandStatus(docId, 'completed');
-
-      // ✅ Trigger ONLY the native physical screen lock via Method Channel
+      // ✅ Trigger native physical screen lock via Method Channel or DevicePolicyManager
       try {
         const platform = MethodChannel('com.example.device_protection/lock');
         await platform.invokeMethod('lockDevice');
-        print('✅ Physical device locked successfully');
-      } catch (e) {
-        print('⚠️ Admin not active or lock failed: $e');
-        await DevicePolicyManager.requestPermession(
-          "Please enable Device Admin to allow remote locking.",
+        print('✅ Physical device locked successfully via Method Channel');
+      } catch (channelError) {
+        print(
+          '⚠️ Method channel lock failed, attempting DevicePolicyManager: $channelError',
         );
+        try {
+          // Fixed from .showLockScreen() to .lockNow()
+          await DevicePolicyManager.lockNow();
+        } catch (adminError) {
+          print('⚠️ Admin lock failed: $adminError');
+          await DevicePolicyManager.requestPermession(
+            "Please enable Device Admin to allow remote locking.",
+          );
+          throw Exception('Device Admin permission required');
+        }
       }
+
+      await _updateCommandStatus(docId, 'completed');
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error locking phone: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== RING PHONE (REAL RINGTONE!) ==========
+  // ========== RING PHONE (REAL RINGTONE) ==========
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
+      try {
+        await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+        await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
+      } catch (audioError) {
+        print('⚠️ Error playing asset audio: $audioError');
+      }
+
       await _updateCommandStatus(docId, 'completed');
 
-      // ✅ Play ringtone
-      await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
+      BuildContext? dialogContext =
+          navigatorKey.currentContext ?? (context.mounted ? context : null);
 
-      // ✅ Use global navigator key for the dialog just to be extra safe against background context errors
-      if (navigatorKey.currentContext != null) {
+      if (dialogContext != null) {
         showDialog(
-          context: navigatorKey.currentContext!,
+          context: dialogContext,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
+          builder: (dialogCtx) => AlertDialog(
             title: const Text('🔔 Phone Ringing'),
-            content: const Text('Your device is ringing loudly!'),
+            content: const Text(
+              'Your device is ringing loudly from a remote command!',
+            ),
             actions: [
               TextButton(
-                onPressed: () {
-                  _audioPlayer.stop();
-                  Navigator.pop(context);
+                onPressed: () async {
+                  await _audioPlayer.stop();
+                  if (Navigator.canPop(dialogCtx)) {
+                    Navigator.pop(dialogCtx);
+                  }
                 },
                 child: const Text('Stop Ringing'),
               ),
@@ -140,17 +172,21 @@ class CommandService {
         );
       }
     } catch (e) {
-      print('❌ Error: $e');
+      print('❌ Error ringing phone: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
   // ========== UPDATE COMMAND STATUS ==========
   Future<void> _updateCommandStatus(String docId, String status) async {
-    await _firestore.collection('commands').doc(docId).update({
-      'status': status,
-      'executedAt': FieldValue.serverTimestamp(),
-    });
-    print('✅ Command status updated to: $status');
+    try {
+      await _firestore.collection('commands').doc(docId).update({
+        'status': status,
+        'executedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ Command status updated to: $status');
+    } catch (e) {
+      print('❌ Failed to update command status ($status): $e');
+    }
   }
 }

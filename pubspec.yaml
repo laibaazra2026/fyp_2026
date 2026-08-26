@@ -55,6 +55,7 @@ dependencies:
   flutter_contacts: ^2.3.1
   call_log: ^6.0.1
   confetti: ^0.8.0
+  google_sign_in: ^7.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -83,6 +84,8 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - assets/sounds/ringtone.mp3
+    - assets/sounds/google_icon.png
+    
   
 
   # An image asset can refer to one or more resolution-specific "variants", see

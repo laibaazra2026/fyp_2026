@@ -19,7 +19,7 @@ class SubscriptionService {
       if (doc.exists && doc.data() != null) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         // Returns 'free', 'premium', or 'family' (defaults to 'free')
-        return data['subscriptionPlan'] ?? 'free';
+        return (data['subscriptionPlan'] ?? 'free').toString().toLowerCase();
       }
       return 'free';
     } catch (e) {
@@ -36,16 +36,19 @@ class SubscriptionService {
   ) async {
     try {
       final user = _auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        throw Exception('No authenticated user found. Please log in again.');
+      }
 
-      await _firestore.collection('users').doc(user.uid).update({
-        'subscriptionPlan': plan, // e.g., 'premium' or 'family'
+      // Using merge: true safely updates or creates the fields without overwriting user profile data
+      await _firestore.collection('users').doc(user.uid).set({
+        'subscriptionPlan': plan.toLowerCase(), // e.g., 'premium' or 'family'
         'planPrice': price, // e.g., 99.0 or 199.0
         'paymentMethod':
             paymentMethod, // 'JazzCash', 'EasyPaisa', or 'Sandbox Test'
         'subscribedAt':
             FieldValue.serverTimestamp(), // Exact purchase date & time for admin tracking
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       print('Error updating subscription: $e');
       rethrow;

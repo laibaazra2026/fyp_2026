@@ -12,7 +12,20 @@
           "package_name": "com.example.device_protection"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "38986827146-9h1597j6a78b4b4j17bmb1smhcm0r923.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.device_protection",
+            "certificate_hash": "d302d50535166a7d9151835477c1266f2b88a1f5"
+          }
+        },
+        {
+          "client_id": "38986827146-fg05p827r5haav2lir82u2c97k95umdo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAiK_EhjjeS7IwA3QbKe85JvDjVYT43H_4"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "38986827146-fg05p827r5haav2lir82u2c97k95umdo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

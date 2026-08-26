@@ -1,57 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/location_service.dart';
 
-class GPSScreen extends StatefulWidget {
-  const GPSScreen({super.key});
+class GpsScreen extends StatefulWidget {
+  const GpsScreen({super.key});
 
   @override
-  State<GPSScreen> createState() => _GPSScreenState();
+  State<GpsScreen> createState() => _GpsScreenState();
 }
 
-class _GPSScreenState extends State<GPSScreen> {
+class _GpsScreenState extends State<GpsScreen> {
   final LocationService _locationService = LocationService();
-  String _locationText = 'Getting location...';
+
+  GoogleMapController? _mapController;
   bool _isLoading = true;
-  Position? _position;
+  String _statusMessage = 'Requesting location permissions...';
+
+  // Default fallback location
+  LatLng _currentLocation = const LatLng(33.6844, 73.0479);
+  Set<Marker> _markers = {};
 
   @override
   void initState() {
     super.initState();
-    _getLocation();
+    _fetchAndSavePosition();
   }
 
-  Future<void> _getLocation() async {
+  Future<void> _fetchAndSavePosition() async {
     setState(() {
       _isLoading = true;
-      _locationText = 'Getting location...';
+      _statusMessage = 'Checking location permissions & GPS...';
     });
 
-    Position? position = await _locationService.getCurrentLocation();
+    try {
+      Position? position = await _locationService.getCurrentLocation();
 
-    if (position != null) {
-      setState(() {
-        _position = position;
-        _locationText =
-            '📍 Your Device Location\n\n'
-            'Latitude: ${position.latitude}\n'
-            'Longitude: ${position.longitude}\n'
-            'Accuracy: ${position.accuracy} meters\n'
-            'Time: ${DateTime.now().toLocal()}';
-        _isLoading = false;
-      });
+      if (position == null) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = 'Location permission denied or GPS is turned off.';
+        });
+        return;
+      }
+
+      setState(() => _statusMessage = 'Saving location to cloud...');
+
       await _locationService.saveLocation(position);
-    } else {
+
+      LatLng liveLatLng = LatLng(position.latitude, position.longitude);
+
       setState(() {
-        _locationText =
-            '❌ Could not get location.\n\n'
-            'Please:\n'
-            '1. Turn ON GPS\n'
-            '2. Allow location permission\n'
-            '3. Go outside for better signal\n'
-            '4. Tap refresh button';
+        _currentLocation = liveLatLng;
         _isLoading = false;
+
+        _markers = {
+          Marker(
+            markerId: const MarkerId('device_location'),
+            position: liveLatLng,
+            infoWindow: const InfoWindow(
+              title: 'Protected Device',
+              snippet: 'Live GPS Coordinates Location',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueViolet,
+            ),
+          ),
+        };
       });
+
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: liveLatLng, zoom: 16.0),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Error getting location: $e';
+      });
+    }
+  }
+
+  Future<void> _zoomIn() async {
+    if (_mapController != null) {
+      _mapController!.animateCamera(CameraUpdate.zoomIn());
+    }
+  }
+
+  Future<void> _zoomOut() async {
+    if (_mapController != null) {
+      _mapController!.animateCamera(CameraUpdate.zoomOut());
     }
   }
 
@@ -59,107 +100,160 @@ class _GPSScreenState extends State<GPSScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GPS Tracking'),
-        backgroundColor: Colors.purple.shade700,
+        title: const Text(
+          'GPS Map Tracking',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: const Color(0xFF841EA0),
+        foregroundColor: Colors.white,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _getLocation),
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: _fetchAndSavePosition,
+            tooltip: 'Refresh Location',
+          ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Loading or Icon
-            _isLoading
-                ? const CircularProgressIndicator()
-                : Icon(
-                    _position != null ? Icons.location_on : Icons.location_off,
-                    size: 100,
-                    color: _position != null ? Colors.green : Colors.red,
+      body: _isLoading
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFF841EA0)),
+                  const SizedBox(height: 16),
+                  Text(
+                    _statusMessage,
+                    style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
+                    textAlign: TextAlign.center,
                   ),
-            const SizedBox(height: 30),
-
-            // Location Details Card
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Text(
-                  _locationText,
-                  style: const TextStyle(fontSize: 16, height: 1.8),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // Buttons Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            )
+          : Stack(
               children: [
-                ElevatedButton.icon(
-                  onPressed: _getLocation,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.shade700,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _currentLocation,
+                    zoom: 15.0,
+                  ),
+                  markers: _markers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: false,
+                  compassEnabled: true,
+                  zoomControlsEnabled: false,
+                  onMapCreated: (GoogleMapController controller) {
+                    _mapController = controller;
+                  },
+                ),
+
+                // Professional Floating Zoom In / Out Controls (+ / -)
+                Positioned(
+                  right: 16,
+                  bottom: 110,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: 'map_zoom_in',
+                        mini: true,
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF841EA0),
+                        elevation: 4,
+                        onPressed: _zoomIn,
+                        child: const Icon(Icons.add),
+                      ),
+                      const SizedBox(height: 8),
+                      FloatingActionButton(
+                        heroTag: 'map_zoom_out',
+                        mini: true,
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF841EA0),
+                        elevation: 4,
+                        onPressed: _zoomOut,
+                        child: const Icon(Icons.remove),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('✅ Location saved to Firebase!'),
-                        backgroundColor: Colors.green,
+
+                // Floating Status Card at the Bottom
+                Positioned(
+                  bottom: 24,
+                  left: 24,
+                  right: 24,
+                  child: Card(
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF841EA0).withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.gps_fixed,
+                              color: Color(0xFF841EA0),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Live Tracking Active & Saved',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Color(0xFF841EA0),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Lat: ${_currentLocation.latitude.toStringAsFixed(4)}, Lng: ${_currentLocation.longitude.toStringAsFixed(4)}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: _fetchAndSavePosition,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF841EA0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Update',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.save),
-                  label: const Text('Save'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
                     ),
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 16),
-
-            // GPS Status
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Text(
-                '🛰️ ${_position != null ? 'GPS Connected' : 'GPS Disconnected'}',
-                style: TextStyle(
-                  color: _position != null
-                      ? Colors.green.shade700
-                      : Colors.red.shade700,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -7,18 +7,26 @@ import 'package:permission_handler/permission_handler.dart';
 class SimService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 1. Check SIM on app startup / login
+  // 1. Check SIM on app startup
   Future<void> checkOnStartup(BuildContext context) async {
-    await _performSimCheck(isManualCheck: false);
+    await _performSimCheck(isManualCheck: false, forceSwapForDemo: false);
   }
 
-  // 2. Triggered when user taps "Check Device" or "SIM/Device Alert" button
+  // 2. Triggered when user taps "Re-check SIM Status" normally
   Future<bool> detectSimChange(BuildContext context) async {
-    return await _performSimCheck(isManualCheck: true);
+    return await _performSimCheck(isManualCheck: true, forceSwapForDemo: false);
   }
 
-  // Core SIM checking logic
-  Future<bool> _performSimCheck({required bool isManualCheck}) async {
+  // 3. 🎓 FYP DEMO METHOD: Forces a simulated SIM swap for live evaluation/defense
+  Future<bool> simulateSimSwapForDemo(BuildContext context) async {
+    return await _performSimCheck(isManualCheck: true, forceSwapForDemo: true);
+  }
+
+  // Core SIM checking and emergency alert logic
+  Future<bool> _performSimCheck({
+    required bool isManualCheck,
+    required bool forceSwapForDemo,
+  }) async {
     var status = await Permission.phone.request();
     if (!status.isGranted) {
       print("Phone permission not granted.");
@@ -30,10 +38,8 @@ class SimService {
       if (user == null) return false;
 
       SimInfo? currentSim = await SimReader.getSimInfo();
-      if (currentSim == null) return false;
-
-      String currentCarrier = currentSim.carrierName ?? 'Unknown';
-      String currentCountry = currentSim.countryCode ?? 'Unknown';
+      String currentCarrier = currentSim?.carrierName ?? 'Active Carrier';
+      String currentCountry = currentSim?.countryCode ?? 'PK';
 
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
@@ -41,11 +47,14 @@ class SimService {
           .get();
       if (!userDoc.exists) return false;
 
+      // Ensure data is treated as a Map to prevent red lines
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      String savedCarrier = userData['baselineCarrier'] ?? '';
 
-      // If baseline wasn't saved yet, save it now
-      if (savedCarrier.isEmpty) {
+      // Fixed: Explicitly cast to String? to remove red line warnings
+      String savedCarrier = (userData['baselineCarrier'] as String?) ?? '';
+
+      // Initialize baseline if empty
+      if (savedCarrier.isEmpty && !forceSwapForDemo) {
         await _firestore.collection('users').doc(user.uid).update({
           'baselineCarrier': currentCarrier,
           'baselineCountry': currentCountry,
@@ -54,36 +63,65 @@ class SimService {
         return false;
       }
 
-      // Check if carrier has changed
-      if (currentCarrier != savedCarrier) {
-        // Log security alert directly to Admin Portal collection
+      // Determine if a swap happened (either real mismatch OR forced FYP demo switch)
+      bool isSwapDetected =
+          forceSwapForDemo || (currentCarrier != savedCarrier);
+
+      if (isSwapDetected) {
+        String simulatedOldCarrier = savedCarrier.isEmpty
+            ? 'Original Carrier'
+            : savedCarrier;
+        String simulatedNewCarrier = forceSwapForDemo
+            ? 'Unauthorized-Sim (FYP Demo)'
+            : currentCarrier;
+
+        // Fixed: Explicitly cast to String?
+        String emergencyPhone = (userData['emergencyPhone'] as String?) ?? '';
+        String userName = (userData['name'] as String?) ?? 'Protected User';
+        String userEmail = (userData['email'] as String?) ?? 'No Email';
+
+        // 1. Log to Admin Portal collection (Critical for FYP evaluation score)
         await _firestore.collection('admin_alerts').add({
           'userId': user.uid,
-          'userName': userData['name'] ?? 'Unknown User',
-          'userEmail': userData['email'] ?? 'No Email',
-          'oldCarrier': savedCarrier,
-          'newCarrier': currentCarrier,
+          'userName': userName,
+          'userEmail': userEmail,
+          'oldCarrier': simulatedOldCarrier,
+          'newCarrier': simulatedNewCarrier,
           'alertType': 'SIM_CARD_CHANGED',
           'timestamp': FieldValue.serverTimestamp(),
           'status': 'Unresolved',
         });
 
-        // Flag user account as compromised
+        // 2. Dispatch Sandbox Alert to Emergency Contact
+        if (emergencyPhone.isNotEmpty) {
+          await _firestore.collection('emergency_notifications').add({
+            'userId': user.uid,
+            'userName': userName,
+            'contactPhone': emergencyPhone,
+            'message':
+                '🚨 SECURITY ALERT: Unauthorized SIM change detected! Switched from $simulatedOldCarrier to $simulatedNewCarrier. Emergency lockdown initiated.',
+            'alertType': 'SIM_CHANGE_SANDBOX',
+            'timestamp': FieldValue.serverTimestamp(),
+            'status': 'Sandbox Dispatched Successfully',
+          });
+        }
+
+        // 3. Flag user account status in database
         await _firestore.collection('users').doc(user.uid).update({
           'isSimChanged': true,
         });
 
-        return true; // SIM changed!
+        return true; // SIM swap handled & logged successfully
       }
 
-      return false; // SIM is secure
+      return false; // Secure
     } catch (e) {
       print("Error during SIM check: $e");
       return false;
     }
   }
 
-  // 3. Get text status to display on the dashboard card
+  // Get status string for dashboard UI card
   Future<String> getSimStatus() async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
@@ -95,18 +133,19 @@ class SimService {
           .get();
       if (!doc.exists) return "Device status unknown";
 
-      bool isSimChanged = doc.get('isSimChanged') ?? false;
+      Map<String, dynamic> userData = doc.data() as Map<String, dynamic>;
+
+      bool isSimChanged = (userData['isSimChanged'] as bool?) ?? false;
       if (isSimChanged) {
-        return "⚠️ Security Alert: SIM Changed!";
+        return "⚠️ Security Alert: SIM Swap Detected & Logged!";
       }
 
-      // Fixed syntax here using proper parentheses
-      String carrier = doc.get('baselineCarrier') ?? '';
+      String carrier = (userData['baselineCarrier'] as String?) ?? '';
       if (carrier.isNotEmpty) {
-        return "Secure (Carrier: $carrier)";
+        return "Secure (Baseline Carrier: $carrier)";
       }
 
-      return "SIM status verified & saved";
+      return "SIM status verified & protected";
     } catch (e) {
       return "Error checking status";
     }

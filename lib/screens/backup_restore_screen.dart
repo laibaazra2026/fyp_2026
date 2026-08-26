@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../services/backup_restore_service.dart';
 
 class BackupRestoreScreen extends StatefulWidget {
@@ -10,70 +8,45 @@ class BackupRestoreScreen extends StatefulWidget {
   State<BackupRestoreScreen> createState() => _BackupRestoreScreenState();
 }
 
-class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
-  final BackupRestoreService _backupService = BackupRestoreService();
+class _BackupRestoreScreenState extends State<BackupRestoreScreen>
+    with SingleTickerProviderStateMixin {
+  final BackupRestoreService _service = BackupRestoreService();
+  late TabController _tabController;
   bool _isLoading = false;
+  String _statusMessage = '';
 
-  // Backup Contacts Action
-  void _handleBackupContacts() async {
-    setState(() => _isLoading = true);
-    bool success = await _backupService.backupContacts();
-    setState(() => _isLoading = false);
+  List<dynamic> _restoredContacts = [];
+  List<dynamic> _restoredCallLogs = [];
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? '✅ All Contacts Backed Up Successfully!'
-              : '❌ Failed to backup contacts.',
-        ),
-        backgroundColor: success ? Colors.green : Colors.red,
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
-  // Restore Contacts Action
-  void _handleRestoreContacts() async {
+  Future<void> _handleBackup() async {
     setState(() => _isLoading = true);
-    bool success = await _backupService.restoreContacts();
-    setState(() => _isLoading = false);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? '🔄 Contacts Restored to Phone Successfully!'
-              : '❌ Failed to restore contacts.',
-        ),
-        backgroundColor: success ? Colors.green : Colors.red,
-      ),
-    );
+    bool success = await _service.backupData();
+    setState(() {
+      _isLoading = false;
+      _statusMessage = success ? 'Backup successful ☁️' : 'Backup failed ❌';
+    });
   }
 
-  // Pick & Backup Photo Action
-  void _handleBackupPhoto() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      setState(() => _isLoading = true);
-      bool success = await _backupService.backupMedia(File(image.path));
-      setState(() => _isLoading = false);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? '📸 Media/Photo Backed Up Successfully!'
-                : '❌ Failed to upload photo.',
-          ),
-          backgroundColor: success ? Colors.green : Colors.red,
-        ),
-      );
-    }
+  Future<void> _handleRestore() async {
+    setState(() => _isLoading = true);
+    var data = await _service.restoreData();
+    setState(() {
+      _isLoading = false;
+      if (data != null) {
+        _restoredContacts = data['contacts'];
+        _restoredCallLogs = data['callLogs'];
+        _statusMessage =
+            'Restored ${_restoredContacts.length} contacts and ${_restoredCallLogs.length} call logs! ✅';
+      } else {
+        _statusMessage = 'Restore failed or no backup found ❌';
+      }
+    });
   }
 
   @override
@@ -81,89 +54,97 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Backup & Restore',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          'Cloud Backup & Restore',
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.purple.shade700,
         iconTheme: const IconThemeData(color: Colors.white),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+          tabs: const [
+            Tab(text: 'Restored Contacts'),
+            Tab(text: 'Restored Call Logs'),
+          ],
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Cloud Data Recovery',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Secure your phone contacts and important media to Firebase. Restore them anytime, even after a factory reset.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // 1. Backup Contacts Button
-                  ElevatedButton.icon(
-                    onPressed: _handleBackupContacts,
-                    icon: const Icon(Icons.contacts, color: Colors.white),
-                    label: const Text(
-                      'Backup All Contacts',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple.shade700,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 2. Restore Contacts Button
-                  OutlinedButton.icon(
-                    onPressed: _handleRestoreContacts,
-                    icon: const Icon(Icons.restore, color: Colors.purple),
-                    label: const Text(
-                      'Restore Contacts to Phone',
-                      style: TextStyle(color: Colors.purple, fontSize: 16),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: Colors.purple.shade700, width: 2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 3. Backup Media / Photos Button
-                  ElevatedButton.icon(
-                    onPressed: _handleBackupPhoto,
-                    icon: const Icon(Icons.photo_library, color: Colors.white),
-                    label: const Text(
-                      'Backup Photo / Media',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal.shade700,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ],
+      body: Column(
+        children: [
+          if (_statusMessage.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                _statusMessage,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _handleBackup,
+                  icon: const Icon(Icons.cloud_upload, color: Colors.white),
+                  label: const Text(
+                    'Backup Now',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade700,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _handleRestore,
+                  icon: const Icon(Icons.cloud_download, color: Colors.white),
+                  label: const Text(
+                    'Restore Data',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_isLoading) const CircularProgressIndicator(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                ListView.builder(
+                  itemCount: _restoredContacts.length,
+                  itemBuilder: (context, index) {
+                    var c = _restoredContacts[index];
+                    return ListTile(
+                      leading: const Icon(Icons.person, color: Colors.purple),
+                      title: Text(c['name'] ?? 'Unknown'),
+                      subtitle: Text(c['phone'] ?? ''),
+                    );
+                  },
+                ),
+                ListView.builder(
+                  itemCount: _restoredCallLogs.length,
+                  itemBuilder: (context, index) {
+                    var log = _restoredCallLogs[index];
+                    return ListTile(
+                      leading: const Icon(Icons.call, color: Colors.teal),
+                      title: Text(log['name'] ?? 'Unknown'),
+                      subtitle: Text(log['number'] ?? ''),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

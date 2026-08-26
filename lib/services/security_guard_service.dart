@@ -6,7 +6,6 @@ class SecurityGuardService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Check if Theft Mode is active
   Future<bool> isTheftModeActive() async {
     try {
       final user = _auth.currentUser;
@@ -16,40 +15,48 @@ class SecurityGuardService {
           .collection('users')
           .doc(user.uid)
           .get();
+
       if (doc.exists && doc.data() != null) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        return data['theftMode'] ?? false;
+        return data['isTheftModeOn'] ?? data['theftMode'] ?? false;
       }
       return false;
     } catch (e) {
-      print('Error checking theft mode: $e');
+      print('❌ Error checking theft mode: $e');
       return false;
     }
   }
 
-  // UNIVERSAL WRAPPER: Runs ANY module only if Theft Mode is ON
   Future<void> runModuleIfTheftModeOn({
-    required Function() moduleTask,
+    required Function moduleTask,
     required BuildContext context,
     required String moduleName,
   }) async {
     bool theftModeOn = await isTheftModeActive();
 
     if (!theftModeOn) {
-      // Theft Mode is OFF -> Block the module and show a warning
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '⚠️ Cannot run $moduleName. Please turn ON Theft Mode first!',
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '⚠️ Cannot run $moduleName. Please turn ON Theft Mode first!',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return; // Stop completely! Module will not run.
+        );
+      }
+      return;
     }
 
-    // Theft Mode is ON -> Safely execute the module
     print('✅ Theft Mode is ON. Executing $moduleName...');
-    moduleTask();
+    try {
+      final result = moduleTask();
+      if (result is Future) {
+        await result;
+      }
+    } catch (e) {
+      print('❌ Error executing module $moduleName: $e');
+    }
   }
 }

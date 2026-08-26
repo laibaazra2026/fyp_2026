@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -100,7 +101,8 @@ class IntruderScreen extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final data =
                               docs[index].data() as Map<String, dynamic>;
-                          final imageUrl = data['url'] ?? '';
+                          final String? base64String = data['imageBase64'];
+                          final String imageUrl = data['url'] ?? '';
                           final timestamp = data['timestamp'] != null
                               ? (data['timestamp'] as Timestamp)
                                     .toDate()
@@ -116,41 +118,73 @@ class IntruderScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (imageUrl.isNotEmpty)
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(12),
-                                    ),
-                                    child: Image.network(
-                                      imageUrl,
-                                      height: 220,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      loadingBuilder:
-                                          (context, child, progress) {
-                                            if (progress == null) return child;
-                                            return Container(
-                                              height: 220,
-                                              color: Colors.grey[200],
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
-                                            );
-                                          },
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
+                                // Render Image via Base64 (instant) or Network (fallback)
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12),
+                                  ),
+                                  child:
+                                      base64String != null &&
+                                          base64String.isNotEmpty
+                                      ? Image.memory(
+                                          base64Decode(base64String),
+                                          height: 220,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) => Container(
                                                 height: 220,
                                                 color: Colors.grey[300],
                                                 child: const Center(
                                                   child: Text(
-                                                    'Failed to load image',
+                                                    'Failed to load local image',
                                                   ),
                                                 ),
                                               ),
-                                    ),
-                                  ),
+                                        )
+                                      : imageUrl.isNotEmpty
+                                      ? Image.network(
+                                          imageUrl,
+                                          height: 220,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder:
+                                              (context, child, progress) {
+                                                if (progress == null)
+                                                  return child;
+                                                return Container(
+                                                  height: 220,
+                                                  color: Colors.grey[200],
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
+                                                );
+                                              },
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                                    height: 220,
+                                                    color: Colors.grey[300],
+                                                    child: const Center(
+                                                      child: Text(
+                                                        'Failed to load image',
+                                                      ),
+                                                    ),
+                                                  ),
+                                        )
+                                      : Container(
+                                          height: 220,
+                                          color: Colors.grey[200],
+                                          child: const Center(
+                                            child: Text('No image available'),
+                                          ),
+                                        ),
+                                ),
                                 Padding(
                                   padding: const EdgeInsets.all(16.0),
                                   child: Row(

@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Login - Device Protection</title>
 
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
-  </script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <!-- 1. Added Firestore Script -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
     <style>
         * {
             margin: 0;
@@ -102,20 +103,21 @@
     </div>
 
     <script>
-        // Firebase config (YOU NEED TO ADD YOUR CONFIG)
+        // Firebase config
         const firebaseConfig = {
-  apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
-  authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
-  projectId: "fyp-mobile-app-and-web-portal",
-  storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
-  messagingSenderId: "38986827146",
-  appId: "1:38986827146:web:9042f34efac22b99163473"
-};
+          apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+          authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+          projectId: "fyp-mobile-app-and-web-portal",
+          storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+          messagingSenderId: "38986827146",
+          appId: "1:38986827146:web:9042f34efac22b99163473"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const db = firebase.firestore(); // 2. Initialized Firestore instance
 
-        document.getElementById('loginBtn').addEventListener('click', () => {
+        document.getElementById('loginBtn').addEventListener('click', async () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const error = document.getElementById('error');
@@ -125,13 +127,33 @@
                 return;
             }
 
-            auth.signInWithEmailAndPassword(email, password)
-                .then(() => {
-                    window.location.href = 'dashboard.html';
-                })
-                .catch((err) => {
-                    error.textContent = err.message;
-                });
+            try {
+                // 3. Authenticate user
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // 4. Fetch user document from Firestore to check role
+                const userDoc = await db.collection('users').doc(user.uid).get();
+
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    const role = userData.role;
+
+                    if (role === 'admin') {
+                        // Allow access to dashboard
+                        window.location.href = 'dashboard.html';
+                    } else {
+                        // Block regular users
+                        error.textContent = 'Access Denied: Not an admin account.';
+                        await auth.signOut();
+                    }
+                } else {
+                    error.textContent = 'User profile data not found in database.';
+                    await auth.signOut();
+                }
+            } catch (err) {
+                error.textContent = err.message;
+            }
         });
     </script>
 

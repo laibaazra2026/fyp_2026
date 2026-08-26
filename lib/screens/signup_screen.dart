@@ -27,15 +27,19 @@ class _SignupScreenState extends State<SignupScreen> {
   // Password Security Rules
   String? _validatePassword(String password) {
     if (password.isEmpty) return 'Password cannot be empty.';
-    if (password.length < 8)
+    if (password.length < 8) {
       return 'Password must be at least 8 characters long.';
+    }
     if (password.contains(' ')) return 'Password cannot contain spaces.';
-    if (!password.contains(RegExp(r'[A-Z]')))
+    if (!password.contains(RegExp(r'[A-Z]'))) {
       return 'Password must contain at least one uppercase letter.';
-    if (!password.contains(RegExp(r'[a-z]')))
+    }
+    if (!password.contains(RegExp(r'[a-z]'))) {
       return 'Password must contain at least one lowercase letter.';
-    if (!password.contains(RegExp(r'[0-9]')))
+    }
+    if (!password.contains(RegExp(r'[0-9]'))) {
       return 'Password must contain at least one number.';
+    }
     return null;
   }
 
@@ -518,7 +522,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ),
                                 )
                               : const Text(
-                                  'SIGN UP & VERIFY BOTH PHONES',
+                                  'Sign up ' ,
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,

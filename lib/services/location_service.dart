@@ -7,16 +7,21 @@ class LocationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ========== REQUEST PERMISSION ==========
+  // ========== REQUEST PERMISSION (Foreground & Background) ==========
   Future<bool> requestPermission() async {
-    PermissionStatus status = await Permission.location.request();
-    if (status.isDenied) {
+    // 1. Request standard foreground location permission first
+    PermissionStatus foregroundStatus = await Permission.location.request();
+
+    if (foregroundStatus.isDenied || foregroundStatus.isPermanentlyDenied) {
       return false;
     }
-    if (status.isPermanentlyDenied) {
-      return false;
-    }
-    return true;
+
+    // 2. Request background location permission ("Allow all the time") for Android 14+
+    PermissionStatus backgroundStatus = await Permission.locationAlways
+        .request();
+
+    // Returns true if location access is granted (either while-in-use or all-the-time)
+    return foregroundStatus.isGranted || backgroundStatus.isGranted;
   }
 
   // ========== CHECK GPS ENABLED ==========
