@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../services/sim_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SimScreen extends StatefulWidget {
   const SimScreen({super.key});
@@ -11,72 +13,22 @@ class SimScreen extends StatefulWidget {
 class _SimScreenState extends State<SimScreen> {
   final SimService _simService = SimService();
   bool _isLoading = true;
-  String _simStatusText = 'Checking SIM security status...';
-  bool _isSimSwapped = false;
+  List<Map<String, dynamic>> _simLogs = [];
 
   @override
   void initState() {
     super.initState();
-    _loadSimStatus();
+    _loadSimData();
   }
 
-  Future<void> _loadSimStatus() async {
+  Future<void> _loadSimData() async {
     setState(() => _isLoading = true);
-    String status = await _simService.getSimStatus();
+    await _simService.checkPhysicalSimSwap();
+    List<Map<String, dynamic>> logs = await _simService.getUserSimLogs();
     setState(() {
-      _simStatusText = status;
-      _isSimSwapped = status.contains('Alert') || status.contains('Changed');
+      _simLogs = logs;
       _isLoading = false;
     });
-  }
-
-  // Normal check button
-  Future<void> _triggerCheck() async {
-    setState(() {
-      _isLoading = true;
-      _simStatusText = 'Scanning active SIM modules...';
-    });
-
-    bool isChanged = await _simService.detectSimChange(context);
-    await _loadSimStatus();
-
-    if (!mounted) return;
-    _showResultSnackbar(isChanged);
-  }
-
-  // 🎓 FYP Defense Demo Trigger Button
-  Future<void> _triggerFypDemoSwap() async {
-    setState(() {
-      _isLoading = true;
-      _simStatusText = 'Simulating unauthorized SIM replacement...';
-    });
-
-    bool isChanged = await _simService.simulateSimSwapForDemo(context);
-    await _loadSimStatus();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          '🎓 FYP Demo: Simulated SIM swap executed! Emergency alert dispatched to sandbox contact.',
-        ),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 4),
-      ),
-    );
-  }
-
-  void _showResultSnackbar(bool isChanged) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isChanged
-              ? '🚨 SIM Swap Detected! Alert sent to emergency contacts.'
-              : '✅ SIM card is secure and verified.',
-        ),
-        backgroundColor: isChanged ? Colors.red : Colors.green,
-      ),
-    );
   }
 
   @override
@@ -84,136 +36,109 @@ class _SimScreenState extends State<SimScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'SIM Security & Swap Alert',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          'SIM Change Logs',
+          style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF841EA0),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.purple.shade700,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Card(
-              elevation: 10,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.purple))
+          : _simLogs.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.sim_card_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No SIM Swaps Detected',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Your device SIM is secure and verified.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(30.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color:
-                            (_isSimSwapped
-                                    ? Colors.red
-                                    : const Color(0xFF841EA0))
-                                .withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isSimSwapped
-                            ? Icons.warning_amber_rounded
-                            : Icons.sim_card,
-                        size: 70,
-                        color: _isSimSwapped
-                            ? Colors.red
-                            : const Color(0xFF841EA0),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      _isSimSwapped
-                          ? 'SIM Swap Alert Triggered!'
-                          : 'SIM Security Active',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: _isSimSwapped
-                            ? Colors.red
-                            : const Color(0xFF841EA0),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _isLoading
-                        ? const CircularProgressIndicator()
-                        : Text(
-                            _simStatusText,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: _isSimSwapped
-                                  ? Colors.red.shade700
-                                  : Colors.grey.shade700,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                    const SizedBox(height: 30),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadSimData,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _simLogs.length,
+                itemBuilder: (context, index) {
+                  var log = _simLogs[index];
+                  Timestamp? timestamp = log['timestamp'] as Timestamp?;
+                  String formattedDate = timestamp != null
+                      ? DateFormat(
+                          'yyyy-MM-dd – hh:mm a',
+                        ).format(timestamp.toDate())
+                      : 'Just now';
 
-                    // Button 1: Normal Re-check
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _triggerCheck,
-                        icon: const Icon(Icons.refresh, color: Colors.white),
-                        label: const Text(
-                          'Re-check SIM Status',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF841EA0),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
+                  return Card(
+                    elevation: 3,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 12),
-
-                    // Button 2: FYP Live Evaluation Demo Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _isLoading ? null : _triggerFypDemoSwap,
-                        icon: const Icon(
-                          Icons.bug_report,
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.warning_amber_rounded,
                           color: Colors.orange,
                         ),
-                        label: const Text(
-                          '🧪 Test SIM Swap (FYP Demo)',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Colors.orange,
-                            width: 2,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                      ),
+                      title: const Text(
+                        'Physical SIM Changed',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            'Device: ${log['deviceModel'] ?? 'Unknown'}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          Text(
+                            'Time: $formattedDate',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: const Chip(
+                        label: Text(
+                          'Alert',
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

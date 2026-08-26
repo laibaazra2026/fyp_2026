@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart'; // For native Android location permission popups
 import 'package:permission_handler/permission_handler.dart'; // For Camera, Phone, Contacts, Storage
 import '../services/security_guard_service.dart'; // Points to your services folder
+import '../utils/feature_access_card.dart'; // Change to '../widgets/feature_access_card.dart' if moved
 import 'login_screen.dart';
 import 'gps_screen.dart';
 import 'subscription_screen.dart';
@@ -28,6 +29,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchInitialTheftMode();
+
+    // 🚀 Trigger the upgrade/unlock prompt automatically after login load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showUpgradePopupIfNeeded();
+    });
   }
 
   // Fetch initial switch UI state from Firestore on load
@@ -36,6 +42,89 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isTheftModeActive = active;
     });
+  }
+
+  // Show popup after login to unlock full features / upgrade
+  void _showUpgradePopupIfNeeded() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          contentPadding: const EdgeInsets.all(20),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.star,
+                  color: Colors.purple.shade700,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Unlock All Features! 🚀',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You are currently on the Free Tier. Upgrade to Pro to unlock cloud backups, advanced intruder logs, and maximum device protection.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SubscriptionScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Upgrade Now',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Maybe Later',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // Update Theft Mode state in Firestore when toggle switch changes
@@ -55,11 +144,103 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ==================== 💳 SUBSCRIPTION INTERCEPTOR ====================
+
+  Future<void> _checkSubscriptionAndProceed({
+    required BuildContext context,
+    required String featureName,
+    required VoidCallback onSubscribed,
+  }) async {
+    if (user == null) return;
+
+    // Show loading indicator while checking Firestore
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.purple)),
+    );
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .get();
+
+      bool isPro = false;
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>?;
+        isPro = data?['isPro'] ?? data?['isSubscribed'] ?? false;
+      }
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // Dismiss loading dialog
+
+      if (isPro) {
+        onSubscribed();
+      } else {
+        _showSubscriptionRequiredDialog(context, featureName);
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Dismiss loading dialog
+      _showSubscriptionRequiredDialog(context, featureName);
+    }
+  }
+
+  void _showSubscriptionRequiredDialog(
+    BuildContext context,
+    String featureName,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.lock, color: Colors.purple.shade700),
+            const SizedBox(width: 8),
+            const Text('Pro Feature'),
+          ],
+        ),
+        content: Text(
+          '$featureName is an exclusive feature available on the Pro plan. Upgrade now to unlock it instantly!',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SubscriptionScreen(),
+                ),
+              );
+            },
+            child: const Text(
+              'View Plans',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ==================== 🛡️ MODULE PERMISSION HANDLERS ====================
 
-  // 1. GPS Tracking Permission (Triggers native Android "While using the app" / "Deny" popup)
   Future<bool> _checkAndRequestLocationPermission(BuildContext context) async {
-    // Step 1: Check if global device location services are enabled
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (!context.mounted) return false;
@@ -71,7 +252,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return false;
     }
 
-    // Step 2: Check app-level permissions and trigger the native Allow/Deny popup
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -84,7 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // Step 3: Handle permanently denied permissions
     if (permission == LocationPermission.deniedForever) {
       if (!context.mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -101,7 +280,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  // 2. SIM Change Detection Permission (Triggers native phone state permission popup)
   Future<bool> _checkAndRequestSimPermission(BuildContext context) async {
     PermissionStatus status = await Permission.phone.request();
     if (status.isDenied || status.isPermanentlyDenied) {
@@ -118,7 +296,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  // 3. Intruder Capture Permission (Triggers native camera permission popup)
   Future<bool> _checkAndRequestCameraPermission(BuildContext context) async {
     PermissionStatus cameraStatus = await Permission.camera.request();
     if (cameraStatus.isDenied || cameraStatus.isPermanentlyDenied) {
@@ -133,7 +310,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  // 4. Backup & Restore Permissions (Triggers native contacts & storage permission popup)
   Future<bool> _checkAndRequestBackupPermissions(BuildContext context) async {
     Map<Permission, PermissionStatus> statuses = await [
       Permission.contacts,
@@ -151,8 +327,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return true;
   }
-
-  // =======================================================================
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
@@ -459,7 +633,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
 
-            // 🛡️ Protected Module Grid Cards with Native System Permission Popups
+            // 🛡️ Protected Module Grid Cards using FeatureAccessCard
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -468,8 +642,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisSpacing: 14,
               childAspectRatio: 1.1,
               children: [
-                // 1. GPS Tracking Module (Triggers Native Location Popup)
-                _buildModuleCard(
+                FeatureAccessCard(
                   title: 'GPS Tracking',
                   subtitle: 'Live Map Location',
                   icon: Icons.my_location,
@@ -493,8 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-                // 2. SIM Change Detection Module (Triggers Native Phone State Popup)
-                _buildModuleCard(
+                FeatureAccessCard(
                   title: 'SIM/Device Alert',
                   subtitle: 'Tap to check security',
                   icon: Icons.sim_card,
@@ -518,109 +690,73 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-                // 3. Intruder Capture Module (Triggers Native Camera Popup)
-                _buildModuleCard(
+                FeatureAccessCard(
                   title: 'Intruder Capture',
                   subtitle: 'Failed unlock snaps',
                   icon: Icons.camera_alt,
                   color: Colors.red,
+                  isLocked: true, // 🔒 Shows Lock Badge
                   onTap: () {
-                    _securityGuard.runModuleIfTheftModeOn(
+                    _checkSubscriptionAndProceed(
                       context: context,
-                      moduleName: 'Intruder Capture',
-                      moduleTask: () async {
-                        bool hasPermission =
-                            await _checkAndRequestCameraPermission(context);
-                        if (hasPermission && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Camera permission granted for intruder capture!',
-                              ),
-                            ),
-                          );
-                        }
+                      featureName: 'Intruder Capture',
+                      onSubscribed: () async {
+                        _securityGuard.runModuleIfTheftModeOn(
+                          context: context,
+                          moduleName: 'Intruder Capture',
+                          moduleTask: () async {
+                            bool hasPermission =
+                                await _checkAndRequestCameraPermission(context);
+                            if (hasPermission && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Opening Intruder Capture Screen...',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        );
                       },
                     );
                   },
                 ),
-                // 4. Backup & Restore Module (Triggers Native Contacts Popup)
-                _buildModuleCard(
+                FeatureAccessCard(
                   title: 'Backup & Restore',
                   subtitle: 'Contacts & Call Logs ☁️',
                   icon: Icons.cloud_sync,
                   color: Colors.purple,
+                  isLocked: true, // 🔒 Shows Lock Badge
                   onTap: () {
-                    _securityGuard.runModuleIfTheftModeOn(
+                    _checkSubscriptionAndProceed(
                       context: context,
-                      moduleName: 'Backup & Restore',
-                      moduleTask: () async {
-                        bool hasPermission =
-                            await _checkAndRequestBackupPermissions(context);
-                        if (hasPermission && context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const BackupRestoreScreen(),
-                            ),
-                          );
-                        }
+                      featureName: 'Cloud Backup & Restore',
+                      onSubscribed: () async {
+                        _securityGuard.runModuleIfTheftModeOn(
+                          context: context,
+                          moduleName: 'Backup & Restore',
+                          moduleTask: () async {
+                            bool hasPermission =
+                                await _checkAndRequestBackupPermissions(
+                                  context,
+                                );
+                            if (hasPermission && context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const BackupRestoreScreen(),
+                                ),
+                              );
+                            }
+                          },
+                        );
                       },
                     );
                   },
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModuleCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
             ),
           ],
         ),
