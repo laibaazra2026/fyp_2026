@@ -88,7 +88,6 @@
         async function loadPaidUsersTable() {
             const tableBody = document.getElementById('paidTableBody');
             try {
-                // Fetch users from Firestore
                 const snapshot = await db.collection('users').get();
                 tableBody.innerHTML = '';
 
@@ -96,24 +95,27 @@
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    const plan = data.subscriptionPlan || 'Free';
+                    // Checks fields including 'plan' to match mobile app updates
+                    const plan = data.subscriptionPlan || data.plan || 'Free';
 
-                    // FILTER: Only show users whose plan is NOT 'Free' (i.e. Premium or Family)
-                    if (plan !== 'Free' && plan !== '') {
+                    if (plan && plan.toLowerCase() !== 'free' && plan !== '') {
                         paidCount++;
                         const email = data.email || 'N/A';
                         
-                        // Format Firestore Timestamp into a readable date and time string
+                        // Supports multiple date timestamp field naming standards
                         let formattedDate = 'N/A';
-                        if (data.subscribedAt && data.subscribedAt.toDate) {
-                            formattedDate = data.subscribedAt.toDate().toLocaleString();
+                        const timeField = data.subscribedAt || data.timestamp;
+                        if (timeField && typeof timeField.toDate === 'function') {
+                            formattedDate = timeField.toDate().toLocaleString();
+                        } else if (timeField && timeField.seconds) {
+                            formattedDate = new Date(timeField.seconds * 1000).toLocaleString();
                         }
 
                         tableBody.innerHTML += `
                             <tr>
                                 <td><small>${doc.id}</small></td>
                                 <td>${email}</td>
-                                <td><span class="badge">${plan}</span></td>
+                                <td><span class="badge">${plan.toUpperCase()}</span></td>
                                 <td>${formattedDate}</td>
                             </tr>
                         `;

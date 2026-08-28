@@ -37,6 +37,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Future<void> _loadCurrentPlan() async {
     String plan = await _subscriptionService.getCurrentPlan();
+    if (!mounted) return;
     setState(() {
       _currentPlan = plan;
       if (plan == 'premium') _currentPage = 1;
@@ -154,34 +155,44 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     double price,
     String paymentMethod,
   ) async {
-    // 1️⃣ Save details to Firestore via subscription service
-    await _subscriptionService.updateSubscriptionWithMethod(
-      planName.toLowerCase(),
-      price,
-      paymentMethod,
-    );
+    try {
+      // 1️⃣ Save details to Firestore via subscription service
+      await _subscriptionService.updateSubscriptionWithMethod(
+        planName.toLowerCase(),
+        price,
+        paymentMethod,
+      );
 
-    setState(() => _currentPlan = planName.toLowerCase());
+      if (!mounted) return;
 
-    // Play confetti again on successful purchase for extra celebration!
-    _confettiController.play();
+      setState(() => _currentPlan = planName.toLowerCase());
 
-    if (!mounted) return;
+      // Play confetti again on successful purchase for extra celebration!
+      _confettiController.play();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '🎉 Upgraded to $planName via $paymentMethod Successfully!',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '🎉 Upgraded to $planName via $paymentMethod Successfully!',
+          ),
+          backgroundColor: Colors.green,
         ),
-        backgroundColor: Colors.green,
-      ),
-    );
+      );
 
-    // 2️⃣ 🚀 Only redirect user to the Backup & Restore screen if they bought the Family plan!
-    if (planName.toLowerCase() == 'family') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const BackupRestoreScreen()),
+      // 2️⃣ 🚀 Only redirect user to the Backup & Restore screen if they bought the Family plan!
+      if (planName.toLowerCase() == 'family') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const BackupRestoreScreen()),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to complete upgrade: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }

@@ -163,7 +163,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
@@ -181,15 +181,53 @@
 
         let activeUserId = null;
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 activeUserId = user.uid;
                 document.getElementById('header-email').innerText = user.displayName || user.email;
                 document.getElementById('dropdown-email').innerText = user.email;
+
+                // Check user subscription plan from Firestore automatically
+                try {
+                    const userDocRef = doc(db, 'users', activeUserId);
+                    const userDocSnap = await getDoc(userDocRef);
+
+                    if (userDocSnap.exists()) {
+                        const userData = userDocSnap.data();
+                        // Allow access instantly if plan is premium or family, or if explicitly enabled
+                        const isEnabled = userData.plan === 'premium' || userData.plan === 'family' || userData.remoteCommandsEnabled === true;
+
+                        if (!isEnabled) {
+                            showUpgradeModal();
+                        }
+                    } else {
+                        console.warn("User document not found in Firestore.");
+                    }
+                } catch (error) {
+                    console.error("Error checking permissions:", error);
+                }
             } else {
                 window.location.href = 'login.html';
             }
         });
+
+        function showUpgradeModal() {
+            const mainContent = document.querySelector('main');
+            mainContent.innerHTML = `
+                <div class="max-w-md mx-auto mt-16 bg-white p-8 rounded-2xl border border-gray-200 shadow-lg text-center space-y-4">
+                    <div class="w-16 h-16 bg-purple-50 text-[#841EA0] rounded-2xl flex items-center justify-center text-2xl mx-auto shadow-xs">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-900">Remote Commands Locked</h2>
+                    <p class="text-xs text-gray-500 leading-relaxed">
+                        This feature requires an active <strong>Premium</strong> or <strong>Family</strong> plan package. Please complete your subscription purchase inside the mobile app.
+                    </p>
+                    <a href="home.html" class="block w-full py-3 bg-[#841EA0] text-white rounded-xl text-xs font-bold shadow-md hover:bg-purple-700 transition text-center">
+                        Back to Dashboard
+                    </a>
+                </div>
+            `;
+        }
 
         window.sendCommand = async function(type) {
             if (!activeUserId) {
@@ -203,7 +241,6 @@
             statusText.innerText = 'Sending command to your device...';
 
             try {
-                // Automatically write command tied directly to the logged-in user's UID
                 await addDoc(collection(db, 'commands'), {
                     userId: activeUserId,
                     type: type,

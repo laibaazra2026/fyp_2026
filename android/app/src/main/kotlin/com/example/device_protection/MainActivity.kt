@@ -15,20 +15,22 @@ class MainActivity: FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+            val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponent = ComponentName(this, MyAdminReceiver::class.java)
+
             when (call.method) {
+                "isDeviceAdminActive" -> {
+                    result.success(dpm.isAdminActive(adminComponent))
+                }
                 "enableAdmin" -> {
-                    val componentName = ComponentName(this, MyAdminReceiver::class.java)
                     val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
+                        putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
                         putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Admin permission is required to detect wrong password attempts and lock the device remotely.")
                     }
                     startActivityForResult(intent, 1001)
                     result.success("Admin prompt opened")
                 }
                 "lockDevice" -> {
-                    val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-                    val adminComponent = ComponentName(this, MyAdminReceiver::class.java)
-
                     if (dpm.isAdminActive(adminComponent)) {
                         dpm.lockNow()
                         result.success("Device locked successfully")
