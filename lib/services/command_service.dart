@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // ✅ Added for FCM token handling
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import '../main.dart'; // ✅ IMPORT MAIN TO ACCESS THE GLOBAL NAVIGATOR KEY
@@ -16,6 +17,35 @@ class CommandService {
   // ✅ MATCHED WITH MainActivity.kt CHANNEL NAME
   static const platform = MethodChannel('device_protection/admin');
 
+  // ========== SAVE FCM TOKEN (NEW) ==========
+  // Call this right after login to save the device token so background pushes work
+  Future<void> saveFCMToken() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) return;
+
+      // 1. Request notification permissions (important for Android 13+)
+      NotificationSettings settings = await FirebaseMessaging.instance
+          .requestPermission(alert: true, badge: true, sound: true);
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // 2. Get the unique FCM device token
+        String? token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          // 3. Save it to Firestore under the user's document
+          await _firestore.collection('users').doc(user.uid).set({
+            'fcmToken': token,
+          }, SetOptions(merge: true));
+          print('📱 FCM Token saved successfully: $token');
+        }
+      } else {
+        print('⚠️ Notification permissions declined by user');
+      }
+    } catch (e) {
+      print('❌ Error saving FCM token: $e');
+    }
+  }
+
   void listenForCommands(BuildContext context) {
     User? user = _auth.currentUser;
     if (user == null) {
@@ -24,6 +54,9 @@ class CommandService {
     }
 
     print('✅ Listening for commands...');
+
+    // Also trigger FCM token saving whenever command listening starts up after login
+    saveFCMToken();
 
     _firestore
         .collection('commands')
@@ -140,9 +173,15 @@ class CommandService {
           await platform.invokeMethod('isDeviceAdminActive') ?? false;
 
       if (isActive) {
-        await platform.invokeMethod('lockDevice');
-        print('✅ Physical device locked successfully via Method Channel');
-        await _updateCommandStatus(docId, 'completed');
+        try {
+          // ✅ Wrapped platform call in its own try/catch to properly log native errors
+          await platform.invokeMethod('lockDevice');
+          print('✅ Physical device locked successfully via Method Channel');
+          await _updateCommandStatus(docId, 'completed');
+        } catch (platformError) {
+          print('❌ Native lock method error: $platformError');
+          await _updateCommandStatus(docId, 'failed');
+        }
       } else {
         print('⚠️ Device Admin is not active, prompting user...');
         await platform.invokeMethod('enableAdmin');

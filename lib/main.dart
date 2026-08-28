@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:async';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -9,12 +10,38 @@ import 'screens/home_screen.dart';
 import 'services/command_service.dart';
 import 'services/intruder_service.dart';
 
+// ✅ TOP-LEVEL BACKGROUND MESSAGE HANDLER (Must be outside any class)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Ensure Firebase is initialized in the background isolate
+  await Firebase.initializeApp();
+
+  print("📩 Background message received: ${message.data}");
+
+  String type = message.data['type'] ?? '';
+
+  // Execute critical remote commands (like LOCK) instantly when app is closed/killed
+  if (type == 'LOCK') {
+    const platform = MethodChannel('device_protection/admin');
+    try {
+      await platform.invokeMethod('lockDevice');
+      print("🔒 Phone locked successfully from background push!");
+    } catch (e) {
+      print("❌ Failed to lock phone from background: $e");
+    }
+  }
+}
+
 // ✅ 1. GLOBAL NAVIGATOR KEY
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // ✅ REGISTER BACKGROUND MESSAGING HANDLER
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(const MyApp());
 }
 
