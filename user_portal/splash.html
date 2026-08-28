@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Protection - Splash Screen</title>
+    <style>
+        :root {
+            --primary-purple: #841EA0;
+            --purple-light: rgba(132, 30, 160, 0.08);
+            --white: #ffffff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--white);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Splash Container */
+        .splash-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            animation: fadeIn 2s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Shield Icon Container with soft purple glow */
+        .splash-shield-container {
+            padding: 32px;
+            background-color: var(--purple-light);
+            border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(132, 30, 160, 0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 36px;
+            animation: scaleUp 2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0.4); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* SVG matching Flutter's security_rounded icon */
+        .shield-icon {
+            width: 95px;
+            height: 95px;
+            fill: var(--primary-purple);
+        }
+
+        /* Multi-color Crystal Shimmer Gradient matching Flutter ShaderMask */
+        .splash-title {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 14px;
+            background: linear-gradient(90deg, #00ACC1, #841EA0, #FF6F00, #00ACC1);
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s infinite alternate;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        /* Subtitle layout */
+        .splash-subtitle {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1.2px;
+            margin-bottom: 45px;
+        }
+        .sub-secure { color: var(--primary-purple); }
+        .sub-track { color: #00838F; }
+        .sub-protect { color: #FF6F00; }
+        .dot {
+            width: 5px;
+            height: 5px;
+            background-color: #bdbdbd;
+            border-radius: 50%;
+            margin: 0 8px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2.5px solid rgba(132, 30, 160, 0.2);
+            border-top: 2.5px solid var(--primary-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Footer styling */
+        .splash-footer {
+            position: absolute;
+            bottom: 24px;
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--primary-purple);
+            letter-spacing: 1.1px;
+            animation: fadeInFooter 2s ease-in;
+        }
+
+        @keyframes fadeInFooter {
+            0% { opacity: 0; }
+            40% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="splash-content">
+        <div class="splash-shield-container">
+            <!-- Security Shield Vector Icon -->
+            <svg class="shield-icon" viewBox="0 0 24 24">
+                <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.84 8.94,12.5 12,12.5C15.06,12.5 18,13.84 18,15.47C17.76,16 17.47,16.5 17.13,17Z" />
+            </svg>
+        </div>
+        
+        <div class="splash-title">DEVICE PROTECTION</div>
+        
+        <div class="splash-subtitle">
+            <span class="sub-secure">Secure</span>
+            <span class="dot"></span>
+            <span class="sub-track">Track</span>
+            <span class="dot"></span>
+            <span class="sub-protect">Protect</span>
+        </div>
+        
+        <div class="spinner"></div>
+    </div>
+
+    <div class="splash-footer">Developed by : Laiba &amp; Azra</div>
+
+    <script>
+        // Automatically redirects to login.html after 3 seconds (3000ms)
+        setTimeout(() => {
+            window.location.href = 'login.html'; 
+        }, 3000);
+    </script>
+</body>
+</html>

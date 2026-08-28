@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../services/subscription_service.dart';
+import 'backup_restore_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
-
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
@@ -154,7 +154,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     double price,
     String paymentMethod,
   ) async {
-    // Save details to Firestore via subscription service
+    // 1️⃣ Save details to Firestore via subscription service
     await _subscriptionService.updateSubscriptionWithMethod(
       planName.toLowerCase(),
       price,
@@ -166,6 +166,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     // Play confetti again on successful purchase for extra celebration!
     _confettiController.play();
 
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -174,6 +176,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         backgroundColor: Colors.green,
       ),
     );
+
+    // 2️⃣ 🚀 Only redirect user to the Backup & Restore screen if they bought the Family plan!
+    if (planName.toLowerCase() == 'family') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const BackupRestoreScreen()),
+      );
+    }
   }
 
   @override

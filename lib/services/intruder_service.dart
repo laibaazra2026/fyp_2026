@@ -1,125 +1,74 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:camera/camera.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:convert';
 
 class IntruderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // 1. Request Camera Permission
-  static Future<bool> requestCameraPermission() async {
-    PermissionStatus status = await Permission.camera.status;
-    if (!status.isGranted) {
-      status = await Permission.camera.request();
-    }
-    return status.isGranted;
-  }
-
-  // 2. Monitor & Trigger on Incorrect Unlock Attempts
   Future<void> onIncorrectUnlockAttempt() async {
     try {
-      bool hasPermission = await requestCameraPermission();
-      if (!hasPermission) {
-        print("⚠️ Camera permission denied.");
+      print("📸 Starting intruder capture sequence...");
+      User? user = _auth.currentUser;
+
+      if (user == null) {
+        print("❌ Intruder capture aborted: No active user session found.");
         return;
       }
 
-      await captureAndProcessIntruder();
-    } catch (e) {
-      print("❌ Error handling incorrect unlock attempt: $e");
-    }
-  }
-
-  // 3. Core Capture, Base64 Conversion, and Cloud Sync Logic
-  Future<void> captureAndProcessIntruder() async {
-    try {
+      // 1. Initialize available cameras
       final cameras = await availableCameras();
-      if (cameras.isEmpty) return;
+      if (cameras.isEmpty) {
+        print("❌ No cameras available on device.");
+        return;
+      }
 
       final frontCamera = cameras.firstWhere(
         (camera) => camera.lensDirection == CameraLensDirection.front,
         orElse: () => cameras.first,
       );
 
-      final CameraController controller = CameraController(
+      final controller = CameraController(
         frontCamera,
-        ResolutionPreset.medium,
+        ResolutionPreset.low,
         enableAudio: false,
       );
 
       await controller.initialize();
-      XFile imageFile = await controller.takePicture();
-      File file = File(imageFile.path);
+
+      // 2. Take the picture
+      XFile image = await controller.takePicture();
       await controller.dispose();
 
-      // STEP A: Convert image to Base64 so you can display it directly on your mobile card
-      List<int> imageBytes = await file.readAsBytes();
+      // 3. Save locally in the mobile app's storage first (App Local Storage)
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = "intruder_${DateTime.now().millisecondsSinceEpoch}.jpg";
+      final localFile = File('${appDir.path}/$fileName');
+
+      final imageBytes = await image.readAsBytes();
+      await localFile.writeAsBytes(imageBytes);
+      print("✅ Intruder photo saved locally in app at: ${localFile.path}");
+
+      // 4. Convert image bytes to Base64 string for Firestore & Web Portal
       String base64Image = base64Encode(imageBytes);
 
-      print("📱 Intruder photo converted to Base64 successfully!");
-
-      // STEP B: Get user session details
-      User? user = _auth.currentUser;
-      if (user == null) return;
-      String userId = user.uid;
-
-      DocumentSnapshot userDoc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .get();
-      String userName = 'Unknown User';
-      String userEmail = user.email ?? 'No Email';
-
-      if (userDoc.exists && userDoc.data() != null) {
-        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-        userName = data['name'] ?? data['fullName'] ?? 'Unknown User';
-      }
-
-      // STEP C: Upload image file to Firebase Storage for Web Portals
-      String fileName = 'intruder_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference ref = FirebaseStorage.instance
-          .ref()
-          .child('users')
-          .child(userId)
-          .child('intruder_photos')
-          .child(fileName);
-
-      UploadTask uploadTask = ref.putFile(file);
-      TaskSnapshot snapshot = await uploadTask;
-      String downloadUrl = await snapshot.ref.getDownloadURL();
-
-      // STEP D: Save to Firestore (Including Base64 for instant mobile card loading + URL for web portals)
+      // 5. Push to Firestore (Syncs to Mobile App Stream & Web Portal)
       await _firestore.collection('intruder_photos').add({
-        'userId': userId,
-        'userName': userName,
-        'userEmail': userEmail,
-        'url': downloadUrl,
-        'imageBase64':
-            base64Image, // 👈 Directly use this in your mobile UI card
+        'userId': user.uid,
+        'localPath': localFile.path,
+        'imageBase64': base64Image,
         'timestamp': FieldValue.serverTimestamp(),
-        'status': 'Unresolved',
-      });
-
-      // Save to Admin Web Portal collection
-      await _firestore.collection('admin_alerts').add({
-        'userId': userId,
-        'userName': userName,
-        'userEmail': userEmail,
-        'alertType': 'INTRUDER_DETECTED',
-        'imageUrl': downloadUrl,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'Unresolved',
+        'status': 'unresolved',
       });
 
       print(
-        "☁️ Intruder photo processed with Base64 and synced to web portals!",
+        "🚨 Intruder image saved locally and logged to Firestore successfully!",
       );
     } catch (e) {
-      print("❌ Error capturing/processing intruder photo: $e");
+      print("❌ Error during intruder capture or conversion: $e");
     }
   }
 }

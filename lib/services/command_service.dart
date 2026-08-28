@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:device_policy_manager/device_policy_manager.dart';
 import 'package:flutter/services.dart';
 import '../main.dart'; // ✅ IMPORT MAIN TO ACCESS THE GLOBAL NAVIGATOR KEY
 
@@ -10,6 +9,12 @@ class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final AudioPlayer _audioPlayer = AudioPlayer();
+
+  // 🛡️ Track processed command IDs locally to prevent duplicate executions
+  final Set<String> _processedCommands = {};
+
+  // ✅ MATCHED WITH MainActivity.kt CHANNEL NAME
+  static const platform = MethodChannel('device_protection/admin');
 
   void listenForCommands(BuildContext context) {
     User? user = _auth.currentUser;
@@ -28,9 +33,18 @@ class CommandService {
         .listen(
           (snapshot) {
             for (var doc in snapshot.docs) {
+              String docId = doc.id;
+
+              // Skip if already processed in this session
+              if (_processedCommands.contains(docId)) continue;
+
               var data = doc.data();
               print('📩 Command received: ${data['type']}');
-              _executeCommand(context, doc.id, data);
+
+              // Mark as processing locally immediately
+              _processedCommands.add(docId);
+
+              _executeCommand(context, docId, data);
             }
           },
           onError: (e) {
@@ -71,24 +85,41 @@ class CommandService {
         return;
       }
 
-      await _firestore.collection('users').doc(user.uid).update({
+      // 1. Safely create or update Theft Mode in Firestore using set with merge
+      await _firestore.collection('users').doc(user.uid).set({
         'isTheftModeOn': true,
-      });
+      }, SetOptions(merge: true));
 
-      await _updateCommandStatus(docId, 'completed');
-
-      BuildContext? activeContext = context.mounted
-          ? context
-          : navigatorKey.currentContext;
-
-      if (activeContext != null) {
-        ScaffoldMessenger.of(activeContext).showSnackBar(
-          const SnackBar(
-            content: Text('🛡️ Theft Mode Enabled Remotely!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
+      // 2. Check if admin permission is active; if not, prompt for it
+      bool isActive =
+          await platform.invokeMethod('isDeviceAdminActive') ?? false;
+      if (!isActive) {
+        print(
+          '⚠️ Admin not active yet. Prompting user to enable it for intruder capture...',
         );
+        await platform.invokeMethod('enableAdmin');
+      }
+
+      // 3. Mark command as completed
+      await _updateCommandStatus(docId, 'completed');
+      print('🛡️ Theft Mode Enabled Remotely!');
+
+      // Safe UI feedback wrapper using global navigator context fallback
+      try {
+        BuildContext? activeContext = context.mounted
+            ? context
+            : navigatorKey.currentContext;
+        if (activeContext != null) {
+          ScaffoldMessenger.of(activeContext).showSnackBar(
+            const SnackBar(
+              content: Text('🛡️ Theft Mode Enabled Remotely!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (uiError) {
+        print('⚠️ UI notification skipped: $uiError');
       }
     } catch (e) {
       print('❌ Error enabling theft mode: $e');
@@ -96,7 +127,7 @@ class CommandService {
     }
   }
 
-  // ========== LOCK PHONE (FIXED TO lockNow()) ==========
+  // ========== LOCK PHONE ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -105,35 +136,25 @@ class CommandService {
         return;
       }
 
-      // ✅ Trigger native physical screen lock via Method Channel or DevicePolicyManager
-      try {
-        const platform = MethodChannel('com.example.device_protection/lock');
+      bool isActive =
+          await platform.invokeMethod('isDeviceAdminActive') ?? false;
+
+      if (isActive) {
         await platform.invokeMethod('lockDevice');
         print('✅ Physical device locked successfully via Method Channel');
-      } catch (channelError) {
-        print(
-          '⚠️ Method channel lock failed, attempting DevicePolicyManager: $channelError',
-        );
-        try {
-          // Fixed from .showLockScreen() to .lockNow()
-          await DevicePolicyManager.lockNow();
-        } catch (adminError) {
-          print('⚠️ Admin lock failed: $adminError');
-          await DevicePolicyManager.requestPermession(
-            "Please enable Device Admin to allow remote locking.",
-          );
-          throw Exception('Device Admin permission required');
-        }
+        await _updateCommandStatus(docId, 'completed');
+      } else {
+        print('⚠️ Device Admin is not active, prompting user...');
+        await platform.invokeMethod('enableAdmin');
+        await _updateCommandStatus(docId, 'failed');
       }
-
-      await _updateCommandStatus(docId, 'completed');
     } catch (e) {
       print('❌ Error locking phone: $e');
       await _updateCommandStatus(docId, 'failed');
     }
   }
 
-  // ========== RING PHONE (REAL RINGTONE) ==========
+  // ========== RING PHONE ==========
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
       try {

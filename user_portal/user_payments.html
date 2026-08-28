@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Payments - Security Portal</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f5f5; display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar Styling */
+        .sidebar { width: 250px; background: white; border-right: 1px solid #eaeaea; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; height: 100vh; position: fixed; }
+        .sidebar-top { display: flex; flex-direction: column; }
+        .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .brand-icon { background: #841EA0; color: white; padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .brand-text h3 { font-size: 16px; color: #333; }
+        .brand-text span { font-size: 11px; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        .sidebar a { display: flex; align-items: center; gap: 12px; color: #555; padding: 12px 15px; text-decoration: none; border-radius: 10px; margin: 4px 0; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .sidebar a:hover { background: #f8f0fc; color: #841EA0; }
+        .sidebar a.active { background: #841EA0; color: white; }
+
+        .logout-btn { display: flex; align-items: center; gap: 10px; color: #d32f2f; background: #ffebee; padding: 12px 15px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 500; text-align: center; justify-content: center; transition: background 0.2s; }
+        .logout-btn:hover { background: #ffcdd2; }
+
+        /* Main Content Area */
+        .main { margin-left: 250px; padding: 30px; width: calc(100% - 250px); height: 100vh; overflow-y: auto; }
+        .top-navbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        .top-navbar h2 { font-size: 20px; color: #333; }
+        .user-profile { display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 6px 15px; border-radius: 20px; border: 1px solid #eee; }
+        .user-avatar { background: #841EA0; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
+
+        /* Table Card Styling */
+        .table-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+        .table-card h3 { margin-bottom: 15px; color: #333; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background: #f9f9f9; color: #444; font-weight: 600; }
+        .badge { background: #841EA0; color: white; padding: 5px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="brand">
+                <div class="brand-icon">🛡️</div>
+                <div class="brand-text">
+                    <h3>Security Portal</h3>
+                    <span>Protected</span>
+                </div>
+            </div>
+            <a href="dashboard.html">📊 Dashboard</a>
+            <a href="locations.html">📍 Location Tracking</a>
+            <a href="sim_alerts.html">📱 SIM Change Logs</a>
+            <a href="intruders.html">📸 Intruder Photos</a>
+            <a href="remote_commands.html">🎮 Remote Commands</a>
+            <a href="backups.html">☁️ Backup & Restore</a>
+            <a href="user_payments.html" class="active">💳 My Payments</a>
+            <a href="settings.html">⚙️ Settings</a>
+        </div>
+        <div class="sidebar-bottom">
+            <a href="#" id="logoutBtn" class="logout-btn">🚪 Logout</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+        <div class="top-navbar">
+            <h2>Payment History</h2>
+            <div class="user-profile">
+                <div class="user-avatar" id="userInitial">U</div>
+                <span id="userNameDisplay">Loading...</span>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <h3>Your Subscriptions & Transactions</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Paid Feature / Plan Name</th>
+                        <th>Payment Method</th>
+                        <th>Date & Time of Purchase</th>
+                    </tr>
+                </thead>
+                <tbody id="userPaymentTableBody">
+                    <tr><td colspan="3" style="text-align:center; color:#666;">Loading your payment history...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:9042f34efac22b99163473"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Check authentication state
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                // Display user info in navbar
+                const email = user.email || 'User';
+                document.getElementById('userNameDisplay').innerText = email;
+                document.getElementById('userInitial').innerText = email.charAt(0).toUpperCase();
+
+                loadUserPayments(user.uid);
+            }
+        });
+
+        // Load specific user payment details
+        async function loadUserPayments(userId) {
+            const tableBody = document.getElementById('userPaymentTableBody');
+            try {
+                const userDoc = await db.collection('users').doc(userId).get();
+                tableBody.innerHTML = '';
+
+                if (!userDoc.exists) {
+                    tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#888;">No user profile found.</td></tr>';
+                    return;
+                }
+
+                const data = userDoc.data();
+                const plan = data.subscriptionPlan || 'Free';
+
+                if (plan === 'Free' || plan === '') {
+                    tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#888;">You have not purchased any paid features or plans yet.</td></tr>';
+                    return;
+                }
+
+                const paymentMethod = data.paymentMethod || 'JazzCash / Sandbox';
+                
+                let formattedDate = 'N/A';
+                if (data.subscribedAt && data.subscribedAt.toDate) {
+                    formattedDate = data.subscribedAt.toDate().toLocaleString();
+                }
+
+                tableBody.innerHTML = `
+                    <tr>
+                        <td><span class="badge">${plan}</span></td>
+                        <td>${paymentMethod}</td>
+                        <td>${formattedDate}</td>
+                    </tr>
+                `;
+
+            } catch (error) {
+                console.error('Error loading user payments:', error);
+                tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:red;">Error loading your payment records.</td></tr>';
+            }
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+    </script>
+</body>
+</html>

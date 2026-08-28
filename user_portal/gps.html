@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Tracking - Security Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #map { height: calc(100vh - 220px); min-height: 400px; border-radius: 1rem; width: 100%; }
+        .sidebar-transition { transition: width 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex text-gray-800 overflow-hidden">
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex select-none shrink-0 sidebar-transition relative z-20">
+        <div>
+            <!-- Sidebar Header Brand -->
+            <div class="p-5 flex items-center justify-between border-b border-gray-100">
+                <div id="brand-box" class="flex items-center space-x-3 overflow-hidden">
+                    <div class="w-10 h-10 bg-[#841EA0]/10 rounded-xl flex items-center justify-center text-[#841EA0] shrink-0">
+                        <i class="fa-solid fa-shield-halved text-xl"></i>
+                    </div>
+                    <div class="sidebar-text">
+                        <h1 class="text-sm font-bold text-gray-900 tracking-tight">Security Portal</h1>
+                        <span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Protected</span>
+                    </div>
+                </div>
+                <!-- Collapse Toggle Button -->
+                <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition" title="Toggle Sidebar">
+                    <i id="toggle-icon" class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links Menu -->
+            <nav class="p-3 space-y-1.5">
+                <a href="home.html" class="flex items-center space-x-3 px-3.5 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-house w-5 text-center shrink-0"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+                <a href="gps.html" class="flex items-center space-x-3 px-3.5 py-3 rounded-xl bg-[#841EA0] text-white font-semibold text-sm shadow-md shadow-purple-200">
+                    <i class="fa-solid fa-location-dot w-5 text-center shrink-0"></i>
+                    <span class="sidebar-text">Location Tracking</span>
+                </a>
+                <a href="sim_logs.html" class="flex items-center space-x-3 px-3.5 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-sim-card w-5 text-center shrink-0"></i>
+                    <span class="sidebar-text">SIM Change Logs</span>
+                </a>
+                <a href="intruder_logs.html" class="flex items-center space-x-3 px-3.5 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-camera-retro w-5 text-center shrink-0"></i>
+                    <span class="sidebar-text">Intruder Photos</span>
+                </a>
+                <a href="remote_commands.html" class="flex items-center space-x-3 px-3.5 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-terminal w-5 text-center shrink-0"></i>
+                    <span class="sidebar-text">Remote Commands</span>
+                </a>
+                <a href="backup_restore.html" class="flex items-center space-x-3 px-3.5 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-cloud-arrow-down w-5 text-center shrink-0"></i>
+                    <span class="sidebar-text">Backup & Restore</span>
+                </a>
+                <a href="settings.html" class="flex items-center space-x-3 px-3.5 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-gear w-5 text-center shrink-0"></i>
+                    <span class="sidebar-text">Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Logout Button -->
+        <div class="p-3 border-t border-gray-100">
+            <button onclick="handleLogout()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition">
+                <i class="fa-solid fa-right-from-bracket shrink-0"></i>
+                <span class="sidebar-text">Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-grow flex flex-col min-w-0 relative h-screen overflow-y-auto">
+        
+        <!-- Top Header Navigation Bar -->
+        <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center shadow-xs sticky top-0 z-40">
+            <div class="flex items-center space-x-3">
+                <span class="text-base font-bold text-gray-800 tracking-tight">Live Google Maps Tracking</span>
+            </div>
+
+            <!-- Profile Dropdown Container -->
+            <div class="relative">
+                <button onclick="toggleProfileDropdown()" class="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-full hover:bg-gray-100 transition focus:outline-none">
+                    <div class="w-8 h-8 bg-[#841EA0] text-white rounded-full flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <span id="header-email" class="text-xs font-semibold text-gray-700 hidden sm:inline">Loading...</span>
+                    <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] ml-0.5"></i>
+                </button>
+
+                <!-- Dropdown Menu Box -->
+                <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                    <div class="px-4 py-2 border-b border-gray-100">
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Signed in as</p>
+                        <p id="dropdown-email" class="text-xs font-bold text-gray-800 truncate mt-0.5">user@example.com</p>
+                    </div>
+                    <a href="home.html" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-[#841EA0] flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-house w-4 text-center"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="settings.html" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-[#841EA0] flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-gear w-4 text-center"></i>
+                        <span>Settings</span>
+                    </a>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <button onclick="handleLogout()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-right-from-bracket w-4 text-center"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Section -->
+        <main class="p-6 md:p-10 max-w-7xl w-full mx-auto flex-grow space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 tracking-tight">Real Google Maps Tracking</h2>
+                    <p class="text-xs text-gray-500 mt-1">Real-time coordinates streamed from your registered mobile device.</p>
+                </div>
+                <div id="location-meta" class="bg-white px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 shadow-xs flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 bg-yellow-400 rounded-full animate-ping"></span>
+                    <span>Waiting for GPS sync...</span>
+                </div>
+            </div>
+
+            <!-- Interactive Google Map Container -->
+            <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
+                <div id="map"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Define initMap globally & Sidebar Toggle script -->
+    <script>
+        let map = null;
+        let marker = null;
+        
+        window.initMap = function() {
+            const defaultLatLng = { lat: 33.6844, lng: 73.0479 };
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 4, // Starts zoomed out for a cool entrance effect
+                center: defaultLatLng,
+            });
+        };
+
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            const texts = document.querySelectorAll('.sidebar-text');
+            const toggleIcon = document.getElementById('toggle-icon');
+
+            if (sidebar.classList.contains('w-64')) {
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-20');
+                texts.forEach(el => el.classList.add('hidden'));
+                toggleIcon.classList.remove('fa-chevron-left');
+                toggleIcon.classList.add('fa-chevron-right');
+            } else {
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-64');
+                texts.forEach(el => el.classList.remove('hidden'));
+                toggleIcon.classList.remove('fa-chevron-right');
+                toggleIcon.classList.add('fa-chevron-left');
+            }
+            
+            setTimeout(() => {
+                if (map) {
+                    google.maps.event.trigger(map, 'resize');
+                }
+            }, 300);
+        };
+    </script>
+
+    <!-- Load Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD6vbhrGLQFjXi4nGNvxCfjntSCyr-EHDc&callback=initMap" async defer></script>
+
+    <!-- Firebase SDK & App Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            databaseURL: "https://fyp-mobile-app-and-web-portal-default-rtdb.firebaseio.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:f88efa24e6e9d7ef163473"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                document.getElementById('header-email').innerText = user.displayName || user.email;
+                document.getElementById('dropdown-email').innerText = user.email;
+                await fetchDeviceLocation(user.uid);
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+
+        async function fetchDeviceLocation(userId) {
+            const metaBox = document.getElementById('location-meta');
+            try {
+                const q = query(
+                    collection(db, 'locations'),
+                    where('userId', '==', userId),
+                    limit(1)
+                );
+
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    const docData = querySnapshot.docs[0].data();
+                    const lat = docData.latitude;
+                    const lng = docData.longitude;
+                    const timestamp = docData.timestamp ? new Date(docData.timestamp.toDate()).toLocaleString() : 'Just now';
+
+                    const position = { lat: lat, lng: lng };
+
+                    const checkMapLoaded = setInterval(() => {
+                        if (map) {
+                            clearInterval(checkMapLoaded);
+                            
+                            // Exciting Zoom Effect: Center first at wide zoom, then zoom in dynamically!
+                            map.setCenter(position);
+                            map.setZoom(5); // Start wide view
+                            
+                            setTimeout(() => {
+                                map.setZoom(16); // Smoothly zoom in to the device location
+                            }, 500);
+
+                            if (marker) {
+                                marker.setPosition(position);
+                            } else {
+                                marker = new google.maps.Marker({
+                                    position: position,
+                                    map: map,
+                                    title: "Your Device Location",
+                                    animation: google.maps.Animation.DROP // Adds a dropping pin bounce effect
+                                });
+                            }
+                        }
+                    }, 200);
+
+                    metaBox.innerHTML = `
+                        <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
+                        <span class="text-gray-700">Last Synced: <b>${timestamp}</b></span>
+                    `;
+                } else {
+                    metaBox.innerHTML = `
+                        <span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                        <span class="text-red-600">No GPS location records found yet from your app.</span>
+                    `;
+                }
+            } catch (error) {
+                console.error("Error loading location:", error);
+                metaBox.innerHTML = `
+                    <span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                    <span class="text-red-600">Error fetching location data.</span>
+                `;
+            }
+        }
+
+        window.toggleProfileDropdown = function() {
+            document.getElementById('profile-dropdown').classList.toggle('hidden');
+        };
+
+        window.handleLogout = async function() {
+            try {
+                await signOut(auth);
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        };
+    </script>
+</body>
+</html>

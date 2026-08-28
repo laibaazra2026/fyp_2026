@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.example.device_protection"
-    compileSdk = 36     //changed
+    compileSdk = 37   
     ndkVersion = flutter.ndkVersion
     
 

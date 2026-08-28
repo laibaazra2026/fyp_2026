@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Protected Device Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-[#841EA0] min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+        
+        <!-- Header Section -->
+        <div class="text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-[#841EA0]/10 rounded-full mb-4">
+                <i class="fa-solid fa-shield-halved text-3xl text-[#841EA0]"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-[#841EA0]">Welcome Back!</h1>
+            <p class="text-sm text-gray-500 mt-1">Login to your protected device</p>
+        </div>
+
+        <!-- Error Message Box -->
+        <div id="error-box" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-semibold text-center"></div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="mt-6 space-y-4" onsubmit="handleLogin(event)">
+            
+            <!-- Email Field -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Email Address</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-[#841EA0]">
+                        <i class="fa-solid fa-envelope"></i>
+                    </span>
+                    <input type="email" id="email" required autocomplete="email"
+                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#841EA0] text-sm"
+                        placeholder="name@example.com">
+                </div>
+            </div>
+
+            <!-- Password Field -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Password</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-[#841EA0]">
+                        <i class="fa-solid fa-lock"></i>
+                    </span>
+                    <input type="password" id="password" required autocomplete="current-password"
+                        class="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#841EA0] text-sm"
+                        placeholder="Enter password">
+                    <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-[#841EA0]">
+                        <i id="eye-icon" class="fa-solid fa-eye-slash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Forgot Password Link navigating to password_reset.html -->
+            <div class="flex justify-end">
+                <a href="password_reset.html" class="text-xs font-bold text-[#841EA0] hover:underline">Forgot Password?</a>
+            </div>
+
+            <!-- Login Submit Button -->
+            <button type="submit" id="submit-btn" 
+                class="w-full bg-[#841EA0] text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition duration-200 flex items-center justify-center shadow-lg">
+                <span id="btn-text">Login</span>
+                <span id="spinner" class="hidden ml-2 w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="flex items-center my-6">
+            <div class="flex-grow border-t border-gray-300"></div>
+            <span class="px-3 text-xs font-bold text-gray-500">OR</span>
+            <div class="flex-grow border-t border-gray-300"></div>
+        </div>
+
+        <!-- Google Sign-In Button with your custom asset image -->
+        <button onclick="handleGoogleSignIn()" 
+            class="w-full flex items-center justify-center py-3 border border-gray-300 rounded-xl font-bold text-sm text-gray-700 hover:bg-gray-50 transition duration-200 shadow-sm">
+            <img src="../assets/sounds/google_icon.png" alt="Google" class="w-5 h-5 mr-3 object-contain">
+            Sign in with Google
+        </button>
+
+    </div>
+
+    <!-- Firebase Authentication & Logic Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            GoogleAuthProvider, 
+            signInWithPopup 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:f88efa24e6e9d7ef163473"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Password Validation Rules
+        function validatePassword(password) {
+            if (!password) return 'Password cannot be empty.';
+            if (password.length < 8) return 'Password must be at least 8 characters long.';
+            if (/\s/.test(password)) return 'Password cannot contain spaces.';
+            if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter (A-Z).';
+            if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter (a-z).';
+            if (!/[0-9]/.test(password)) return 'Password must contain at least one number (0-9).';
+            return null;
+        }
+
+        window.togglePassword = function() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eye-icon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.className = 'fa-solid fa-eye';
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.className = 'fa-solid fa-eye-slash';
+            }
+        };
+
+        function showError(message) {
+            const errorBox = document.getElementById('error-box');
+            errorBox.innerText = message || "An unknown error occurred.";
+            errorBox.classList.remove('hidden');
+        }
+
+        function hideError() {
+            const errorBox = document.getElementById('error-box');
+            errorBox.innerText = '';
+            errorBox.classList.add('hidden');
+        }
+
+        window.handleLogin = async function(event) {
+            event.preventDefault();
+            hideError();
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            const passwordError = validatePassword(password);
+            if (passwordError) {
+                showError(passwordError);
+                return;
+            }
+
+            const submitBtn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('spinner');
+
+            btnText.innerText = 'Logging in...';
+            spinner.classList.remove('hidden');
+            submitBtn.disabled = true;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                window.location.href = 'home.html';
+            } catch (error) {
+                btnText.innerText = 'Login';
+                spinner.classList.add('hidden');
+                submitBtn.disabled = false;
+                
+                let msg = error.message;
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                    msg = 'Invalid email or password. Please check your credentials.';
+                } else {
+                    msg = error.message.replace('Firebase: ', '').replace(/\s*\(.*?\)\s*/g, '');
+                }
+                showError(msg);
+            }
+        };
+
+        window.handleGoogleSignIn = async function() {
+            hideError();
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+                window.location.href = 'home.html';
+            } catch (error) {
+                showError(error.message.replace('Firebase: ', '').replace(/\s*\(.*?\)\s*/g, ''));
+            }
+        };
+    </script>
+</body>
+</html>

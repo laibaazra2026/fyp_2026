@@ -7,104 +7,134 @@ class BackupRestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ☁️ Backup Contacts and Call Logs to Firestore
-  Future<bool> backupData() async {
+  // Step 1 Helper: Check if user has a valid subscription plan
+  Future<bool> _checkSubscription(String userId) async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) return false;
-
-      // Request permissions using v2.x syntax
-      final status = await FlutterContacts.permissions.request(
-        PermissionType.readWrite,
-      );
-      if (status != PermissionStatus.granted) return false;
-
-      // Fetch all contacts using v2.x getAll
-      List<Contact> contacts = await FlutterContacts.getAll(
-        properties: {
-          ContactProperty.name,
-          ContactProperty.phone,
-          ContactProperty.email,
-        },
-      );
-
-      List<Map<String, dynamic>> contactListMap = contacts
-          .map(
-            (c) => {
-              'name': c.displayName ?? 'Unknown',
-              'phone': c.phones.isNotEmpty ? c.phones.first.number : '',
-              'email': c.emails.isNotEmpty ? c.emails.first.address : '',
-            },
-          )
-          .toList();
-
-      // Fetch call logs safely
-      Iterable<CallLogEntry> callLogs = await CallLog.get();
-      List<Map<String, dynamic>> callLogListMap = callLogs
-          .map(
-            (log) => {
-              'name': log.name ?? 'Unknown',
-              'number': log.number ?? '',
-              'type': log.callType.toString(),
-              'timestamp': log.timestamp ?? 0,
-            },
-          )
-          .toList();
-
-      // Save to Firestore under the authenticated user's UID
-      await _firestore
+      DocumentSnapshot userDoc = await _firestore
           .collection('users')
-          .doc(user.uid)
-          .collection('backup_data')
-          .doc('device_backup')
-          .set({
-            'contacts': contactListMap,
-            'callLogs': callLogListMap,
-            'backedUpAt': FieldValue.serverTimestamp(),
-          });
+          .doc(userId)
+          .get();
 
-      return true;
+      if (!userDoc.exists) {
+        print('❌ User document not found in Firestore.');
+        return false;
+      }
+
+      var data = userDoc.data() as Map<String, dynamic>?;
+      if (data == null) return false;
+
+      // Reads your "subscriptionPlan" field directly (e.g., "family")
+      String? plan = data['subscriptionPlan'];
+      print('🔍 Found subscription plan: $plan');
+
+      // Returns true if a plan exists and isn't empty/free
+      bool isValid =
+          plan != null && plan.isNotEmpty && plan.toLowerCase() != 'free';
+      return isValid;
     } catch (e) {
-      print('Backup error: $e');
+      print('❌ Error checking subscription: $e');
       return false;
     }
   }
 
-  // 🔄 Restore Contacts to Device & Fetch Data for UI Display
+  // 1️⃣ Backup Contacts & Call Logs
+  Future<bool> backupData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        print('❌ Backup failed: No authenticated user.');
+        return false;
+      }
+
+      // Run the subscription check
+      bool hasAccess = await _checkSubscription(user.uid);
+      if (!hasAccess) {
+        print('❌ Backup blocked: No active subscription plan detected.');
+        return false;
+      }
+
+      print('✅ Subscription verified! Proceeding with backup...');
+
+      // Fetch Device Contacts
+      List<Contact> contacts = await FlutterContacts.getAll(
+        properties: {ContactProperty.name, ContactProperty.phone},
+      );
+
+      List<Map<String, dynamic>> contactsList = contacts.map((c) {
+        return {
+          'name': c.displayName ?? 'Unknown',
+          'phone': c.phones.isNotEmpty ? c.phones.first.number : '',
+        };
+      }).toList();
+
+      // Fetch Device Call Logs
+      Iterable<CallLogEntry> callLogs = await CallLog.get();
+      List<Map<String, dynamic>> callLogsList = callLogs.map((log) {
+        return {
+          'name': log.name ?? 'Unknown',
+          'number': log.number ?? '',
+          'type': log.callType.toString().split('.').last.toUpperCase(),
+          'timestamp': log.timestamp ?? DateTime.now().millisecondsSinceEpoch,
+        };
+      }).toList();
+
+      // Save into user's isolated document path
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('backups')
+          .doc('device_backup')
+          .set({
+            'contacts': contactsList,
+            'callLogs': callLogsList,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+
+      print('✅ Cloud Backup successful for user: ${user.uid}');
+      return true;
+    } catch (e) {
+      print('❌ Error backing up data: $e');
+      return false;
+    }
+  }
+
+  // 2️⃣ Restore Data from Firestore
   Future<Map<String, dynamic>?> restoreData() async {
     try {
       final user = _auth.currentUser;
-      if (user == null) return null;
+      if (user == null) {
+        print('❌ Restore failed: No authenticated user.');
+        return null;
+      }
 
-      final status = await FlutterContacts.permissions.request(
-        PermissionType.readWrite,
-      );
-      if (status != PermissionStatus.granted) return null;
+      bool hasAccess = await _checkSubscription(user.uid);
+      if (!hasAccess) {
+        print('❌ Restore blocked: No active subscription plan detected.');
+        return null;
+      }
 
-      DocumentSnapshot doc = await _firestore
+      DocumentSnapshot docSnap = await _firestore
           .collection('users')
           .doc(user.uid)
-          .collection('backup_data')
+          .collection('backups')
           .doc('device_backup')
           .get();
 
-      if (!doc.exists) return null;
-
-      List<dynamic> contactList = doc.get('contacts');
-      List<dynamic> callLogList = doc.get('callLogs');
-
-      // Restore contacts back to the device phonebook using v2.x create API
-      for (var c in contactList) {
-        final newContact = Contact(
-          name: Name(first: c['name'] ?? 'Unknown'),
-          phones: [Phone(number: c['phone'] ?? '')],
-        );
-        await FlutterContacts.create(newContact);
+      if (!docSnap.exists) {
+        print('⚠️ No backup found in cloud for this user.');
+        return null;
       }
 
-      return {'contacts': contactList, 'callLogs': callLogList};
+      var data = docSnap.data() as Map<String, dynamic>?;
+      if (data == null) return null;
+
+      print('✅ Restore successful from cloud.');
+      return {
+        'contacts': data['contacts'] ?? [],
+        'callLogs': data['callLogs'] ?? [],
+      };
     } catch (e) {
-      print('Restore error: $e');
+      print('❌ Error restoring data: $e');
       return null;
     }
   }

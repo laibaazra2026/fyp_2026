@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/backup_restore_service.dart';
+import '../services/subscription_service.dart';
 
 class BackupRestoreScreen extends StatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -11,6 +14,7 @@ class BackupRestoreScreen extends StatefulWidget {
 class _BackupRestoreScreenState extends State<BackupRestoreScreen>
     with SingleTickerProviderStateMixin {
   final BackupRestoreService _service = BackupRestoreService();
+  final SubscriptionService _subscriptionService = SubscriptionService();
   late TabController _tabController;
   bool _isLoading = false;
   String _statusMessage = '';
@@ -24,23 +28,113 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  Future<void> _handleBackup() async {
-    setState(() => _isLoading = true);
-    bool success = await _service.backupData();
-    setState(() {
-      _isLoading = false;
-      _statusMessage = success ? 'Backup successful ☁️' : 'Backup failed ❌';
-    });
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
+  // 1️⃣ Verify if the user is upgraded/subscribed using SubscriptionService
+  Future<bool> _checkIfUserIsUpgraded() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('DEBUG: No authenticated user found.');
+        return false;
+      }
+
+      // Fetch current plan cleanly using your SubscriptionService
+      String plan = await _subscriptionService.getCurrentPlan();
+      print('DEBUG: Current subscription plan is: $plan');
+
+      // If plan is anything other than 'free', they have an active subscription
+      return plan != 'free' && plan.isNotEmpty;
+    } catch (e) {
+      print('❌ Error checking subscription plan: $e');
+      return false;
+    }
+  }
+
+  // 2️⃣ Full Backup Flow
+  Future<void> _handleBackup() async {
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Checking subscription status...';
+    });
+
+    bool isUpgraded = await _checkIfUserIsUpgraded();
+    if (!isUpgraded) {
+      setState(() {
+        _isLoading = false;
+        _statusMessage =
+            'Access Denied: Please upgrade your plan to use Cloud Backup ❌';
+      });
+      return;
+    }
+
+    setState(() => _statusMessage = 'Requesting permissions...');
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.contacts,
+      Permission.phone,
+    ].request();
+
+    if (statuses[Permission.contacts]!.isGranted &&
+        statuses[Permission.phone]!.isGranted) {
+      setState(() => _statusMessage = 'Uploading backup to cloud...');
+      bool success = await _service.backupData();
+
+      setState(() {
+        _isLoading = false;
+        _statusMessage = success ? 'Backup successful! ☁️' : 'Backup failed ❌';
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Permissions denied. Cannot backup contacts/logs ❌';
+      });
+
+      if (statuses[Permission.contacts]!.isPermanentlyDenied ||
+          statuses[Permission.phone]!.isPermanentlyDenied) {
+        openAppSettings();
+      }
+    }
+  }
+
+  // 3️⃣ Full Restore Flow
   Future<void> _handleRestore() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Checking subscription status...';
+    });
+
+    bool isUpgraded = await _checkIfUserIsUpgraded();
+    if (!isUpgraded) {
+      setState(() {
+        _isLoading = false;
+        _statusMessage =
+            'Access Denied: Please upgrade your plan to restore data ❌';
+      });
+      return;
+    }
+
+    setState(() => _statusMessage = 'Requesting contact permissions...');
+    var contactStatus = await Permission.contacts.request();
+    if (!contactStatus.isGranted) {
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Contacts permission required to restore ❌';
+      });
+      return;
+    }
+
+    setState(() => _statusMessage = 'Fetching data from cloud...');
     var data = await _service.restoreData();
+
     setState(() {
       _isLoading = false;
       if (data != null) {
-        _restoredContacts = data['contacts'];
-        _restoredCallLogs = data['callLogs'];
+        _restoredContacts = data['contacts'] ?? [];
+        _restoredCallLogs = data['callLogs'] ?? [];
         _statusMessage =
             'Restored ${_restoredContacts.length} contacts and ${_restoredCallLogs.length} call logs! ✅';
       } else {
@@ -64,9 +158,9 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
-          tabs: const [
-            Tab(text: 'Restored Contacts'),
-            Tab(text: 'Restored Call Logs'),
+          tabs: [
+            Tab(text: 'Contacts (${_restoredContacts.length})'),
+            Tab(text: 'Call Logs (${_restoredCallLogs.length})'),
           ],
         ),
       ),
@@ -77,6 +171,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
               padding: const EdgeInsets.all(12.0),
               child: Text(
                 _statusMessage,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -113,33 +208,52 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
               ],
             ),
           ),
-          if (_isLoading) const CircularProgressIndicator(),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                ListView.builder(
-                  itemCount: _restoredContacts.length,
-                  itemBuilder: (context, index) {
-                    var c = _restoredContacts[index];
-                    return ListTile(
-                      leading: const Icon(Icons.person, color: Colors.purple),
-                      title: Text(c['name'] ?? 'Unknown'),
-                      subtitle: Text(c['phone'] ?? ''),
-                    );
-                  },
-                ),
-                ListView.builder(
-                  itemCount: _restoredCallLogs.length,
-                  itemBuilder: (context, index) {
-                    var log = _restoredCallLogs[index];
-                    return ListTile(
-                      leading: const Icon(Icons.call, color: Colors.teal),
-                      title: Text(log['name'] ?? 'Unknown'),
-                      subtitle: Text(log['number'] ?? ''),
-                    );
-                  },
-                ),
+                // Contacts Tab View
+                _restoredContacts.isEmpty
+                    ? const Center(
+                        child: Text('No contacts loaded or restored yet.'),
+                      )
+                    : ListView.builder(
+                        itemCount: _restoredContacts.length,
+                        itemBuilder: (context, index) {
+                          var c = _restoredContacts[index];
+                          return ListTile(
+                            leading: const Icon(
+                              Icons.person,
+                              color: Colors.purple,
+                            ),
+                            title: Text(c['name'] ?? 'Unknown'),
+                            subtitle: Text(c['phone'] ?? ''),
+                          );
+                        },
+                      ),
+                // Call Logs Tab View
+                _restoredCallLogs.isEmpty
+                    ? const Center(
+                        child: Text('No call logs loaded or restored yet.'),
+                      )
+                    : ListView.builder(
+                        itemCount: _restoredCallLogs.length,
+                        itemBuilder: (context, index) {
+                          var log = _restoredCallLogs[index];
+                          return ListTile(
+                            leading: const Icon(Icons.call, color: Colors.teal),
+                            title: Text(log['name'] ?? 'Unknown'),
+                            subtitle: Text(
+                              '${log['number'] ?? ''} • ${log['type'] ?? ''}',
+                            ),
+                          );
+                        },
+                      ),
               ],
             ),
           ),

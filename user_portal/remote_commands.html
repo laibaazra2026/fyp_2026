@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Commands - Security Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex text-gray-800">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex select-none shrink-0">
+        <div>
+            <!-- Sidebar Header Brand -->
+            <div class="p-6 flex items-center space-x-3 border-b border-gray-100">
+                <div class="w-10 h-10 bg-[#841EA0]/10 rounded-xl flex items-center justify-center text-[#841EA0]">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold text-gray-900 tracking-tight">Security Portal</h1>
+                    <span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Protected</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links Menu -->
+            <nav class="p-4 space-y-1.5">
+                <a href="home.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-house w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="gps.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-location-dot w-5"></i>
+                    <span>Location Tracking</span>
+                </a>
+                <a href="sim_logs.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-sim-card w-5"></i>
+                    <span>SIM Change Logs</span>
+                </a>
+                <a href="intruder_logs.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-camera-retro w-5"></i>
+                    <span>Intruder Photos</span>
+                </a>
+                <a href="remote_commands.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl bg-[#841EA0] text-white font-semibold text-sm shadow-md shadow-purple-200">
+                    <i class="fa-solid fa-terminal w-5"></i>
+                    <span>Remote Commands</span>
+                </a>
+                <a href="backup_restore.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-cloud-arrow-down w-5"></i>
+                    <span>Backup & Restore</span>
+                </a>
+                <a href="settings.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-gear w-5"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Logout Button -->
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="handleLogout()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-grow flex flex-col min-w-0 relative h-screen overflow-y-auto">
+        
+        <!-- Top Header Navigation Bar -->
+        <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center shadow-xs sticky top-0 z-40">
+            <div class="flex items-center space-x-3">
+                <span class="text-base font-bold text-gray-800 tracking-tight">Remote Commands</span>
+            </div>
+
+            <!-- Profile Dropdown Container -->
+            <div class="relative">
+                <button onclick="toggleProfileDropdown()" class="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-full hover:bg-gray-100 transition focus:outline-none">
+                    <div class="w-8 h-8 bg-[#841EA0] text-white rounded-full flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <span id="header-email" class="text-xs font-semibold text-gray-700 hidden sm:inline">Loading...</span>
+                    <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] ml-0.5"></i>
+                </button>
+
+                <!-- Dropdown Menu Box -->
+                <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                    <div class="px-4 py-2 border-b border-gray-100">
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Signed in as</p>
+                        <p id="dropdown-email" class="text-xs font-bold text-gray-800 truncate mt-0.5">user@example.com</p>
+                    </div>
+                    <a href="home.html" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-[#841EA0] flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-house w-4 text-center"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="settings.html" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-[#841EA0] flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-gear w-4 text-center"></i>
+                        <span>Settings</span>
+                    </a>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <button onclick="handleLogout()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-right-from-bracket w-4 text-center"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Section -->
+        <main class="p-6 md:p-10 max-w-5xl w-full mx-auto flex-grow space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900 tracking-tight">Send Commands to Your Device</h2>
+                <p class="text-xs text-gray-500 mt-1">Execute secure remote actions instantly on your connected mobile device.</p>
+            </div>
+
+            <!-- Dynamic Response/Status Notification Box -->
+            <div id="responseMsg" class="hidden p-4 rounded-xl text-xs font-semibold transition"></div>
+
+            <!-- Commands Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Enable Theft Mode -->
+                <div onclick="sendCommand('THEFT_MODE')" class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs hover:border-[#841EA0] hover:shadow-md transition cursor-pointer group text-center space-y-3">
+                    <div class="w-14 h-14 bg-purple-50 text-[#841EA0] rounded-2xl flex items-center justify-center text-xl mx-auto group-hover:bg-[#841EA0] group-hover:text-white transition">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-gray-900">Enable Theft Mode</h3>
+                    <p class="text-xs text-gray-500 leading-relaxed">Activate full theft protection measures remotely.</p>
+                </div>
+
+                <!-- Lock Phone -->
+                <div onclick="sendCommand('LOCK')" class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs hover:border-[#841EA0] hover:shadow-md transition cursor-pointer group text-center space-y-3">
+                    <div class="w-14 h-14 bg-purple-50 text-[#841EA0] rounded-2xl flex items-center justify-center text-xl mx-auto group-hover:bg-[#841EA0] group-hover:text-white transition">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-gray-900">Lock Phone</h3>
+                    <p class="text-xs text-gray-500 leading-relaxed">Securely lock down your device immediately.</p>
+                </div>
+
+                <!-- Ring Phone -->
+                <div onclick="sendCommand('RING')" class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs hover:border-[#841EA0] hover:shadow-md transition cursor-pointer group text-center space-y-3">
+                    <div class="w-14 h-14 bg-purple-50 text-[#841EA0] rounded-2xl flex items-center justify-center text-xl mx-auto group-hover:bg-[#841EA0] group-hover:text-white transition">
+                        <i class="fa-solid fa-bell"></i>
+                    </div>
+                    <h3 class="text-sm font-bold text-gray-900">Ring Phone</h3>
+                    <p class="text-xs text-gray-500 leading-relaxed">Trigger a loud siren alarm on your device.</p>
+                </div>
+            </div>
+
+            <!-- Status Indicator Message -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-xs text-center">
+                <p id="loading-status" class="text-xs font-medium text-gray-500">Ready. Click any command card above to target your device.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase SDK Modular Imports & Script Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            databaseURL: "https://fyp-mobile-app-and-web-portal-default-rtdb.firebaseio.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:f88efa24e6e9d7ef163473"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let activeUserId = null;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                activeUserId = user.uid;
+                document.getElementById('header-email').innerText = user.displayName || user.email;
+                document.getElementById('dropdown-email').innerText = user.email;
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+
+        window.sendCommand = async function(type) {
+            if (!activeUserId) {
+                alert('User authentication session not loaded yet.');
+                return;
+            }
+
+            const statusText = document.getElementById('loading-status');
+            const responseMsg = document.getElementById('responseMsg');
+
+            statusText.innerText = 'Sending command to your device...';
+
+            try {
+                // Automatically write command tied directly to the logged-in user's UID
+                await addDoc(collection(db, 'commands'), {
+                    userId: activeUserId,
+                    type: type,
+                    status: 'pending',
+                    timestamp: serverTimestamp(),
+                    executedAt: null,
+                });
+
+                statusText.innerText = 'Ready. Click any command card above to target your device.';
+                responseMsg.className = 'p-4 rounded-xl text-xs font-semibold bg-green-50 text-green-700 border border-green-200 block';
+                responseMsg.innerHTML = `<i class="fa-solid fa-circle-check mr-1.5"></i> Successfully sent <strong>${type}</strong> command to your device!`;
+
+                setTimeout(() => {
+                    responseMsg.classList.add('hidden');
+                }, 5000);
+
+            } catch (error) {
+                console.error('Error sending command:', error);
+                statusText.innerText = 'Error sending command.';
+                responseMsg.className = 'p-4 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 block';
+                responseMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1.5"></i> Error: ${error.message}`;
+            }
+        };
+
+        window.toggleProfileDropdown = function() {
+            document.getElementById('profile-dropdown').classList.toggle('hidden');
+        };
+
+        window.handleLogout = async function() {
+            try {
+                await signOut(auth);
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        };
+    </script>
+</body>
+</html>
