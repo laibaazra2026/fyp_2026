@@ -17,7 +17,6 @@ class _GpsScreenState extends State<GpsScreen> {
   bool _isLoading = true;
   String _statusMessage = 'Requesting location permissions...';
 
-  // Default fallback location
   LatLng _currentLocation = const LatLng(33.6844, 73.0479);
   Set<Marker> _markers = {};
 
@@ -146,7 +145,6 @@ class _GpsScreenState extends State<GpsScreen> {
                   },
                 ),
 
-                // Professional Floating Zoom In / Out Controls (+ / -)
                 Positioned(
                   right: 16,
                   bottom: 110,
@@ -176,7 +174,6 @@ class _GpsScreenState extends State<GpsScreen> {
                   ),
                 ),
 
-                // Floating Status Card at the Bottom
                 Positioned(
                   bottom: 24,
                   left: 24,

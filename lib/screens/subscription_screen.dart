@@ -23,7 +23,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 4),
     );
-    // Confetti plays immediately when the user enters the subscription page!
+    // Confetti plays  when  users enters the subscription page
     _confettiController.play();
     _loadCurrentPlan();
   }
@@ -122,7 +122,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
               const Divider(),
 
-              // 3. Sandbox Fast Test Option
+              // 3. Sandbox
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
@@ -149,14 +149,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  // Process Upgrade & Save Payment Details + Timestamp
   Future<void> _processUpgrade(
     String planName,
     double price,
     String paymentMethod,
   ) async {
     try {
-      // 1️⃣ Save details to Firestore via subscription service
       await _subscriptionService.updateSubscriptionWithMethod(
         planName.toLowerCase(),
         price,
@@ -167,7 +165,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
       setState(() => _currentPlan = planName.toLowerCase());
 
-      // Play confetti again on successful purchase for extra celebration!
       _confettiController.play();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -179,7 +176,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
       );
 
-      // 2️⃣ 🚀 Only redirect user to the Backup & Restore screen if they bought the Family plan!
       if (planName.toLowerCase() == 'family') {
         Navigator.pushReplacement(
           context,
@@ -227,7 +223,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 children: [
                   const SizedBox(height: 20),
 
-                  // Fancy Multi-Colored Gradient Header Text
                   ShaderMask(
                     shaderCallback: (bounds) => const LinearGradient(
                       colors: [
@@ -263,7 +258,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Horizontal Swipeable Cards Carousel (PageView)
                   Expanded(
                     child: PageView(
                       controller: _pageController,
@@ -273,7 +267,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         });
                       },
                       children: [
-                        // Tier 1: Free
                         _buildTierCard(
                           name: 'Free',
                           price: 'Rs. 0',
@@ -288,7 +281,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           onTap: null,
                         ),
 
-                        // Tier 2: Premium
                         _buildTierCard(
                           name: 'Premium',
                           price: 'Rs. 99 / month',
@@ -303,7 +295,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               _showPaymentMethodDialog('Premium', 99.0),
                         ),
 
-                        // Tier 3: Family / Pro
                         _buildTierCard(
                           name: 'Family',
                           price: 'Rs. 199 / month',
@@ -323,7 +314,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Page Indicator Dots
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(3, (index) {
@@ -347,7 +337,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
 
-          // Confetti Animation Falling
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(

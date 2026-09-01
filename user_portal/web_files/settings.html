@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Security Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex text-gray-800">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex select-none shrink-0">
+        <div>
+            <!-- Sidebar Header Brand -->
+            <div class="p-6 flex items-center space-x-3 border-b border-gray-100">
+                <div class="w-10 h-10 bg-[#841EA0]/10 rounded-xl flex items-center justify-center text-[#841EA0]">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold text-gray-900 tracking-tight">Security Portal</h1>
+                    <span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Protected</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links Menu -->
+            <nav class="p-4 space-y-1.5">
+                <a href="home.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-house w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="gps.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-location-dot w-5"></i>
+                    <span>Location Tracking</span>
+                </a>
+                <a href="sim_logs.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-sim-card w-5"></i>
+                    <span>SIM Change Logs</span>
+                </a>
+                <a href="intruder_logs.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-camera-retro w-5"></i>
+                    <span>Intruder Photos</span>
+                </a>
+                <a href="remote_commands.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-terminal w-5"></i>
+                    <span>Remote Commands</span>
+                </a>
+                <a href="backup_restore.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
+                    <i class="fa-solid fa-cloud-arrow-down w-5"></i>
+                    <span>Backup & Restore</span>
+                </a>
+                <a href="settings.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl bg-[#841EA0] text-white font-semibold text-sm shadow-md shadow-purple-200">
+                    <i class="fa-solid fa-gear w-5"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Logout Button -->
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="handleLogout()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-grow flex flex-col min-w-0 relative h-screen overflow-y-auto">
+        
+        <!-- Top Header Navigation Bar -->
+        <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center shadow-xs sticky top-0 z-40">
+            <div class="flex items-center space-x-3">
+                <span class="text-base font-bold text-gray-800 tracking-tight">Portal Settings</span>
+            </div>
+
+            <!-- Profile Dropdown Container -->
+            <div class="relative">
+                <button onclick="toggleProfileDropdown()" class="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-full hover:bg-gray-100 transition focus:outline-none">
+                    <div class="w-8 h-8 bg-[#841EA0] text-white rounded-full flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <span id="header-email" class="text-xs font-semibold text-gray-700 hidden sm:inline">Loading...</span>
+                    <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] ml-0.5"></i>
+                </button>
+
+                <!-- Dropdown Menu Box -->
+                <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                    <div class="px-4 py-2 border-b border-gray-100">
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Signed in as</p>
+                        <p id="dropdown-email" class="text-xs font-bold text-gray-800 truncate mt-0.5">user@example.com</p>
+                    </div>
+                    <a href="home.html" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-[#841EA0] flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-house w-4 text-center"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="settings.html" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-[#841EA0] bg-purple-50 flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-gear w-4 text-center"></i>
+                        <span>Settings</span>
+                    </a>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <button onclick="handleLogout()" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center space-x-2.5 transition">
+                        <i class="fa-solid fa-right-from-bracket w-4 text-center"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Section -->
+        <main class="p-6 md:p-10 max-w-4xl w-full mx-auto flex-grow space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900 tracking-tight">Account Settings</h2>
+                <p class="text-xs text-gray-500 mt-1">Manage your profile details, account security, and session options.</p>
+            </div>
+
+            <!-- Profile Information Card with Editable Name -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-5">
+                <h3 class="text-sm font-bold text-gray-900 flex items-center space-x-2.5 border-b border-gray-100 pb-3">
+                    <i class="fa-solid fa-id-card text-[#841EA0]"></i>
+                    <span>Profile Information</span>
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Display Name</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="display-name-input" placeholder="Enter your name" class="w-full text-xs font-medium text-gray-800 bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl focus:outline-none focus:border-[#841EA0] transition">
+                            <button onclick="updateDisplayName()" class="px-5 py-3 bg-[#841EA0] hover:bg-[#701888] text-white text-xs font-semibold rounded-xl shadow-xs transition shrink-0">
+                                Save
+                            </button>
+                        </div>
+                        <p id="name-feedback" class="text-[11px] mt-1.5 font-medium hidden"></p>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address (Read-only)</label>
+                        <div class="w-full bg-gray-100 border border-gray-200 px-4 py-3 rounded-xl flex items-center">
+                            <p id="settings-email" class="text-xs font-medium text-gray-600 truncate">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password Reset Card -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
+                <h3 class="text-sm font-bold text-gray-900 flex items-center space-x-2.5 border-b border-gray-100 pb-3">
+                    <i class="fa-solid fa-key text-[#841EA0]"></i>
+                    <span>Security & Password</span>
+                </h3>
+                <p class="text-xs text-gray-600 leading-relaxed">Need to change your password? Click below to send a secure password reset link to your registered email address.</p>
+                
+                <div class="pt-1">
+                    <button onclick="triggerPasswordReset()" class="px-5 py-3 bg-[#841EA0] hover:bg-[#701888] text-white text-xs font-semibold rounded-xl shadow-md shadow-purple-200 transition flex items-center space-x-2">
+                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                        <span>Send Password Reset Email</span>
+                    </button>
+                    <p id="reset-feedback" class="text-xs mt-2 font-medium hidden"></p>
+                </div>
+            </div>
+
+            <!-- Session / Danger Zone Card -->
+            <div class="bg-white p-6 rounded-2xl border border-red-100 shadow-xs space-y-4">
+                <h3 class="text-sm font-bold text-red-600 flex items-center space-x-2.5 border-b border-gray-100 pb-3">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Session Action</span>
+                </h3>
+                <p class="text-xs text-gray-600 leading-relaxed">Sign out from this browser session. You will need your credentials to log back in.</p>
+                <div class="pt-1">
+                    <button onclick="handleLogout()" class="px-5 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition flex items-center space-x-2">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Logout Now</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase Auth Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, updateProfile, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            databaseURL: "https://fyp-mobile-app-and-web-portal-default-rtdb.firebaseio.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:f88efa24e6e9d7ef163473"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        let currentUserEmail = "";
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUserEmail = user.email;
+                const displayName = user.displayName || "";
+                
+                document.getElementById('header-email').innerText = displayName || user.email;
+                document.getElementById('dropdown-email').innerText = user.email;
+                document.getElementById('settings-email').innerText = user.email;
+                document.getElementById('display-name-input').value = displayName;
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+
+        window.updateDisplayName = async function() {
+            const newName = document.getElementById('display-name-input').value.trim();
+            const feedback = document.getElementById('name-feedback');
+            
+            if (!auth.currentUser) return;
+
+            try {
+                await updateProfile(auth.currentUser, {
+                    displayName: newName
+                });
+                
+                feedback.classList.remove('hidden', 'text-red-600');
+                feedback.classList.add('text-green-600');
+                feedback.innerText = "Display name updated successfully!";
+                
+                // Update header immediately
+                document.getElementById('header-email').innerText = newName || currentUserEmail;
+            } catch (error) {
+                feedback.classList.remove('hidden', 'text-green-600');
+                feedback.classList.add('text-red-600');
+                feedback.innerText = `Error: ${error.message}`;
+            }
+        };
+
+        window.triggerPasswordReset = async function() {
+            const feedback = document.getElementById('reset-feedback');
+            try {
+                await sendPasswordResetEmail(auth, currentUserEmail);
+                feedback.classList.remove('hidden', 'text-red-600');
+                feedback.classList.add('text-green-600');
+                feedback.innerText = `Password reset email successfully sent to ${currentUserEmail}. Please check your inbox.`;
+            } catch (error) {
+                feedback.classList.remove('hidden', 'text-green-600');
+                feedback.classList.add('text-red-600');
+                feedback.innerText = `Error: ${error.message}`;
+            }
+        };
+
+        window.toggleProfileDropdown = function() {
+            document.getElementById('profile-dropdown').classList.toggle('hidden');
+        };
+
+        window.handleLogout = async function() {
+            try {
+                await signOut(auth);
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,38 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; // ✅ Added for FCM token handling
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
-import '../main.dart'; // ✅ IMPORT MAIN TO ACCESS THE GLOBAL NAVIGATOR KEY
+import '../main.dart';
 
 class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // 🛡️ Track processed command IDs locally to prevent duplicate executions
   final Set<String> _processedCommands = {};
 
-  // ✅ MATCHED WITH MainActivity.kt CHANNEL NAME
   static const platform = MethodChannel('device_protection/admin');
 
-  // ========== SAVE FCM TOKEN (NEW) ==========
-  // Call this right after login to save the device token so background pushes work
   Future<void> saveFCMToken() async {
     try {
       User? user = _auth.currentUser;
       if (user == null) return;
 
-      // 1. Request notification permissions (important for Android 13+)
       NotificationSettings settings = await FirebaseMessaging.instance
           .requestPermission(alert: true, badge: true, sound: true);
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        // 2. Get the unique FCM device token
         String? token = await FirebaseMessaging.instance.getToken();
         if (token != null) {
-          // 3. Save it to Firestore under the user's document
           await _firestore.collection('users').doc(user.uid).set({
             'fcmToken': token,
           }, SetOptions(merge: true));
@@ -55,7 +48,6 @@ class CommandService {
 
     print('✅ Listening for commands...');
 
-    // Also trigger FCM token saving whenever command listening starts up after login
     saveFCMToken();
 
     _firestore
@@ -68,13 +60,11 @@ class CommandService {
             for (var doc in snapshot.docs) {
               String docId = doc.id;
 
-              // Skip if already processed in this session
               if (_processedCommands.contains(docId)) continue;
 
               var data = doc.data();
               print('📩 Command received: ${data['type']}');
 
-              // Mark as processing locally immediately
               _processedCommands.add(docId);
 
               _executeCommand(context, docId, data);
@@ -109,7 +99,6 @@ class CommandService {
     }
   }
 
-  // ========== ENABLE THEFT MODE ==========
   Future<void> _enableTheftMode(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -118,12 +107,10 @@ class CommandService {
         return;
       }
 
-      // 1. Safely create or update Theft Mode in Firestore using set with merge
       await _firestore.collection('users').doc(user.uid).set({
         'isTheftModeOn': true,
       }, SetOptions(merge: true));
 
-      // 2. Check if admin permission is active; if not, prompt for it
       bool isActive =
           await platform.invokeMethod('isDeviceAdminActive') ?? false;
       if (!isActive) {
@@ -133,11 +120,9 @@ class CommandService {
         await platform.invokeMethod('enableAdmin');
       }
 
-      // 3. Mark command as completed
       await _updateCommandStatus(docId, 'completed');
       print('🛡️ Theft Mode Enabled Remotely!');
 
-      // Safe UI feedback wrapper using global navigator context fallback
       try {
         BuildContext? activeContext = context.mounted
             ? context
@@ -160,7 +145,6 @@ class CommandService {
     }
   }
 
-  // ========== LOCK PHONE ==========
   Future<void> _lockPhone(BuildContext context, String docId) async {
     try {
       User? user = _auth.currentUser;
@@ -174,7 +158,6 @@ class CommandService {
 
       if (isActive) {
         try {
-          // ✅ Wrapped platform call in its own try/catch to properly log native errors
           await platform.invokeMethod('lockDevice');
           print('✅ Physical device locked successfully via Method Channel');
           await _updateCommandStatus(docId, 'completed');
@@ -193,7 +176,6 @@ class CommandService {
     }
   }
 
-  // ========== RING PHONE ==========
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
       try {
@@ -237,7 +219,6 @@ class CommandService {
     }
   }
 
-  // ========== UPDATE COMMAND STATUS ==========
   Future<void> _updateCommandStatus(String docId, String status) async {
     try {
       await _firestore.collection('commands').doc(docId).update({

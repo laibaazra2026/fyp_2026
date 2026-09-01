@@ -24,7 +24,6 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isLoading = false;
   String _errorMessage = '';
 
-  // Password Security Rules
   String? _validatePassword(String password) {
     if (password.isEmpty) return 'Password cannot be empty.';
     if (password.length < 8) {
@@ -43,7 +42,6 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  // STEP 1: Start Signup & Trigger Owner Phone Verification
   Future<void> _signup() async {
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
@@ -66,17 +64,14 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      // 1. Create account in Firebase Auth with Email & Password
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
           );
 
-      // 2. Send official email verification link
       await userCredential.user?.sendEmailVerification();
 
-      // 3. Begin Owner Phone Verification Flow
       await _startOwnerPhoneVerification(userCredential.user!.uid);
     } catch (e) {
       setState(() {
@@ -86,7 +81,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // STEP 2: Verify Owner Phone
   Future<void> _startOwnerPhoneVerification(String uid) async {
     String ownerPhone = _phoneController.text.trim();
 
@@ -177,7 +171,6 @@ class _SignupScreenState extends State<SignupScreen> {
         smsCode: smsCode,
       );
 
-      // Owner phone successfully verified! Now proceed to Emergency Phone verification.
       await _startEmergencyPhoneVerification(uid);
     } catch (e) {
       setState(() {
@@ -187,7 +180,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // STEP 3: Start Emergency Phone Verification
   Future<void> _startEmergencyPhoneVerification(String uid) async {
     String emergencyPhone = _emergencyPhoneController.text.trim();
 
@@ -522,7 +514,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ),
                                 )
                               : const Text(
-                                  'Sign up ' ,
+                                  'Sign up ',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,

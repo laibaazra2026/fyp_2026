@@ -19,10 +19,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  String _errorMessage =
-      ''; // 🔴 Tracks validation/error messages like SignupScreen
+  String _errorMessage = '';
 
-  // 🔒 Strict Password Validation Rule Checker (Mirrored exactly from SignupScreen)
   String? _validatePassword(String password) {
     if (password.isEmpty) return 'Password cannot be empty.';
     if (password.length < 8) {
@@ -41,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  // 🚀 Login Method Handler
   void _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -97,7 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🌐 Google Sign-In Handler
   void _googleSignIn() async {
     setState(() {
       _isLoading = true;
@@ -174,7 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 30),
 
-                      // Email Field
                       TextField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -191,7 +186,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Password Field
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -217,7 +211,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      // Forgot Password Button
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -240,7 +233,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      // 🔴 Error Message Box (Identical style to SignupScreen)
                       if (_errorMessage.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -263,7 +255,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 10),
 
-                      // Login Button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -296,7 +287,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 14),
 
-                      // "OR" Divider Option
                       Row(
                         children: [
                           Expanded(
@@ -326,7 +316,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 14),
 
-                      // Google Sign-In Button
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton.icon(
@@ -355,7 +344,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Sign Up Redirect Row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

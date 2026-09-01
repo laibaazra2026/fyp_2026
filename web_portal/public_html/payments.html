@@ -25,7 +25,7 @@
 </head>
 <body>
 
-    <!-- Sidebar -->
+    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -39,7 +39,7 @@
         <a href="payments.html" class="active">💳 Subscriptions</a>
     </div>
 
-    <!-- Main Content -->
+    
     <div class="main">
         <div class="header">
             <h1>💎 Paid Subscriptions Log</h1>
@@ -102,7 +102,7 @@
                         paidCount++;
                         const email = data.email || 'N/A';
                         
-                        // Supports multiple date timestamp field naming standards
+                        
                         let formattedDate = 'N/A';
                         const timeField = data.subscribedAt || data.timestamp;
                         if (timeField && typeof timeField.toDate === 'function') {

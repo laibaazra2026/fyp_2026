@@ -10,17 +10,14 @@ import 'screens/home_screen.dart';
 import 'services/command_service.dart';
 import 'services/intruder_service.dart';
 
-// ✅ TOP-LEVEL BACKGROUND MESSAGE HANDLER (Must be outside any class)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Ensure Firebase is initialized in the background isolate
   await Firebase.initializeApp();
 
   print("📩 Background message received: ${message.data}");
 
   String type = message.data['type'] ?? '';
 
-  // Execute critical remote commands (like LOCK) instantly when app is closed/killed
   if (type == 'LOCK') {
     const platform = MethodChannel('device_protection/admin');
     try {
@@ -32,14 +29,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-// ✅ 1. GLOBAL NAVIGATOR KEY
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // ✅ REGISTER BACKGROUND MESSAGING HANDLER
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   runApp(const MyApp());
@@ -64,8 +59,6 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _initIntruderListener();
 
-    // ✅ 2. DYNAMICALLY LISTEN TO AUTH STATE CHANGES
-    // This starts command listening automatically the second a user logs in or boots up logged in.
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
       User? user,
     ) {
@@ -74,7 +67,6 @@ class _MyAppState extends State<MyApp> {
           "🔑 Auth state active for user: ${user.uid}. Initializing command listener...",
         );
 
-        // Safe delayed call to ensure context/navigator is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final activeContext = navigatorKey.currentContext ?? context;
           _commandService.listenForCommands(activeContext);
@@ -91,13 +83,11 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
-  // 👈 Listens for the failed unlock event coming from native Android
   void _initIntruderListener() {
     _adminChannel.setMethodCallHandler((call) async {
       if (call.method == "onPasswordFailed") {
         print("🚨 Intruder alert signal received from native Android!");
 
-        // Trigger your core camera capture and upload service
         final intruderService = IntruderService();
         await intruderService.onIncorrectUnlockAttempt();
       }
@@ -107,7 +97,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey, // ✅ 3. ATTACH THE KEY HERE
+      navigatorKey: navigatorKey,
       title: 'Device Protection',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.purple, fontFamily: 'Poppins'),

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SIM Logs - Device Protection</title>
 
-    <!-- Firebase SDK -->
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
     </script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
@@ -205,7 +205,7 @@
 </head>
 <body>
 
-    <!-- ========== SIDEBAR ========== -->
+    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -219,14 +219,14 @@
         <a href="payments.html">💳 Subscriptions</a>
     </div>
 
-    <!-- ========== MAIN CONTENT ========== -->
+    
     <div class="main">
         <div class="header">
             <h1>📱 SIM Change Logs</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
-        <!-- ========== STATS ========== -->
+        
         <div class="stats">
             <div class="stat-card">
                 <h3 id="totalAlerts">0</h3>
@@ -242,7 +242,7 @@
             </div>
         </div>
 
-        <!-- ========== TABLE ========== -->
+        
         <div class="table-container">
             <button class="refresh-btn" onclick="loadSimAlerts()">🔄 Refresh</button>
             <div id="loading" class="loading">Loading SIM logs...</div>
@@ -270,7 +270,7 @@
     </div>
 
     <script>
-        // ========== FIREBASE CONFIG ==========
+        
         const firebaseConfig = {
   apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
   authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
@@ -284,14 +284,14 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // ========== AUTH CHECK ==========
+        
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'index.html';
             }
         });
 
-        // ========== LOAD SIM ALERTS ==========
+        
         async function loadSimAlerts() {
             try {
                 const loading = document.getElementById('loading');
@@ -308,7 +308,7 @@
                     .limit(100)
                     .get();
 
-                // Update stats
+                
                 document.getElementById('totalAlerts').textContent = snapshot.size;
 
                 let todayCount = 0;
@@ -341,20 +341,20 @@
                 snapshot.forEach((doc) => {
                     const data = doc.data();
 
-                    // Determine if this is a new SIM change (vs device change)
+                    
                     const isSimChange = data.type === 'SIM_CHANGE';
 
                     const row = document.createElement('tr');
                     row.className = isSimChange ? 'sim-change' : '';
 
-                    // Format timestamp
+                    
                     let timeStr = 'N/A';
                     if (data.timestamp) {
                         const date = new Date(data.timestamp.seconds * 1000);
                         timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
                     }
 
-                    // Status badge
+                    
                     let statusBadge = '';
                     if (data.isRead) {
                         statusBadge = '<span class="badge badge-read">✅ Read</span>';
@@ -362,7 +362,7 @@
                         statusBadge = '<span class="badge badge-unread">🔴 Unread</span>';
                     }
 
-                    // Type badge
+                    
                     let typeBadge = '<span class="badge badge-sim">SIM</span>';
                     if (data.type === 'DEVICE_CHANGE') {
                         typeBadge = '<span class="badge badge-device">Device</span>';
@@ -379,7 +379,7 @@
                         <td>${timeStr}</td>
                     `;
 
-                    // Mark as read on hover (optional)
+                    
                     row.onclick = async function() {
                         if (!data.isRead) {
                             await db.collection('sim_alerts').doc(doc.id).update({
@@ -403,14 +403,14 @@
             }
         }
 
-        // ========== LOGOUT ==========
+        
         function logout() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             });
         }
 
-        // ========== LOAD ON PAGE OPEN ==========
+        
         loadSimAlerts();
     </script>
 

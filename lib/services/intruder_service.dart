@@ -19,7 +19,6 @@ class IntruderService {
         return;
       }
 
-      // 1. Initialize available cameras
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
         print("❌ No cameras available on device.");
@@ -39,11 +38,9 @@ class IntruderService {
 
       await controller.initialize();
 
-      // 2. Take the picture
       XFile image = await controller.takePicture();
       await controller.dispose();
 
-      // 3. Save locally in the mobile app's storage first (App Local Storage)
       final appDir = await getApplicationDocumentsDirectory();
       final fileName = "intruder_${DateTime.now().millisecondsSinceEpoch}.jpg";
       final localFile = File('${appDir.path}/$fileName');
@@ -52,10 +49,8 @@ class IntruderService {
       await localFile.writeAsBytes(imageBytes);
       print("✅ Intruder photo saved locally in app at: ${localFile.path}");
 
-      // 4. Convert image bytes to Base64 string for Firestore & Web Portal
       String base64Image = base64Encode(imageBytes);
 
-      // 5. Push to Firestore (Syncs to Mobile App Stream & Web Portal)
       await _firestore.collection('intruder_photos').add({
         'userId': user.uid,
         'localPath': localFile.path,

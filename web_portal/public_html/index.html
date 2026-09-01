@@ -131,7 +131,7 @@
     </div>
 
     <script>
-        // Firebase config
+        
         const firebaseConfig = {
           apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
           authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
@@ -147,7 +147,7 @@
 
         const msgBox = document.getElementById('message');
 
-        // Login Handler
+        
         document.getElementById('loginBtn').addEventListener('click', async () => {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -161,11 +161,11 @@
             }
 
             try {
-                // Authenticate user
+                
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
                 const user = userCredential.user;
 
-                // Validate admin email matches your Firestore security rules helper
+                
                 if (user.email === 'azralaiba53@gmail.com') {
                     window.location.href = 'dashboard.html';
                 } else {
@@ -179,7 +179,7 @@
             }
         });
 
-        // Forgot Password Handler
+        
         document.getElementById('forgotBtn').addEventListener('click', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value.trim();

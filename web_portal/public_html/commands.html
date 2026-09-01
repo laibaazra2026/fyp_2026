@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remote Commands - Device Protection</title>
-    <!-- Firebase SDK -->
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -171,7 +171,7 @@
 </head>
 <body>
 
-    <!-- Sidebar -->
+    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -185,14 +185,14 @@
         <a href="payments.html">💳 Subscriptions</a>
     </div>
 
-    <!-- Main -->
+    
     <div class="main">
         <div class="header">
             <h1>🎮 Remote Commands</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
-        <!-- Target User Selection Card -->
+        
         <div class="user-select-card">
             <label for="targetUser">Select Target User / Device:</label>
             <select id="targetUser">
@@ -203,21 +203,21 @@
         <div id="responseMsg" class="response-msg"></div>
 
         <div class="commands-grid">
-            <!-- Enable Theft Mode -->
+            
             <div class="command-card" onclick="sendCommand('THEFT_MODE')">
                 <div class="icon">🛡️</div>
                 <h3>Enable Theft Mode</h3>
                 <p>Activate theft protection</p>
             </div>
 
-            <!-- Lock Phone -->
+            
             <div class="command-card" onclick="sendCommand('LOCK')">
                 <div class="icon">🔒</div>
                 <h3>Lock Phone</h3>
                 <p>Lock the device remotely</p>
             </div>
 
-            <!-- Ring Phone -->
+            
             <div class="command-card" onclick="sendCommand('RING')">
                 <div class="icon">🔔</div>
                 <h3>Ring Phone</h3>
@@ -229,7 +229,7 @@
     </div>
 
     <script>
-        // ========== FIREBASE CONFIG ==========
+        
         const firebaseConfig = {
             apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
             authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
@@ -243,7 +243,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // ========== AUTH CHECK ==========
+        
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'index.html';
@@ -252,7 +252,7 @@
             }
         });
 
-        // ========== LOAD USERS INTO DROPDOWN ==========
+        
         async function loadUsersDropdown() {
             const select = document.getElementById('targetUser');
             try {
@@ -275,7 +275,7 @@
             }
         }
 
-        // ========== SEND COMMAND ==========
+    
         async function sendCommand(type) {
             const targetUserId = document.getElementById('targetUser').value;
             if (!targetUserId) {
@@ -287,7 +287,7 @@
             const responseMsg = document.getElementById('responseMsg');
 
             try {
-                // Send command to Firestore mapped directly to the selected target user's UID
+                
                 await db.collection('commands').add({
                     'userId': targetUserId,
                     'type': type,
@@ -315,7 +315,7 @@
             }
         }
 
-        // ========== LOGOUT ==========
+        
         function logout() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';

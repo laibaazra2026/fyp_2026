@@ -34,7 +34,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
     super.dispose();
   }
 
-  // 1️⃣ Verify if the user is upgraded/subscribed using SubscriptionService
   Future<bool> _checkIfUserIsUpgraded() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -43,11 +42,9 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
         return false;
       }
 
-      // Fetch current plan cleanly using your SubscriptionService
       String plan = await _subscriptionService.getCurrentPlan();
       print('DEBUG: Current subscription plan is: $plan');
 
-      // If plan is anything other than 'free', they have an active subscription
       return plan != 'free' && plan.isNotEmpty;
     } catch (e) {
       print('❌ Error checking subscription plan: $e');
@@ -100,7 +97,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
     }
   }
 
-  // 3️⃣ Full Restore Flow
   Future<void> _handleRestore() async {
     setState(() {
       _isLoading = true;
@@ -217,7 +213,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Contacts Tab View
                 _restoredContacts.isEmpty
                     ? const Center(
                         child: Text('No contacts loaded or restored yet.'),
@@ -236,7 +231,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
                           );
                         },
                       ),
-                // Call Logs Tab View
+
                 _restoredCallLogs.isEmpty
                     ? const Center(
                         child: Text('No call logs loaded or restored yet.'),

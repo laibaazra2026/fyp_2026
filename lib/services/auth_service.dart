@@ -6,7 +6,6 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // v7.2.0 Singleton instance & initialization state
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   bool _isInitialized = false;
 
@@ -29,13 +28,10 @@ class AuthService {
     }
   }
 
-  // Get current user
   User? get currentUser => _auth.currentUser;
 
-  // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // 1. Sign In with Email & Password
   Future<UserCredential?> signInWithEmailAndPassword({
     required String email,
     required String password,
@@ -53,7 +49,6 @@ class AuthService {
     }
   }
 
-  // 🟢 2. Login Wrapper Method (Fixes the red line under _authService.login)
   Future<UserCredential?> login({
     required String email,
     required String password,
@@ -61,7 +56,6 @@ class AuthService {
     return await signInWithEmailAndPassword(email: email, password: password);
   }
 
-  // 3. Sign Up with Email & Password
   Future<UserCredential?> signUpWithEmailAndPassword({
     required String email,
     required String password,
@@ -77,7 +71,6 @@ class AuthService {
     }
   }
 
-  // 4. Sign In with Google (Compatible with v7.2.0)
   Future<UserCredential?> signInWithGoogle() async {
     try {
       await _ensureInitialized();
@@ -116,7 +109,6 @@ class AuthService {
     }
   }
 
-  // 5. Reset Password
   Future<void> resetPassword({required String email}) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
@@ -138,7 +130,6 @@ class AuthService {
     }
   }
 
-  // 6. Sign Out
   Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();

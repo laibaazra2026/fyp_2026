@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.device_protection">
-    <!--ADD PERMISSIONS-->
+
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS"/>
     <uses-permission android:name="android.permission.READ_SMS"/>
@@ -52,13 +52,13 @@
             </intent-filter>
         </receiver>
 
-        <!-- ✅ Added Foreground Service for Camera Capture with Android 14+ requirements -->
+        
         <service
             android:name=".IntruderForegroundService"
             android:exported="false"
             android:foregroundServiceType="camera" />
 
-        <!-- Main Flutter Activity -->
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -87,7 +87,7 @@
             android:value="2" />
     </application>
 
-    <!-- Required to query activities that can process text -->
+    
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

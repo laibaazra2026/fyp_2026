@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard - Device Protection</title>
 
-    <!-- Firebase SDK -->
+    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
     </script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
@@ -26,7 +26,7 @@
             display: flex;
         }
 
-        /* Sidebar */
+        
         .sidebar {
             width: 230px;
             height: 100vh;
@@ -61,7 +61,7 @@
             background: #6A1B8A;
         }
 
-        /* Main Content */
+        
         .main {
             margin-left: 250px;
             padding: 30px;
@@ -94,7 +94,7 @@
             background: #6A1B8A;
         }
 
-        /* Cards */
+        
         .cards {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -129,7 +129,7 @@
             margin-bottom: 10px;
         }
 
-        /* Welcome Section */
+        
         .welcome {
             background: white;
             padding: 25px;
@@ -172,7 +172,7 @@
 </head>
 <body>
 
-    <!-- Sidebar -->
+    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html" class="active">📊 Dashboard</a>
@@ -187,20 +187,20 @@
 
     </div>
 
-    <!-- Main -->
+    
     <div class="main">
         <div class="header">
             <h1>📊 Dashboard</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
-        <!-- Welcome -->
+        
         <div class="welcome">
             <h2>Welcome, Admin! 👋</h2>
             <p>Here's an overview of your Device Protection system.</p>
         </div>
 
-        <!-- Cards -->
+        
         <div class="cards">
             <div class="card">
                 <div class="icon">👥</div>
@@ -234,35 +234,35 @@
   messagingSenderId: "38986827146",
   appId: "1:38986827146:web:9042f34efac22b99163473"
 };
-        // =========================================================
+        
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Check if user is logged in
+        
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'index.html';
             }
         });
 
-        // ========== LOAD DATA ==========
+        
         async function loadData() {
             try {
-                // Total Users
+                
                 const usersSnapshot = await db.collection('users').get();
                 document.getElementById('totalUsers').textContent = usersSnapshot.size;
 
-                // Total Alerts
+                
                 const alertsSnapshot = await db.collection('alerts').get();
                 document.getElementById('totalAlerts').textContent = alertsSnapshot.size;
 
-                // Total Locations
+                
                 const locationsSnapshot = await db.collection('locations').get();
                 document.getElementById('totalLocations').textContent = locationsSnapshot.size;
 
-                // Total Intruder Photos
+                
                 const intrudersSnapshot = await db.collection('intruder_photos').get();
                 document.getElementById('totalIntruders').textContent = intrudersSnapshot.size;
 
@@ -271,14 +271,14 @@
             }
         }
 
-        // ========== LOGOUT ==========
+        
         function logout() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             });
         }
 
-        // ========== LOAD ON PAGE OPEN ==========
+        
         loadData();
     </script>
 

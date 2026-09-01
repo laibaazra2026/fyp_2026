@@ -10,13 +10,11 @@ class SimService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  // Request Phone State Permission
   Future<bool> requestSimPermission() async {
     PermissionStatus status = await Permission.phone.request();
     return status.isGranted;
   }
 
-  // Detect Physical SIM Swap & Upload Log to Firebase
   Future<void> checkPhysicalSimSwap() async {
     bool hasPermission = await requestSimPermission();
     if (!hasPermission) return;
@@ -30,12 +28,10 @@ class SimService {
 
       String currentSimIdentifier = androidInfo.id;
 
-      // Read trusted old SIM token from secure storage
       String? oldSimToken = await _secureStorage.read(key: 'trusted_sim_token');
       DocumentReference userDoc = _firestore.collection('users').doc(user.uid);
 
       if (oldSimToken == null) {
-        // First-time setup: Store initial baseline SIM token
         await _secureStorage.write(
           key: 'trusted_sim_token',
           value: currentSimIdentifier,
@@ -45,7 +41,6 @@ class SimService {
           'simRegisteredAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       } else if (oldSimToken != currentSimIdentifier) {
-        // 🚨 PHYSICAL SIM SWAP DETECTED!
         await _firestore.collection('sim_logs').add({
           'userId': user.uid,
           'userEmail': user.email ?? 'Unknown User',
@@ -56,7 +51,6 @@ class SimService {
           'status': 'Unauthorized Physical SIM Swap',
         });
 
-        // Update local storage to new SIM token
         await _secureStorage.write(
           key: 'trusted_sim_token',
           value: currentSimIdentifier,
@@ -72,7 +66,6 @@ class SimService {
     }
   }
 
-  // Fetch SIM logs for the Logged-in User (For Mobile App & User Web Portal)
   Future<List<Map<String, dynamic>>> getUserSimLogs() async {
     User? user = _auth.currentUser;
     if (user == null) return [];
@@ -95,7 +88,6 @@ class SimService {
     }
   }
 
-  // Fetch all users SIM logs (For Admin Web Portal Dashboard)
   Future<List<Map<String, dynamic>>> getAllUsersSimLogsForAdmin() async {
     try {
       QuerySnapshot snapshot = await _firestore

@@ -52,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
           if (snapshot.exists && mounted) {
             var data = snapshot.data() as Map<String, dynamic>?;
             setState(() {
-              // This updates automatically whenever the database changes
               _isTheftModeActive = data?['isTheftModeOn'] ?? false;
             });
           }
@@ -236,10 +235,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ============================================================
-  // SUBSCRIPTION CHECK
-  // ============================================================
-
   Future<void> _checkSubscriptionAndProceed({
     required BuildContext context,
     required String featureName,
@@ -264,7 +259,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       Navigator.pop(context);
 
-      // ✅ Allow access if plan is active (not free)
       if (currentPlan.toLowerCase() != 'free') {
         onSubscribed();
       } else {
@@ -408,10 +402,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  // ============================================================
-  // CAMERA PERMISSION
-  // ============================================================
-
   Future<bool> _checkAndRequestCameraPermission(BuildContext context) async {
     PermissionStatus cameraStatus = await Permission.camera.request();
 
@@ -466,10 +456,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ============================================================
-  // BUILD HOME SCREEN
-  // ============================================================
-
   @override
   Widget build(BuildContext context) {
     final String? photoUrl = user?.photoURL;
@@ -482,9 +468,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
 
-      // ========================================================
-      // APP BAR
-      // ========================================================
       appBar: AppBar(
         backgroundColor: Colors.purple.shade700,
         elevation: 0,
@@ -535,9 +518,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // ========================================================
-      // DRAWER
-      // ========================================================
       drawer: Drawer(
         child: Column(
           children: [
@@ -633,17 +613,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      // ========================================================
-      // BODY
-      // ========================================================
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ==================================================
-            // THEFT MODE CARD
-            // ==================================================
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
 
@@ -737,9 +711,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // ==================================================
-            // SUBSCRIPTION CARD
-            // ==================================================
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
 
@@ -810,9 +781,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // ==================================================
-            // SECURITY MODULES TITLE
-            // ==================================================
             const Text(
               'Security Modules',
               style: TextStyle(
@@ -824,9 +792,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 12),
 
-            // ==================================================
-            // 4 SECURITY MODULE CARDS
-            // ==================================================
             GridView.count(
               crossAxisCount: 2,
 
@@ -842,9 +807,6 @@ class _HomeScreenState extends State<HomeScreen> {
               childAspectRatio: 1.0,
 
               children: [
-                // --------------------------------------------
-                // GPS TRACKING
-                // --------------------------------------------
                 FeatureAccessCard(
                   title: 'GPS Tracking',
                   subtitle: 'Live Map Location',
@@ -873,9 +835,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
 
-                // --------------------------------------------
-                // SIM / DEVICE ALERT
-                // --------------------------------------------
                 FeatureAccessCard(
                   title: 'SIM/Device Alert',
                   subtitle: 'Tap to check security',
@@ -904,9 +863,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
 
-                // --------------------------------------------
-                // INTRUDER CAPTURE
-                // --------------------------------------------
                 FeatureAccessCard(
                   title: 'Intruder Capture',
                   subtitle: 'Failed unlock snaps',
@@ -935,16 +891,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
 
-                // --------------------------------------------
-                // BACKUP & RESTORE
-                // --------------------------------------------
                 FeatureAccessCard(
                   title: 'Backup & Restore',
                   subtitle: 'Contacts & Call Logs ☁️',
                   icon: Icons.cloud_sync,
                   color: Colors.purple,
 
-                  // PRO FEATURE
                   isLocked: true,
 
                   onTap: () {
@@ -986,10 +938,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-// ============================================================
-// PROFILE & SETTINGS SCREEN
-// ============================================================
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

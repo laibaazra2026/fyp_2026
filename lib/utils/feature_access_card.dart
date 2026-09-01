@@ -38,14 +38,12 @@ class FeatureAccessCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // CENTER EVERYTHING
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Icon with colored background
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -56,7 +54,6 @@ class FeatureAccessCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // TITLE - CENTERED
                   Text(
                     title,
                     textAlign: TextAlign.center,
@@ -71,7 +68,6 @@ class FeatureAccessCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
 
-                  // SUBTITLE - CENTERED
                   Text(
                     subtitle,
                     textAlign: TextAlign.center,
@@ -87,7 +83,6 @@ class FeatureAccessCard extends StatelessWidget {
               ),
             ),
 
-            // LOCK BADGE TOP RIGHT
             if (isLocked)
               Positioned(
                 top: 2,

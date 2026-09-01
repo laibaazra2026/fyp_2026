@@ -7,7 +7,6 @@ class BackupRestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Step 1 Helper: Check if user has a valid subscription plan
   Future<bool> _checkSubscription(String userId) async {
     try {
       DocumentSnapshot userDoc = await _firestore
@@ -23,11 +22,9 @@ class BackupRestoreService {
       var data = userDoc.data() as Map<String, dynamic>?;
       if (data == null) return false;
 
-      // Reads your "subscriptionPlan" field directly (e.g., "family")
       String? plan = data['subscriptionPlan'];
       print('🔍 Found subscription plan: $plan');
 
-      // Returns true if a plan exists and isn't empty/free
       bool isValid =
           plan != null && plan.isNotEmpty && plan.toLowerCase() != 'free';
       return isValid;
@@ -37,7 +34,6 @@ class BackupRestoreService {
     }
   }
 
-  // 1️⃣ Backup Contacts & Call Logs
   Future<bool> backupData() async {
     try {
       final user = _auth.currentUser;
@@ -46,7 +42,6 @@ class BackupRestoreService {
         return false;
       }
 
-      // Run the subscription check
       bool hasAccess = await _checkSubscription(user.uid);
       if (!hasAccess) {
         print('❌ Backup blocked: No active subscription plan detected.');
@@ -55,7 +50,6 @@ class BackupRestoreService {
 
       print('✅ Subscription verified! Proceeding with backup...');
 
-      // Fetch Device Contacts
       List<Contact> contacts = await FlutterContacts.getAll(
         properties: {ContactProperty.name, ContactProperty.phone},
       );
@@ -67,7 +61,6 @@ class BackupRestoreService {
         };
       }).toList();
 
-      // Fetch Device Call Logs
       Iterable<CallLogEntry> callLogs = await CallLog.get();
       List<Map<String, dynamic>> callLogsList = callLogs.map((log) {
         return {
@@ -78,7 +71,6 @@ class BackupRestoreService {
         };
       }).toList();
 
-      // Save into user's isolated document path
       await _firestore
           .collection('users')
           .doc(user.uid)
@@ -98,7 +90,6 @@ class BackupRestoreService {
     }
   }
 
-  // 2️⃣ Restore Data from Firestore
   Future<Map<String, dynamic>?> restoreData() async {
     try {
       final user = _auth.currentUser;

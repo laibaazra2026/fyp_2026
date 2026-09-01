@@ -21,7 +21,6 @@ class _IntruderScreenState extends State<IntruderScreen> {
     _listenForRemoteLocks();
   }
 
-  // Listens for remote lock commands from web portal
   void _listenForRemoteLocks() {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;

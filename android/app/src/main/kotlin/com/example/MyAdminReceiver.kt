@@ -21,7 +21,7 @@ class MyAdminReceiver : DeviceAdminReceiver() {
         Log.d(TAG, "Device Admin: DISABLED")
     }
 
-    // 🚨 Triggered automatically when wrong password is typed on physical lock screen
+    
     override fun onPasswordFailed(context: Context, intent: Intent) {
         super.onPasswordFailed(context, intent)
         Log.d(TAG, "Password failed detected! Launching foreground camera service...")

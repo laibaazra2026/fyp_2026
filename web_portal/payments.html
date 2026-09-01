@@ -25,7 +25,7 @@
 </head>
 <body>
 
-    <!-- Sidebar -->
+    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -95,14 +95,14 @@
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    // Checks fields including 'plan' to match mobile app updates
+                    
                     const plan = data.subscriptionPlan || data.plan || 'Free';
 
                     if (plan && plan.toLowerCase() !== 'free' && plan !== '') {
                         paidCount++;
                         const email = data.email || 'N/A';
                         
-                        // Supports multiple date timestamp field naming standards
+                        
                         let formattedDate = 'N/A';
                         const timeField = data.subscribedAt || data.timestamp;
                         if (timeField && typeof timeField.toDate === 'function') {

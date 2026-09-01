@@ -23,13 +23,11 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Main entrance animation controller
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
-    // Continuous crystal color-flowing shimmer animation for the title
     _shimmerController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -49,7 +47,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Smooth delayed fade animation specifically for the footer
     _footerFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -59,7 +56,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animationController.forward();
 
-    // Navigate after 3 seconds
     Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
 
@@ -101,7 +97,6 @@ class _SplashScreenState extends State<SplashScreen>
               children: [
                 const Spacer(),
 
-                // Animated Logo Shield
                 ScaleTransition(
                   scale: _scaleAnimation,
                   child: Container(
@@ -127,7 +122,6 @@ class _SplashScreenState extends State<SplashScreen>
 
                 const SizedBox(height: 36),
 
-                // Title: "DEVICE PROTECTION" with crystal multi-color gradient traveling across both words
                 AnimatedBuilder(
                   animation: _shimmerController,
                   builder: (context, child) {
@@ -135,10 +129,10 @@ class _SplashScreenState extends State<SplashScreen>
                       shaderCallback: (bounds) {
                         return LinearGradient(
                           colors: const [
-                            Color(0xFF00ACC1), // Cyan
-                            Color(0xFF841EA0), // Purple
-                            Color(0xFFFF6F00), // Amber/Orange
-                            Color(0xFF00ACC1), // Cyan loop
+                            Color(0xFF00ACC1),
+                            Color(0xFF841EA0),
+                            Color(0xFFFF6F00),
+                            Color(0xFF00ACC1),
                           ],
                           stops: const [0.0, 0.35, 0.7, 1.0],
                           begin: Alignment(_shimmerController.value - 1, 0),
@@ -150,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen>
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white, // Required for ShaderMask
+                          color: Colors.white,
                           letterSpacing: 2.0,
                         ),
                       ),
@@ -160,7 +154,6 @@ class _SplashScreenState extends State<SplashScreen>
 
                 const SizedBox(height: 14),
 
-                // Accent Subtitle (Secure • Track • Protect)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -210,7 +203,6 @@ class _SplashScreenState extends State<SplashScreen>
 
                 const SizedBox(height: 45),
 
-                // Sleek Loading Spinner
                 SizedBox(
                   width: 24,
                   height: 24,
@@ -224,7 +216,6 @@ class _SplashScreenState extends State<SplashScreen>
 
                 const Spacer(),
 
-                // Animated Solid Purple Footer: "Developed by : Laiba & Azra"
                 FadeTransition(
                   opacity: _footerFadeAnimation,
                   child: Padding(
@@ -234,7 +225,7 @@ class _SplashScreenState extends State<SplashScreen>
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: primaryPurple, // Solid Purple as requested
+                        color: primaryPurple,
                         letterSpacing: 1.1,
                       ),
                     ),
