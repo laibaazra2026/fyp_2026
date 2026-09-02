@@ -2,6 +2,17 @@
   "projects": {
     "default": "fyp-mobile-app-and-web-portal"
   },
-  "targets": {},
+  "targets": {
+    "fyp-mobile-app-and-web-portal": {
+      "hosting": {
+        "web_portal": [
+          "fyp-mobile-app-and-web-portal"
+        ],
+        "user_portal": [
+          "fyp-user-portal"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

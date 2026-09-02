@@ -22,12 +22,24 @@
       }
     }
   },
-  "hosting": {
-    "public": "web_portal/public_html",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  }
+  "hosting": [
+    {
+      "target": "web_portal",
+      "public": "web_portal/public_html",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "target": "user_portal",
+      "public": "user_portal/web_files",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    }
+  ]
 }
