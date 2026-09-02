@@ -6,7 +6,7 @@
     <title>Dashboard - Protected Device Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts for clean typography -->
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -16,10 +16,10 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex text-gray-800">
 
-    <!-- Sidebar Navigation -->
+    
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex select-none">
         <div>
-            <!-- Sidebar Header Brand -->
+            
             <div class="p-6 flex items-center space-x-3 border-b border-gray-100">
                 <div class="w-10 h-10 bg-[#841EA0]/10 rounded-xl flex items-center justify-center text-[#841EA0]">
                     <i class="fa-solid fa-shield-halved text-xl"></i>
@@ -30,7 +30,7 @@
                 </div>
             </div>
 
-            <!-- Navigation Links Menu -->
+            
             <nav class="p-4 space-y-1.5">
                 <a href="home.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl bg-[#841EA0] text-white font-semibold text-sm shadow-md shadow-purple-200">
                     <i class="fa-solid fa-house w-5"></i>
@@ -56,7 +56,7 @@
                     <i class="fa-solid fa-cloud-arrow-down w-5"></i>
                     <span>Backup & Restore</span>
                 </a>
-                <!-- Added My Payments Link -->
+                
                 <a href="user_payments.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
                     <i class="fa-solid fa-credit-card w-5"></i>
                     <span>My Payments</span>
@@ -68,7 +68,7 @@
             </nav>
         </div>
 
-        <!-- Sidebar Footer Logout Button -->
+        
         <div class="p-4 border-t border-gray-100">
             <button onclick="handleLogout()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition">
                 <i class="fa-solid fa-right-from-bracket"></i>
@@ -77,16 +77,16 @@
         </div>
     </aside>
 
-    <!-- Main Workspace Area -->
+    
     <div class="flex-grow flex flex-col min-w-0 relative">
         
-        <!-- Top Header Navigation Bar -->
+        
         <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center shadow-xs">
             <div class="flex items-center space-x-3">
                 <span class="text-base font-bold text-gray-800 tracking-tight">Security Control Center</span>
             </div>
 
-            <!-- Profile Dropdown Container -->
+            
             <div class="relative">
                 <button onclick="toggleProfileDropdown()" class="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-full hover:bg-gray-100 transition focus:outline-none">
                     <div class="w-8 h-8 bg-[#841EA0] text-white rounded-full flex items-center justify-center text-xs font-bold shadow-xs">
@@ -96,7 +96,7 @@
                     <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] ml-0.5"></i>
                 </button>
 
-                <!-- Dropdown Menu Box -->
+                
                 <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in duration-150">
                     <div class="px-4 py-2 border-b border-gray-100">
                         <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Signed in as</p>
@@ -123,17 +123,17 @@
             </div>
         </header>
 
-        <!-- Main Dashboard Content Grid -->
+        
         <main class="p-6 md:p-10 max-w-5xl w-full mx-auto flex-grow">
             <div class="mb-8">
                 <h2 id="welcome-title" class="text-2xl font-bold text-gray-900 tracking-tight">Welcome, User</h2>
                 <p class="text-sm text-gray-500 mt-1">Quickly access monitoring tools and track your protected device status.</p>
             </div>
 
-            <!-- Feature Navigation Cards Grid -->
+            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                <!-- Card 1: GPS Tracking -->
+                
                 <a href="gps.html" class="bg-white p-6 rounded-2xl shadow-xs hover:shadow-md transition duration-200 border border-gray-200 flex items-center space-x-4 group">
                     <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center text-[#841EA0] group-hover:bg-[#841EA0] group-hover:text-white transition duration-200 shrink-0">
                         <i class="fa-solid fa-location-dot text-xl"></i>
@@ -144,7 +144,7 @@
                     </div>
                 </a>
 
-                <!-- Card 2: Intruder Captures -->
+                
                 <a href="intruder_logs.html" class="bg-white p-6 rounded-2xl shadow-xs hover:shadow-md transition duration-200 border border-gray-200 flex items-center space-x-4 group">
                     <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center text-[#841EA0] group-hover:bg-[#841EA0] group-hover:text-white transition duration-200 shrink-0">
                         <i class="fa-solid fa-camera-retro text-xl"></i>
@@ -155,7 +155,7 @@
                     </div>
                 </a>
 
-                <!-- Card 3: SIM Change Logs -->
+                
                 <a href="sim_logs.html" class="bg-white p-6 rounded-2xl shadow-xs hover:shadow-md transition duration-200 border border-gray-200 flex items-center space-x-4 group">
                     <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center text-[#841EA0] group-hover:bg-[#841EA0] group-hover:text-white transition duration-200 shrink-0">
                         <i class="fa-solid fa-sim-card text-xl"></i>
@@ -166,7 +166,7 @@
                     </div>
                 </a>
 
-                <!-- Card 4: Remote Commands -->
+                
                 <a href="remote_commands.html" class="bg-white p-6 rounded-2xl shadow-xs hover:shadow-md transition duration-200 border border-gray-200 flex items-center space-x-4 group">
                     <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center text-[#841EA0] group-hover:bg-[#841EA0] group-hover:text-white transition duration-200 shrink-0">
                         <i class="fa-solid fa-terminal text-xl"></i>
@@ -181,7 +181,7 @@
         </main>
     </div>
 
-    <!-- Edit Profile Name Modal Popup -->
+    
     <div id="name-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-150">
             <h3 class="text-base font-bold text-gray-900 mb-1">Change Profile Name</h3>
@@ -195,7 +195,7 @@
         </div>
     </div>
 
-    <!-- Firebase Authentication & Logic Script -->
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";

@@ -24,7 +24,7 @@
             align-items: center;
         }
 
-        /* Splash Container */
+        
         .splash-content {
             display: flex;
             flex-direction: column;
@@ -41,7 +41,7 @@
             to { opacity: 1; }
         }
 
-        /* Shield Icon Container with soft purple glow */
+        
         .splash-shield-container {
             padding: 32px;
             background-color: var(--purple-light);
@@ -59,14 +59,14 @@
             to { transform: scale(1); opacity: 1; }
         }
 
-        /* SVG matching Flutter's security_rounded icon */
+        
         .shield-icon {
             width: 95px;
             height: 95px;
             fill: var(--primary-purple);
         }
 
-        /* Multi-color Crystal Shimmer Gradient matching Flutter ShaderMask */
+        
         .splash-title {
             font-size: 24px;
             font-weight: 900;
@@ -84,7 +84,7 @@
             100% { background-position: 100% 50%; }
         }
 
-        /* Subtitle layout */
+        
         .splash-subtitle {
             display: flex;
             align-items: center;
@@ -104,7 +104,7 @@
             margin: 0 8px;
         }
 
-        /* Loading Spinner */
+        
         .spinner {
             width: 24px;
             height: 24px;
@@ -119,7 +119,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Footer styling */
+        
         .splash-footer {
             position: absolute;
             bottom: 24px;
@@ -141,7 +141,7 @@
 
     <div class="splash-content">
         <div class="splash-shield-container">
-            <!-- Security Shield Vector Icon -->
+            
             <svg class="shield-icon" viewBox="0 0 24 24">
                 <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.84 8.94,12.5 12,12.5C15.06,12.5 18,13.84 18,15.47C17.76,16 17.47,16.5 17.13,17Z" />
             </svg>
@@ -163,7 +163,7 @@
     <div class="splash-footer">Developed by : Laiba &amp; Azra</div>
 
     <script>
-        // Automatically redirects to login.html after 3 seconds (3000ms)
+        
         setTimeout(() => {
             window.location.href = 'login.html'; 
         }, 3000);
