@@ -4,12 +4,16 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.Ringtone
+import android.media.RingtoneManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "device_protection/admin"
+    private var activeRingtone: Ringtone? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -36,6 +40,35 @@ class MainActivity: FlutterActivity() {
                         result.success("Device locked successfully")
                     } else {
                         result.error("ADMIN_NOT_ACTIVE", "Device Admin is not enabled", null)
+                    }
+                }
+                "ringAlarm" -> {
+                    try {
+                        val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                        activeRingtone?.stop()
+                        activeRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                        activeRingtone?.play()
+                        result.success("Alarm ringing successfully")
+                    } catch (e: Exception) {
+                        result.error("RING_FAILED", e.message, null)
+                    }
+                }
+                "enableTheftMode" -> {
+                    try {
+                        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                        audioManager.setStreamVolume(
+                            AudioManager.STREAM_ALARM,
+                            audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM),
+                            0
+                        )
+                        val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                        activeRingtone?.stop()
+                        activeRingtone = RingtoneManager.getRingtone(applicationContext, notification)
+                        activeRingtone?.play()
+                        result.success("Theft mode enabled successfully")
+                    } catch (e: Exception) {
+                        result.error("THEFT_MODE_FAILED", e.message, null)
                     }
                 }
                 else -> {

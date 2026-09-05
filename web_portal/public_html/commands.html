@@ -171,7 +171,6 @@
 </head>
 <body>
 
-    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -185,14 +184,12 @@
         <a href="payments.html">💳 Subscriptions</a>
     </div>
 
-    
     <div class="main">
         <div class="header">
             <h1>🎮 Remote Commands</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
-        
         <div class="user-select-card">
             <label for="targetUser">Select Target User / Device:</label>
             <select id="targetUser">
@@ -203,21 +200,18 @@
         <div id="responseMsg" class="response-msg"></div>
 
         <div class="commands-grid">
-            
             <div class="command-card" onclick="sendCommand('THEFT_MODE')">
                 <div class="icon">🛡️</div>
                 <h3>Enable Theft Mode</h3>
                 <p>Activate theft protection</p>
             </div>
 
-            
             <div class="command-card" onclick="sendCommand('LOCK')">
                 <div class="icon">🔒</div>
                 <h3>Lock Phone</h3>
                 <p>Lock the device remotely</p>
             </div>
 
-            
             <div class="command-card" onclick="sendCommand('RING')">
                 <div class="icon">🔔</div>
                 <h3>Ring Phone</h3>
@@ -229,7 +223,6 @@
     </div>
 
     <script>
-        
         const firebaseConfig = {
             apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
             authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
@@ -243,7 +236,6 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'index.html';
@@ -252,7 +244,6 @@
             }
         });
 
-        
         async function loadUsersDropdown() {
             const select = document.getElementById('targetUser');
             try {
@@ -275,7 +266,6 @@
             }
         }
 
-    
         async function sendCommand(type) {
             const targetUserId = document.getElementById('targetUser').value;
             if (!targetUserId) {
@@ -287,7 +277,7 @@
             const responseMsg = document.getElementById('responseMsg');
 
             try {
-                
+                // 1. Write the command document to Firestore for real-time app state synchronization
                 await db.collection('commands').add({
                     'userId': targetUserId,
                     'type': type,
@@ -295,6 +285,15 @@
                     'timestamp': firebase.firestore.FieldValue.serverTimestamp(),
                     'executedAt': null,
                 });
+
+                // 2. Fetch the target user's document to retrieve their FCM token
+                const userDoc = await db.collection('users').doc(targetUserId).get();
+                if (userDoc.exists && userDoc.data().fcmToken) {
+                    const fcmToken = userDoc.data().fcmToken;
+                    console.log("Target User FCM Token found:", fcmToken);
+                    // Note: If you implement a cloud function or backend handler for FCM push notifications, 
+                    // pass the fcmToken and command type payload there to wake up the app in the background.
+                }
 
                 loading.innerHTML = '✅ Command sent to device!';
                 responseMsg.className = 'response-msg success';
@@ -315,13 +314,11 @@
             }
         }
 
-        
         function logout() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             });
         }
     </script>
-
 </body>
 </html>

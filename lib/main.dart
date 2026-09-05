@@ -14,20 +14,10 @@ import 'services/background_task.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+  print("📩 Background message received in headless isolate: ${message.data}");
 
-  print("📩 Background message received: ${message.data}");
-
-  String type = message.data['type'] ?? '';
-
-  if (type == 'LOCK') {
-    const platform = MethodChannel('device_protection/admin');
-    try {
-      await platform.invokeMethod('lockDevice');
-      print("🔒 Phone locked successfully from background push!");
-    } catch (e) {
-      print("❌ Failed to lock phone from background: $e");
-    }
-  }
+  // Note: MethodChannel cannot invoke MainActivity methods here because the app is closed.
+  // Command execution when the app is terminated is handled by the active Foreground Service isolate.
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

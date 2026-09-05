@@ -13,19 +13,25 @@ class MyTaskHandler extends TaskHandler {
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     await Firebase.initializeApp();
 
-    // Listen for FCM messages while the foreground service runs
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       print("📩 Foreground service message received: ${message.data}");
       String type = message.data['type'] ?? '';
 
-      if (type == 'LOCK') {
-        const platform = MethodChannel('device_protection/admin');
-        try {
+      const platform = MethodChannel('device_protection/admin');
+
+      try {
+        if (type == 'LOCK') {
           await platform.invokeMethod('lockDevice');
           print("🔒 Phone locked successfully from foreground service!");
-        } catch (e) {
-          print("❌ Failed to lock phone: $e");
+        } else if (type == 'RING') {
+          await platform.invokeMethod('ringAlarm');
+          print("🔔 Alarm triggered via background service!");
+        } else if (type == 'THEFT_MODE') {
+          await platform.invokeMethod('enableTheftMode');
+          print("🚨 Theft mode enabled via background service!");
         }
+      } catch (e) {
+        print("❌ Failed to execute command '$type' via MethodChannel: $e");
       }
     });
   }

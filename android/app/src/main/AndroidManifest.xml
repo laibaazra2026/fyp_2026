@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.RECEIVE_SMS"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.BACKGROUND_LOCATION"/>
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -38,6 +39,12 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBgMYihlA-fmxUIs_p8Md94vBXS4xou7Y8" />
+
+
+            <property
+            android:name="android.app.foreground_service_type"
+            android:value="specialUse"
+            tools:node="merge" />
             
         <receiver
             android:name=".MyAdminReceiver"
@@ -62,7 +69,9 @@
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:foregroundServiceType="specialUse"
-            android:exported="false" />
+            android:stopWithTask="false"
+            android:exported="false" 
+            />
 
         
         <activity

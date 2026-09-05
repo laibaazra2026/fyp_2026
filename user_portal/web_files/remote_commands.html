@@ -6,7 +6,7 @@
     <title>Remote Commands - Security Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -23,10 +23,10 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex text-gray-800">
 
-    <!-- Sidebar Navigation -->
+    <!-- Sidebar -->
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex select-none shrink-0">
         <div>
-            <!-- Sidebar Header Brand -->
+            <!-- Brand -->
             <div class="p-6 flex items-center space-x-3 border-b border-gray-100">
                 <div class="w-10 h-10 bg-[#841EA0]/10 rounded-xl flex items-center justify-center text-[#841EA0]">
                     <i class="fa-solid fa-shield-halved text-xl"></i>
@@ -37,7 +37,7 @@
                 </div>
             </div>
 
-            <!-- Navigation Links Menu -->
+            <!-- Navigation Links -->
             <nav class="p-4 space-y-1.5">
                 <a href="home.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
                     <i class="fa-solid fa-house w-5"></i>
@@ -70,7 +70,7 @@
             </nav>
         </div>
 
-        <!-- Sidebar Footer Logout Button -->
+        <!-- Sidebar Footer Logout -->
         <div class="p-4 border-t border-gray-100">
             <button onclick="handleLogout()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition">
                 <i class="fa-solid fa-right-from-bracket"></i>
@@ -79,16 +79,16 @@
         </div>
     </aside>
 
-    <!-- Main Workspace Area -->
+    <!-- Main Content Wrapper -->
     <div class="flex-grow flex flex-col min-w-0 relative h-screen overflow-y-auto">
         
-        <!-- Top Header Navigation Bar -->
+        <!-- Top Header Navbar -->
         <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center shadow-xs sticky top-0 z-40">
             <div class="flex items-center space-x-3">
                 <span class="text-base font-bold text-gray-800 tracking-tight">Remote Commands</span>
             </div>
 
-            <!-- Profile Dropdown Container -->
+            <!-- Profile Dropdown -->
             <div class="relative">
                 <button onclick="toggleProfileDropdown()" class="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-full hover:bg-gray-100 transition focus:outline-none">
                     <div class="w-8 h-8 bg-[#841EA0] text-white rounded-full flex items-center justify-center text-xs font-bold shadow-xs">
@@ -98,7 +98,7 @@
                     <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] ml-0.5"></i>
                 </button>
 
-                <!-- Dropdown Menu Box -->
+                <!-- Dropdown Menu -->
                 <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
                     <div class="px-4 py-2 border-b border-gray-100">
                         <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Signed in as</p>
@@ -121,19 +121,19 @@
             </div>
         </header>
 
-        <!-- Main Content Section -->
+        <!-- Main Body Area -->
         <main class="p-6 md:p-10 max-w-5xl w-full mx-auto flex-grow space-y-6">
             <div>
                 <h2 class="text-xl font-bold text-gray-900 tracking-tight">Send Commands to Your Device</h2>
                 <p class="text-xs text-gray-500 mt-1">Execute secure remote actions instantly on your connected mobile device.</p>
             </div>
 
-            <!-- Dynamic Response/Status Notification Box -->
+            <!-- Dynamic Feedback Alert -->
             <div id="responseMsg" class="hidden p-4 rounded-xl text-xs font-semibold transition"></div>
 
-            <!-- Commands Cards Grid -->
+            <!-- Command Action Cards Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Enable Theft Mode -->
+                <!-- Theft Mode Command -->
                 <div onclick="sendCommand('THEFT_MODE')" class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs hover:border-[#841EA0] hover:shadow-md transition cursor-pointer group text-center space-y-3">
                     <div class="w-14 h-14 bg-purple-50 text-[#841EA0] rounded-2xl flex items-center justify-center text-xl mx-auto group-hover:bg-[#841EA0] group-hover:text-white transition">
                         <i class="fa-solid fa-shield-halved"></i>
@@ -142,7 +142,7 @@
                     <p class="text-xs text-gray-500 leading-relaxed">Activate full theft protection measures remotely.</p>
                 </div>
 
-                <!-- Lock Phone -->
+                <!-- Lock Phone Command -->
                 <div onclick="sendCommand('LOCK')" class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs hover:border-[#841EA0] hover:shadow-md transition cursor-pointer group text-center space-y-3">
                     <div class="w-14 h-14 bg-purple-50 text-[#841EA0] rounded-2xl flex items-center justify-center text-xl mx-auto group-hover:bg-[#841EA0] group-hover:text-white transition">
                         <i class="fa-solid fa-lock"></i>
@@ -151,7 +151,7 @@
                     <p class="text-xs text-gray-500 leading-relaxed">Securely lock down your device immediately.</p>
                 </div>
 
-                <!-- Ring Phone -->
+                <!-- Ring Phone Command -->
                 <div onclick="sendCommand('RING')" class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs hover:border-[#841EA0] hover:shadow-md transition cursor-pointer group text-center space-y-3">
                     <div class="w-14 h-14 bg-purple-50 text-[#841EA0] rounded-2xl flex items-center justify-center text-xl mx-auto group-hover:bg-[#841EA0] group-hover:text-white transition">
                         <i class="fa-solid fa-bell"></i>
@@ -161,14 +161,14 @@
                 </div>
             </div>
 
-            <!-- Status Indicator Message -->
+            <!-- Status Bar Card -->
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-xs text-center">
                 <p id="loading-status" class="text-xs font-medium text-gray-500">Ready. Click any command card above to target your device.</p>
             </div>
         </main>
     </div>
 
-    <!-- Firebase SDK Modular Imports & Script Logic -->
+    <!-- Firebase SDK Logic Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -248,6 +248,7 @@
             statusText.innerText = 'Sending command to your device...';
 
             try {
+                // 1. Write command document to Firestore (handles real-time sync when app is open)
                 await addDoc(collection(db, 'commands'), {
                     userId: activeUserId,
                     type: type,
@@ -255,6 +256,16 @@
                     timestamp: serverTimestamp(),
                     executedAt: null,
                 });
+
+                // 2. Fetch user's FCM token to target closed app states
+                const userDocRef = doc(db, 'users', activeUserId);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists() && userDocSnap.data().fcmToken) {
+                    const fcmToken = userDocSnap.data().fcmToken;
+                    console.log("Target FCM Token retrieved:", fcmToken);
+                    // Hook up your backend endpoint or serverless function call here if needed
+                }
 
                 statusText.innerText = 'Ready. Click any command card above to target your device.';
                 responseMsg.className = 'p-4 rounded-xl text-xs font-semibold bg-green-50 text-green-700 border border-green-200 block';
