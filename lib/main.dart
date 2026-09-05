@@ -9,6 +9,7 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/command_service.dart';
 import 'services/intruder_service.dart';
+import 'services/background_task.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -58,6 +59,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _initIntruderListener();
+    startService();
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
       User? user,
