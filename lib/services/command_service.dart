@@ -179,8 +179,14 @@ class CommandService {
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
       try {
+        if (_audioPlayer.state == PlayerState.playing ||
+            _audioPlayer.state == PlayerState.paused) {
+          await _audioPlayer.stop();
+        }
+
         await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-        await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
+        await _audioPlayer.setSource(AssetSource('sounds/ringtone.mp3'));
+        await _audioPlayer.resume();
       } catch (audioError) {
         print('⚠️ Error playing asset audio: $audioError');
       }
@@ -202,7 +208,14 @@ class CommandService {
             actions: [
               TextButton(
                 onPressed: () async {
-                  await _audioPlayer.stop();
+                  try {
+                    if (_audioPlayer.state == PlayerState.playing ||
+                        _audioPlayer.state == PlayerState.paused) {
+                      await _audioPlayer.stop();
+                    }
+                  } catch (stopError) {
+                    print('⚠️ Error stopping audio: $stopError');
+                  }
                   if (Navigator.canPop(dialogCtx)) {
                     Navigator.pop(dialogCtx);
                   }
