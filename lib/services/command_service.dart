@@ -185,8 +185,7 @@ class CommandService {
         }
 
         await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-        await _audioPlayer.setSource(AssetSource('sounds/ringtone.mp3'));
-        await _audioPlayer.resume();
+        await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
       } catch (audioError) {
         print('⚠️ Error playing asset audio: $audioError');
       }
