@@ -60,12 +60,14 @@ class CommandService {
             for (var doc in snapshot.docs) {
               String docId = doc.id;
 
+              // Immediately skip if already processed in memory
               if (_processedCommands.contains(docId)) continue;
+
+              // Lock it into memory instantly to block concurrent loops
+              _processedCommands.add(docId);
 
               var data = doc.data();
               print('📩 Command received: ${data['type']}');
-
-              _processedCommands.add(docId);
 
               _executeCommand(context, docId, data);
             }
