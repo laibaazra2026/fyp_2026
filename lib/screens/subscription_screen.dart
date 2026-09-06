@@ -5,6 +5,7 @@ import 'backup_restore_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
+
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
@@ -23,7 +24,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 4),
     );
-    // Confetti plays  when  users enters the subscription page
     _confettiController.play();
     _loadCurrentPlan();
   }
@@ -39,9 +39,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String plan = await _subscriptionService.getCurrentPlan();
     if (!mounted) return;
     setState(() {
-      _currentPlan = plan;
-      if (plan == 'premium') _currentPage = 1;
-      if (plan == 'family') _currentPage = 2;
+      _currentPlan = plan.toLowerCase();
+      if (_currentPlan == 'premium') _currentPage = 1;
+      if (_currentPlan == 'family') _currentPage = 2;
     });
   }
 
@@ -95,7 +95,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 subtitle: const Text('Simulated Instant Payment'),
                 onTap: () {
                   Navigator.pop(context);
-                  _processUpgrade(planName, price, 'JazzCash');
+                  _showGatewayCheckoutDialog(planName, price, 'JazzCash');
                 },
               ),
               const Divider(),
@@ -117,7 +117,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 subtitle: const Text('Simulated Instant Payment'),
                 onTap: () {
                   Navigator.pop(context);
-                  _processUpgrade(planName, price, 'EasyPaisa');
+                  _showGatewayCheckoutDialog(planName, price, 'EasyPaisa');
                 },
               ),
               const Divider(),
@@ -139,7 +139,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 subtitle: const Text('Bypass for Evaluators / FYP Panel'),
                 onTap: () {
                   Navigator.pop(context);
-                  _processUpgrade(planName, price, 'Sandbox Test');
+                  _showGatewayCheckoutDialog(planName, price, 'Sandbox Test');
                 },
               ),
             ],
@@ -149,48 +149,146 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Future<void> _processUpgrade(
+  // Secure Gateway & SMS Test Whitelist Checkout Dialog
+  void _showGatewayCheckoutDialog(
     String planName,
     double price,
-    String paymentMethod,
-  ) async {
-    try {
-      await _subscriptionService.updateSubscriptionWithMethod(
-        planName.toLowerCase(),
-        price,
-        paymentMethod,
-      );
+    String gatewayName,
+  ) {
+    final phoneController = TextEditingController();
+    final pinController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
-      if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('$gatewayName Secure Checkout'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Paying PKR ${price.toStringAsFixed(0)} for $planName Tier'),
+              const SizedBox(height: 12),
 
-      setState(() => _currentPlan = planName.toLowerCase());
+              // Phone Number Field with Whitelist Validation
+              TextFormField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                maxLength: 13,
+                decoration: const InputDecoration(
+                  labelText: 'Test Mobile Wallet No',
+                  hintText: '+923XXXXXXXXX or 03XXXXXXXXX',
+                  border: OutlineInputBorder(),
+                  counterText: '',
+                ),
+                validator: _subscriptionService.validateAndNormalizeNumber,
+              ),
+              const SizedBox(height: 12),
 
-      _confettiController.play();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '🎉 Upgraded to $planName via $paymentMethod Successfully!',
+              // Mock MPIN / OTP Field
+              TextFormField(
+                controller: pinController,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 4,
+                decoration: const InputDecoration(
+                  labelText: '4-Digit MPIN / Mock OTP',
+                  hintText: '1234',
+                  border: OutlineInputBorder(),
+                  counterText: '',
+                ),
+                validator: (val) => (val == null || val.length != 4)
+                    ? 'Enter 4-digit mock MPIN'
+                    : null,
+              ),
+            ],
           ),
-          backgroundColor: Colors.green,
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple.shade700,
+            ),
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                String inputPhone = phoneController.text.trim();
+                Navigator.pop(dialogContext); // Close checkout dialog safely
 
-      if (planName.toLowerCase() == 'family') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const BackupRestoreScreen()),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to complete upgrade: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+                // Show loading progress
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (loadingContext) =>
+                      const Center(child: CircularProgressIndicator()),
+                );
+
+                try {
+                  // 1. Trigger Sandbox SMS to the test number and log to Firestore
+                  await _subscriptionService.sendSandboxSms(
+                    recipientNumber: inputPhone,
+                    planName: planName,
+                    price: price,
+                    gateway: gatewayName,
+                  );
+
+                  // 2. Update user subscription state in Firestore
+                  await _subscriptionService.updateSubscriptionWithMethod(
+                    planName,
+                    price,
+                    gatewayName,
+                    verifiedPhoneNumber: inputPhone,
+                    transactionId:
+                        'SBX-${DateTime.now().millisecondsSinceEpoch}',
+                  );
+
+                  if (!mounted) return;
+                  Navigator.pop(context); // Dismiss loading progress dialog
+
+                  setState(() => _currentPlan = planName.toLowerCase());
+                  _confettiController.play();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '🎉 Upgraded to $planName via $gatewayName Successfully! SMS Dispatched.',
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  if (planName.toLowerCase() == 'family') {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BackupRestoreScreen(),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+                  Navigator.pop(context); // Dismiss loading progress dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString()),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Authorize & Pay',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -222,7 +320,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-
                   ShaderMask(
                     shaderCallback: (bounds) => const LinearGradient(
                       colors: [
@@ -242,7 +339,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 8),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24.0),
@@ -257,7 +353,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   Expanded(
                     child: PageView(
                       controller: _pageController,
@@ -280,7 +375,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           buttonText: 'Current Plan',
                           onTap: null,
                         ),
-
                         _buildTierCard(
                           name: 'Premium',
                           price: 'Rs. 99 / month',
@@ -294,7 +388,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           onTap: () =>
                               _showPaymentMethodDialog('Premium', 99.0),
                         ),
-
                         _buildTierCard(
                           name: 'Family',
                           price: 'Rs. 199 / month',
@@ -311,9 +404,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(3, (index) {
@@ -336,7 +427,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
             ),
           ),
-
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
@@ -437,6 +527,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const Divider(height: 24),
             Expanded(
               child: ListView(
+                physics: const BouncingScrollPhysics(),
                 children: features.map((feature) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
