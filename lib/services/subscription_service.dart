@@ -122,6 +122,8 @@ class SubscriptionService {
         updateData['verifiedPhoneNumber'] = normalizeNumber(
           verifiedPhoneNumber,
         );
+        updateData['userEmail'] = user.email ?? 'No Email Provided';
+        updateData['userId'] = user.uid;
       }
       if (transactionId != null) {
         updateData['lastTransactionId'] = transactionId;

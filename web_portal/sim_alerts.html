@@ -243,10 +243,9 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>User Email</th>
-                        <th>Device Model</th>
-                        <th>Old SIM Identifier</th>
-                        <th>New SIM Identifier</th>
+                        <th>User Email / UID</th>
+                        <th>Carrier Name</th>
+                        <th>SIM Identifier</th>
                         <th>Status / Event</th>
                         <th>Read State</th>
                         <th>Timestamp</th>
@@ -268,7 +267,10 @@
             appId: "1:38986827146:web:9042f34efac22b99163473"
         };
 
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
         const auth = firebase.auth();
         const db = firebase.firestore();
 
@@ -289,25 +291,44 @@
                 empty.style.display = 'none';
                 table.style.display = 'none';
 
-                // Queries the complete 'sim_logs' collection globally for all users matching Flutter app data structure
-                const snapshot = await db.collection('sim_logs')
-                    .orderBy('timestamp', 'desc')
-                    .limit(100)
-                    .get();
+                const usersSnapshot = await db.collection('users').get();
+                let allLogs = [];
 
-                document.getElementById('totalAlerts').textContent = snapshot.size;
+                for (const userDoc of usersSnapshot.docs) {
+                    const userData = userDoc.data();
+                    const uid = userDoc.id;
+                    const userEmail = userData.email || uid;
+
+                    const simLogsSnapshot = await db.collection('users').doc(uid).collection('sim_logs').get();
+
+                    simLogsSnapshot.forEach(logDoc => {
+                        allLogs.push({
+                            id: logDoc.id,
+                            userId: uid,
+                            userEmail: userEmail,
+                            ...logDoc.data()
+                        });
+                    });
+                }
+
+                allLogs.sort((a, b) => {
+                    const timeA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : new Date(a.timestamp || 0).getTime();
+                    const timeB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : new Date(b.timestamp || 0).getTime();
+                    return timeB - timeA;
+                });
+
+                document.getElementById('totalAlerts').textContent = allLogs.length;
 
                 let todayCount = 0;
                 let unreadCount = 0;
                 const today = new Date().toDateString();
 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const timestamp = data.timestamp ? new Date(data.timestamp.seconds * 1000) : null;
+                allLogs.forEach(log => {
+                    const timestamp = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : (log.timestamp ? new Date(log.timestamp) : null);
                     if (timestamp && timestamp.toDateString() === today) {
                         todayCount++;
                     }
-                    if (!data.isRead) {
+                    if (!log.isRead) {
                         unreadCount++;
                     }
                 });
@@ -316,46 +337,45 @@
                 document.getElementById('unreadAlerts').textContent = unreadCount;
 
                 tbody.innerHTML = '';
-                let count = 1;
 
-                if (snapshot.empty) {
+                if (allLogs.length === 0) {
                     loading.style.display = 'none';
                     empty.style.display = 'block';
                     return;
                 }
 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
+                let count = 1;
+                allLogs.forEach((log) => {
                     const row = document.createElement('tr');
                     row.className = 'sim-change';
 
                     let timeStr = 'N/A';
-                    if (data.timestamp && data.timestamp.seconds) {
-                        const date = new Date(data.timestamp.seconds * 1000);
-                        timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    if (log.timestamp) {
+                        const date = log.timestamp.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
+                        if (!isNaN(date.getTime())) {
+                            timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                        }
                     }
 
-                    const isRead = data.isRead === true;
+                    const isRead = log.isRead === true;
                     let statusBadge = isRead 
                         ? '<span class="badge badge-read">✅ Read</span>' 
                         : '<span class="badge badge-unread">🔴 Unread</span>';
 
                     row.innerHTML = `
                         <td>${count}</td>
-                        <td><strong>${data.userEmail || data.userId || 'Unknown'}</strong></td>
-                        <td>${data.deviceModel || 'N/A'}</td>
-                        <td><span class="code-text">${data.oldSimIdentifier || 'N/A'}</span></td>
-                        <td><span class="code-text" style="color:#ff9800;font-weight:bold;">${data.newSimIdentifier || 'N/A'}</span></td>
-                        <td><span class="badge badge-sim">${data.status || 'SIM Swap'}</span></td>
+                        <td><strong>${log.userEmail}</strong></td>
+                        <td>${log.carrierName || 'N/A'}</td>
+                        <td><span class="code-text" style="color:#ff9800;font-weight:bold;">${log.identifier || 'N/A'}</span></td>
+                        <td><span class="badge badge-sim">${log.status || 'SIM Swap'}</span></td>
                         <td>${statusBadge}</td>
                         <td>${timeStr}</td>
                     `;
 
-                    // Click row to mark unread log as read instantly in Firestore and refresh table
                     row.onclick = async function() {
                         if (!isRead) {
                             try {
-                                await db.collection('sim_logs').doc(doc.id).update({
+                                await db.collection('users').doc(log.userId).collection('sim_logs').doc(log.id).update({
                                     'isRead': true
                                 });
                                 loadAllUsersSimLogs();

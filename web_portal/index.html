@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Login - Device Protection</title>
+    <title>Admin Portal - Device Protection</title>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -22,7 +22,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         .login-container {
@@ -30,27 +30,28 @@
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            width: 380px;
+            width: 400px;
             text-align: center;
         }
 
         .login-container h1 {
             color: #841EA0;
-            font-size: 28px;
+            font-size: 26px;
         }
 
         .login-container p {
             color: #666;
-            margin: 10px 0 25px 0;
+            margin: 10px 0 20px 0;
+            font-size: 14px;
         }
 
         .login-container input {
             width: 100%;
             padding: 14px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
             border: 1px solid #ddd;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .login-container input:focus {
@@ -58,20 +59,31 @@
             border-color: #841EA0;
         }
 
+        .rules-hint {
+            font-size: 11px;
+            color: #666;
+            text-align: left;
+            margin-bottom: 14px;
+            line-height: 1.4;
+            padding: 0 4px;
+        }
+
         .forgot-container {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
+            font-size: 13px;
         }
 
-        .forgot-link {
+        .forgot-link, .toggle-mode {
             color: #841EA0;
-            font-size: 13px;
             text-decoration: none;
             font-weight: 600;
+            cursor: pointer;
         }
 
-        .forgot-link:hover {
+        .forgot-link:hover, .toggle-mode:hover {
             text-decoration: underline;
         }
 
@@ -82,9 +94,10 @@
             color: white;
             border: none;
             border-radius: 10px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
+            transition: background 0.2s;
         }
 
         .login-container button:hover {
@@ -93,7 +106,8 @@
 
         .message {
             margin-top: 12px;
-            font-size: 14px;
+            font-size: 13px;
+            word-break: break-word;
         }
 
         .error {
@@ -114,41 +128,93 @@
 <body>
 
     <div class="login-container">
-        <h1>🔒 Device Protection</h1>
-        <p>Admin Portal Login</p>
+        <h1 id="formTitle">🔒 Admin Portal</h1>
+        <p id="formSubtitle">Sign in to manage Device Protection</p>
 
-        <input type="email" id="email" placeholder="Admin Email" />
+        <input type="email" id="email" placeholder="Admin Email (azralaiba53@gmail.com)" />
         <input type="password" id="password" placeholder="Password" />
         
+        <div class="rules-hint">
+            Password rules: No spaces, min 1 uppercase letter, 1 lowercase letter, and 1 digit.
+        </div>
+
         <div class="forgot-container">
+            <a href="#" id="toggleModeBtn" class="toggle-mode">Need to register admin? Sign Up</a>
             <a href="#" id="forgotBtn" class="forgot-link">Forgot Password?</a>
         </div>
 
-        <button id="loginBtn">Login</button>
+        <button id="actionBtn">Login</button>
 
         <div id="message" class="message"></div>
         <div class="footer">© 2026 Device Protection</div>
     </div>
 
     <script>
-        
         const firebaseConfig = {
-          apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
-          authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
-          projectId: "fyp-mobile-app-and-web-portal",
-          storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
-          messagingSenderId: "38986827146",
-          appId: "1:38986827146:web:9042f34efac22b99163473"
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:9042f34efac22b99163473"
         };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
-        const db = firebase.firestore();
 
         const msgBox = document.getElementById('message');
+        const formTitle = document.getElementById('formTitle');
+        const formSubtitle = document.getElementById('formSubtitle');
+        const actionBtn = document.getElementById('actionBtn');
+        const toggleModeBtn = document.getElementById('toggleModeBtn');
+        const forgotBtn = document.getElementById('forgotBtn');
 
-        
-        document.getElementById('loginBtn').addEventListener('click', async () => {
+        let isSignUpMode = false;
+
+        const ADMIN_EMAIL = "azralaiba53@gmail.com";
+
+        // Strict Password Validator Rule
+        function validatePassword(password) {
+            if (/\s/.test(password)) {
+                return "Password cannot contain spaces.";
+            }
+            if (!/[A-Z]/.test(password)) {
+                return "Password must contain at least one uppercase letter.";
+            }
+            if (!/[a-z]/.test(password)) {
+                return "Password must contain at least one lowercase letter.";
+            }
+            if (!/\d/.test(password)) {
+                return "Password must contain at least one digit/number.";
+            }
+            return null;
+        }
+
+        // Toggle between Login and Admin Registration views
+        toggleModeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isSignUpMode = !isSignUpMode;
+            msgBox.textContent = '';
+            if (isSignUpMode) {
+                formTitle.textContent = "📝 Admin Registration";
+                formSubtitle.textContent = "Register the exclusive admin account";
+                actionBtn.textContent = "Register Admin";
+                toggleModeBtn.textContent = "Already registered? Login";
+                forgotBtn.style.display = 'none';
+                document.getElementById('email').value = ADMIN_EMAIL;
+                document.getElementById('email').disabled = true; // Lock email to unique admin account
+            } else {
+                formTitle.textContent = "🔒 Admin Portal";
+                formSubtitle.textContent = "Sign in to manage Device Protection";
+                actionBtn.textContent = "Login";
+                toggleModeBtn.textContent = "Need to register admin? Sign Up";
+                forgotBtn.style.display = 'inline';
+                document.getElementById('email').disabled = false;
+            }
+        });
+
+        // Handle Form Action (Login or Signup)
+        actionBtn.addEventListener('click', async () => {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             msgBox.textContent = '';
@@ -160,18 +226,44 @@
                 return;
             }
 
-            try {
-                
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                const user = userCredential.user;
+            // Strict Admin Email Enforcement
+            if (email !== ADMIN_EMAIL) {
+                msgBox.textContent = 'Access Denied: Only azralaiba53@gmail.com is authorized as admin.';
+                msgBox.classList.add('error');
+                return;
+            }
 
-                
-                if (user.email === 'azralaiba53@gmail.com') {
-                    window.location.href = 'dashboard.html';
+            // Validate password complexity rules
+            const passwordError = validatePassword(password);
+            if (passwordError) {
+                msgBox.textContent = passwordError;
+                msgBox.classList.add('error');
+                return;
+            }
+
+            try {
+                if (isSignUpMode) {
+                    // Register the exclusive admin account
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    msgBox.textContent = 'Admin account registered successfully! Redirecting...';
+                    msgBox.classList.add('success');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1500);
                 } else {
-                    msgBox.textContent = 'Access Denied: Not an admin account.';
-                    msgBox.classList.add('error');
-                    await auth.signOut();
+                    // Authenticate Admin Login
+                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                    if (userCredential.user.email === ADMIN_EMAIL) {
+                        msgBox.textContent = 'Login successful! Redirecting to dashboard...';
+                        msgBox.classList.add('success');
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 1000);
+                    } else {
+                        msgBox.textContent = 'Access Denied: Unauthorized user.';
+                        msgBox.classList.add('error');
+                        await auth.signOut();
+                    }
                 }
             } catch (err) {
                 msgBox.textContent = err.message;
@@ -179,22 +271,22 @@
             }
         });
 
-        
-        document.getElementById('forgotBtn').addEventListener('click', async (e) => {
+        // Forgot Password Handler
+        forgotBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value.trim();
             msgBox.textContent = '';
             msgBox.className = 'message';
 
-            if (!email) {
-                msgBox.textContent = 'Please enter your admin email above first.';
+            if (!email || email !== ADMIN_EMAIL) {
+                msgBox.textContent = 'Please enter the valid admin email (azralaiba53@gmail.com) first.';
                 msgBox.classList.add('error');
                 return;
             }
 
             try {
                 await auth.sendPasswordResetEmail(email);
-                msgBox.textContent = 'Password reset link sent! Check your email inbox.';
+                msgBox.textContent = 'Password reset link sent to admin email inbox.';
                 msgBox.classList.add('success');
             } catch (err) {
                 msgBox.textContent = err.message;
