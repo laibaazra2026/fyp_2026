@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../services/subscription_service.dart';
-import 'backup_restore_screen.dart';
 import 'gateway_success_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -25,7 +24,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 4),
     );
-    _confettiController.play();
     _loadCurrentPlan();
   }
 
@@ -41,12 +39,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (!mounted) return;
     setState(() {
       _currentPlan = plan.toLowerCase();
-      if (_currentPlan == 'premium') _currentPage = 1;
-      if (_currentPlan == 'family') _currentPage = 2;
+      if (_currentPlan == 'premium') {
+        _currentPage = 1;
+        _pageController.jumpToPage(1);
+      } else if (_currentPlan == 'family') {
+        _currentPage = 2;
+        _pageController.jumpToPage(2);
+      }
     });
   }
 
-  // Show Payment Method Bottom Sheet when user taps upgrade
   void _showPaymentMethodDialog(String planName, double price) {
     showModalBottomSheet(
       context: context,
@@ -75,8 +77,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
               ),
               const SizedBox(height: 20),
-
-              // 1. JazzCash Option
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
@@ -100,8 +100,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 },
               ),
               const Divider(),
-
-              // 2. EasyPaisa Option
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
@@ -122,8 +120,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 },
               ),
               const Divider(),
-
-              // 3. Sandbox
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
@@ -150,7 +146,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  // Secure Gateway & SMS Test Whitelist Checkout Dialog
   void _showGatewayCheckoutDialog(
     String planName,
     double price,
@@ -171,8 +166,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Text('Paying PKR ${price.toStringAsFixed(0)} for $planName Tier'),
               const SizedBox(height: 12),
-
-              // Phone Number Field with Whitelist Validation
               TextFormField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
@@ -186,8 +179,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 validator: _subscriptionService.validateAndNormalizeNumber,
               ),
               const SizedBox(height: 12),
-
-              // Mock MPIN / OTP Field
               TextFormField(
                 controller: pinController,
                 keyboardType: TextInputType.number,
@@ -218,9 +209,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 String inputPhone = phoneController.text.trim();
-                Navigator.pop(dialogContext); // Close checkout dialog safely
+                Navigator.pop(dialogContext);
 
-                // Show loading progress
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -229,7 +219,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 );
 
                 try {
-                  // 1. Trigger Sandbox SMS to the test number and log to Firestore
                   await _subscriptionService.sendSandboxSms(
                     recipientNumber: inputPhone,
                     planName: planName,
@@ -239,7 +228,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                   String txnId = 'SBX-${DateTime.now().millisecondsSinceEpoch}';
 
-                  // 2. Update user subscription state in Firestore
                   await _subscriptionService.updateSubscriptionWithMethod(
                     planName,
                     price,
@@ -249,9 +237,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   );
 
                   if (!mounted) return;
-                  Navigator.pop(context); // Dismiss loading progress dialog
+                  Navigator.pop(context); // Dismiss loading dialog
 
-                  setState(() => _currentPlan = planName.toLowerCase());
+                  setState(() {
+                    _currentPlan = planName.toLowerCase();
+                  });
                   _confettiController.play();
 
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -263,34 +253,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                   );
 
-                  if (planName.toLowerCase() == 'family') {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GatewaySuccessScreen(
-                          planName: planName,
-                          price: price,
-                          gatewayName: gatewayName,
-                          transactionId: txnId,
-                        ),
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GatewaySuccessScreen(
+                        planName: planName,
+                        price: price,
+                        gatewayName: gatewayName,
+                        transactionId: txnId,
                       ),
-                    );
-                  } else {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GatewaySuccessScreen(
-                          planName: planName,
-                          price: price,
-                          gatewayName: gatewayName,
-                          transactionId: txnId,
-                        ),
-                      ),
-                    );
-                  }
+                    ),
+                  );
                 } catch (e) {
                   if (!mounted) return;
-                  Navigator.pop(context); // Dismiss loading progress dialog
+                  Navigator.pop(context); // Dismiss loading dialog
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(e.toString()),
@@ -417,8 +393,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ],
                           isCurrent: _currentPlan == 'family',
                           buttonText: 'Upgrade to Family',
-                          onTap: () =>
-                              _showPaymentMethodDialog('Family', 199.0),
+                          onTap: () => _showPaymentMethodDialog('Family', 199.0),
                         ),
                       ],
                     ),
