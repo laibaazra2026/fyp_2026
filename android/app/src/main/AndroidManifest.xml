@@ -36,7 +36,7 @@
     <application
         android:label="device_protection"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBgMYihlA-fmxUIs_p8Md94vBXS4xou7Y8" />
