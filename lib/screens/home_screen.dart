@@ -75,70 +75,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _handleBackupCardTap() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF841EA0)),
-      ),
-    );
+  Future<void> _showUpgradePopupIfNeeded() async {
+    if (user == null) return;
 
     try {
       String currentPlan = await _subscriptionService.getCurrentPlan();
-      Navigator.of(context).pop();
 
-      if (currentPlan == 'free') {
-        _showProFeatureDialog();
-      } else {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const BackupRestoreScreen()),
-        );
+      if (currentPlan.toLowerCase() == 'free' && mounted) {
+        _showUpgradeDialogBox();
       }
     } catch (e) {
-      Navigator.of(context).pop();
-      _showProFeatureDialog();
+      debugPrint('Error checking subscription for popup: $e');
     }
   }
 
-  void _showProFeatureDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pro Feature'),
-        content: const Text(
-          'Backup & Restore is a Pro feature. Upgrade now to unlock it instantly!',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF841EA0),
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SubscriptionScreen(),
-                ),
-              );
-            },
-            child: const Text(
-              'View Plans',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showUpgradePopupIfNeeded() {
+  void _showUpgradeDialogBox() {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -163,17 +114,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   size: 36,
                 ),
               ),
-
               const SizedBox(height: 16),
-
               const Text(
                 'Unlock Protection! 🚀',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 8),
-
               Text(
                 'You are on Free Tier. Upgrade to Pro to unlock '
                 'Backup & Restore and Remote Commands.',
@@ -184,9 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 20),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -199,7 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   onPressed: () {
                     Navigator.pop(context);
-
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -207,7 +151,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   },
-
                   child: const Text(
                     'Upgrade Now',
                     style: TextStyle(
@@ -218,9 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 8),
-
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
@@ -262,72 +203,15 @@ class _HomeScreenState extends State<HomeScreen> {
       if (currentPlan.toLowerCase() != 'free') {
         onSubscribed();
       } else {
-        _showSubscriptionRequiredDialog(context, featureName);
+        _showUpgradeDialogBox();
       }
     } catch (e) {
       if (!context.mounted) return;
 
       Navigator.pop(context);
 
-      _showSubscriptionRequiredDialog(context, featureName);
+      _showUpgradeDialogBox();
     }
-  }
-
-  void _showSubscriptionRequiredDialog(
-    BuildContext context,
-    String featureName,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.lock, color: Colors.purple.shade700),
-              const SizedBox(width: 8),
-              const Text('Pro Feature'),
-            ],
-          ),
-          content: Text(
-            '$featureName is a Pro feature. '
-            'Upgrade now to unlock it instantly!',
-            style: const TextStyle(fontSize: 14),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple.shade700,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SubscriptionScreen(),
-                  ),
-                );
-              },
-              child: const Text(
-                'View Plans',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Future<bool> _checkAndRequestLocationPermission(BuildContext context) async {
