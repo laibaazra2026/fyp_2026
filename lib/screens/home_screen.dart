@@ -329,6 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _logout(BuildContext context) async {
+    await FirebaseFirestore.instance.clearPersistence();
     await FirebaseAuth.instance.signOut();
 
     if (!context.mounted) return;
@@ -926,6 +927,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _logout() async {
+    await FirebaseFirestore.instance.clearPersistence();
     await FirebaseAuth.instance.signOut();
 
     if (!mounted) return;
