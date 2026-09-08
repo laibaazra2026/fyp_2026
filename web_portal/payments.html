@@ -25,7 +25,6 @@
 </head>
 <body>
 
-    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -46,18 +45,21 @@
         </div>
 
         <div class="table-card">
-            <h3>Active Paid Users (Sandbox / JazzCash Verified)</h3>
+            <h3>Active Paid Users (Sandbox / JazzCash / EasyPaisa Verified)</h3>
             <table>
                 <thead>
                     <tr>
                         <th>User ID</th>
                         <th>User Email</th>
                         <th>Purchased Plan</th>
+                        <th>Gateway</th>
+                        <th>Verified Mobile No</th>
+                        <th>Transaction ID</th>
                         <th>Date & Time of Purchase</th>
                     </tr>
                 </thead>
                 <tbody id="paidTableBody">
-                    <tr><td colspan="4" style="text-align:center;">Loading paid records...</td></tr>
+                    <tr><td colspan="7" style="text-align:center;">Loading paid records...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -101,10 +103,12 @@
                     if (plan && plan.toLowerCase() !== 'free' && plan !== '') {
                         paidCount++;
                         const email = data.email || 'N/A';
-                        
+                        const gateway = data.paymentMethod || data.paymentGateway || 'N/A';
+                        const verifiedPhone = data.verifiedPhoneNumber || data.billingPhone || 'N/A';
+                        const txnId = data.lastTransactionId || 'N/A';
                         
                         let formattedDate = 'N/A';
-                        const timeField = data.subscribedAt || data.timestamp;
+                        const timeField = data.subscribedAt || data.subscriptionUpdatedAt || data.timestamp;
                         if (timeField && typeof timeField.toDate === 'function') {
                             formattedDate = timeField.toDate().toLocaleString();
                         } else if (timeField && timeField.seconds) {
@@ -116,6 +120,9 @@
                                 <td><small>${doc.id}</small></td>
                                 <td>${email}</td>
                                 <td><span class="badge">${plan.toUpperCase()}</span></td>
+                                <td>${gateway}</td>
+                                <td>${verifiedPhone}</td>
+                                <td><code>${txnId}</code></td>
                                 <td>${formattedDate}</td>
                             </tr>
                         `;
@@ -123,12 +130,12 @@
                 });
 
                 if (paidCount === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">No paid subscriptions found yet. Use the mobile app sandbox to purchase a plan!</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">No paid subscriptions found yet. Use the mobile app sandbox to purchase a plan!</td></tr>';
                 }
 
             } catch (error) {
                 console.error('Error loading paid users:', error);
-                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error loading records</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">Error loading records</td></tr>';
             }
         }
     </script>

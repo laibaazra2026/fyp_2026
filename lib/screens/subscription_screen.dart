@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../services/subscription_service.dart';
 import 'backup_restore_screen.dart';
+import 'gateway_success_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -236,14 +237,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     gateway: gatewayName,
                   );
 
+                  String txnId = 'SBX-${DateTime.now().millisecondsSinceEpoch}';
+
                   // 2. Update user subscription state in Firestore
                   await _subscriptionService.updateSubscriptionWithMethod(
                     planName,
                     price,
                     gatewayName,
                     verifiedPhoneNumber: inputPhone,
-                    transactionId:
-                        'SBX-${DateTime.now().millisecondsSinceEpoch}',
+                    transactionId: txnId,
                   );
 
                   if (!mounted) return;
@@ -265,7 +267,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const BackupRestoreScreen(),
+                        builder: (context) => GatewaySuccessScreen(
+                          planName: planName,
+                          price: price,
+                          gatewayName: gatewayName,
+                          transactionId: txnId,
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => GatewaySuccessScreen(
+                          planName: planName,
+                          price: price,
+                          gatewayName: gatewayName,
+                          transactionId: txnId,
+                        ),
                       ),
                     );
                   }
