@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'professional_invoice_screen.dart';
 
-class GatewaySuccessScreen extends StatelessWidget {
+class GatewaySuccessScreen extends StatefulWidget {
   final String planName;
   final double price;
   final String gatewayName;
@@ -16,8 +18,39 @@ class GatewaySuccessScreen extends StatelessWidget {
   });
 
   @override
+  State<GatewaySuccessScreen> createState() => _GatewaySuccessScreenState();
+}
+
+class _GatewaySuccessScreenState extends State<GatewaySuccessScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _saveSubscriptionToFirestore();
+  }
+
+  Future<void> _saveSubscriptionToFirestore() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'email': user.email ?? 'N/A',
+          'subscriptionPlan': widget.planName,
+          'paymentMethod': widget.gatewayName,
+          'verifiedPhoneNumber':
+              user.phoneNumber ??
+              '03001234567', // Or use your collected phone variable
+          'lastTransactionId': widget.transactionId,
+          'subscribedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      debugPrint('Error saving subscription: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    bool isJazzCash = gatewayName.toLowerCase().contains('jazz');
+    bool isJazzCash = widget.gatewayName.toLowerCase().contains('jazz');
     Color brandColor = isJazzCash ? Colors.red.shade700 : Colors.green.shade700;
 
     return Scaffold(
@@ -38,7 +71,7 @@ class GatewaySuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                '$gatewayName Payment Successful',
+                '${widget.gatewayName} Payment Successful',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -61,11 +94,14 @@ class GatewaySuccessScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _buildRow('Plan Tier', planName),
+                    _buildRow('Plan Tier', widget.planName),
                     const Divider(height: 16),
-                    _buildRow('Amount Paid', 'PKR ${price.toStringAsFixed(0)}'),
+                    _buildRow(
+                      'Amount Paid',
+                      'PKR ${widget.price.toStringAsFixed(0)}',
+                    ),
                     const Divider(height: 16),
-                    _buildRow('Transaction ID', transactionId),
+                    _buildRow('Transaction ID', widget.transactionId),
                   ],
                 ),
               ),
@@ -85,10 +121,10 @@ class GatewaySuccessScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => ProfessionalInvoiceScreen(
-                          planName: planName,
-                          price: price,
-                          gatewayName: gatewayName,
-                          transactionId: transactionId,
+                          planName: widget.planName,
+                          price: widget.price,
+                          gatewayName: widget.gatewayName,
+                          transactionId: widget.transactionId,
                         ),
                       ),
                     );
