@@ -21,6 +21,8 @@
         th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
         th { background: #f9f9f9; color: #333; }
         .badge { background: #841EA0; color: white; padding: 5px 10px; border-radius: 6px; font-weight: bold; }
+        .logout-btn { background: #7b1fa2; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .logout-btn:hover { background: #6a1b9a; }
     </style>
 </head>
 <body>
@@ -42,6 +44,7 @@
     <div class="main">
         <div class="header">
             <h1>💎 Paid Subscriptions Log</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
         <div class="table-card">
@@ -86,6 +89,14 @@
                 loadPaidUsersTable();
             }
         });
+
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            }).catch((error) => {
+                console.error('Error signing out:', error);
+            });
+        }
 
         async function loadPaidUsersTable() {
             const tableBody = document.getElementById('paidTableBody');
