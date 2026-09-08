@@ -6,7 +6,6 @@
     <title>SIM Change Logs - Security Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -14,10 +13,8 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex text-gray-800">
 
-    
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex select-none shrink-0">
         <div>
-            
             <div class="p-6 flex items-center space-x-3 border-b border-gray-100">
                 <div class="w-10 h-10 bg-[#841EA0]/10 rounded-xl flex items-center justify-center text-[#841EA0]">
                     <i class="fa-solid fa-shield-halved text-xl"></i>
@@ -28,7 +25,6 @@
                 </div>
             </div>
 
-            
             <nav class="p-4 space-y-1.5">
                 <a href="home.html" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-[#841EA0] font-medium text-sm transition">
                     <i class="fa-solid fa-house w-5"></i>
@@ -61,7 +57,6 @@
             </nav>
         </div>
 
-        
         <div class="p-4 border-t border-gray-100">
             <button onclick="handleLogout()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition">
                 <i class="fa-solid fa-right-from-bracket"></i>
@@ -70,16 +65,12 @@
         </div>
     </aside>
 
-    
     <div class="flex-grow flex flex-col min-w-0 relative h-screen overflow-y-auto">
-        
-        
         <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center shadow-xs sticky top-0 z-40">
             <div class="flex items-center space-x-3">
                 <span class="text-base font-bold text-gray-800 tracking-tight">SIM Change Logs</span>
             </div>
 
-            
             <div class="relative">
                 <button onclick="toggleProfileDropdown()" class="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-full hover:bg-gray-100 transition focus:outline-none">
                     <div class="w-8 h-8 bg-[#841EA0] text-white rounded-full flex items-center justify-center text-xs font-bold shadow-xs">
@@ -89,7 +80,6 @@
                     <i class="fa-solid fa-chevron-down text-gray-400 text-[10px] ml-0.5"></i>
                 </button>
 
-                
                 <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
                     <div class="px-4 py-2 border-b border-gray-100">
                         <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Signed in as</p>
@@ -112,7 +102,6 @@
             </div>
         </header>
 
-        
         <main class="p-6 md:p-10 max-w-6xl w-full mx-auto flex-grow">
             <div class="mb-6 flex justify-between items-center">
                 <div>
@@ -121,14 +110,13 @@
                 </div>
             </div>
 
-            
             <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 <th class="py-3.5 px-6">Event Type</th>
-                                <th class="py-3.5 px-6">Device Model</th>
+                                <th class="py-3.5 px-6">Carrier / Identifier</th>
                                 <th class="py-3.5 px-6">Timestamp</th>
                                 <th class="py-3.5 px-6">Status</th>
                             </tr>
@@ -144,11 +132,10 @@
         </main>
     </div>
 
-    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
@@ -168,7 +155,6 @@
             if (user) {
                 document.getElementById('header-email').innerText = user.displayName || user.email;
                 document.getElementById('dropdown-email').innerText = user.email;
-                
                 fetchSimLogs(user.uid);
             } else {
                 window.location.href = 'login.html';
@@ -176,54 +162,79 @@
         });
 
         function fetchSimLogs(uid) {
-            const logsQuery = query(collection(db, `users/${uid}/sim_change_logs`), orderBy('timestamp', 'desc'));
+            const rootLogsQuery = collection(db, 'sim_logs');
             
-            onSnapshot(logsQuery, (snapshot) => {
-                const tbody = document.getElementById('sim-logs-table-body');
-                tbody.innerHTML = ''; // Clear current rows
+            onSnapshot(rootLogsQuery, (snapshot) => {
+                let docs = [];
+                snapshot.forEach((doc) => {
+                    let data = doc.data();
+                    if (!data.userId || data.userId === uid || data.uid === uid) {
+                        docs.push(data);
+                    }
+                });
 
-                if (!snapshot.empty) {
-                    snapshot.forEach((doc) => {
-                        const log = doc.data();
-                        
-                        let timeStr = 'Just now';
-                        if (log.timestamp && log.timestamp.toDate) {
-                            timeStr = log.timestamp.toDate().toLocaleString();
-                        }
-
-                        const tr = document.createElement('tr');
-                        tr.className = "hover:bg-purple-50/50 transition";
-                        tr.innerHTML = `
-                            <td class="py-4 px-6 font-semibold text-gray-900 flex items-center space-x-2">
-                                <span class="w-7 h-7 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center shrink-0">
-                                    <i class="fa-solid fa-triangle-exclamation text-xs"></i>
-                                </span>
-                                <span>Physical SIM Changed</span>
-                            </td>
-                            <td class="py-4 px-6 font-mono text-gray-600">${log.deviceModel || 'Unknown Device'}</td>
-                            <td class="py-4 px-6 text-gray-500">${timeStr}</td>
-                            <td class="py-4 px-6">
-                                <span class="bg-red-100 text-red-600 px-2.5 py-1 rounded-full text-[10px] font-bold">Alert</span>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
+                if (docs.length > 0) {
+                    renderLogs(docs);
                 } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="py-10 text-center text-gray-400 font-medium">
-                                <i class="fa-solid fa-circle-check text-green-500 text-lg mb-2 block"></i>
-                                No SIM swaps detected. Your device is secure.
-                            </td>
-                        </tr>
-                    `;
+                    const subCollectionQuery = collection(db, `users/${uid}/sim_logs`);
+                    onSnapshot(subCollectionQuery, (subSnapshot) => {
+                        let subDocs = [];
+                        subSnapshot.forEach((doc) => subDocs.push(doc.data()));
+                        renderLogs(subDocs);
+                    });
                 }
             }, (error) => {
                 console.error("Error fetching SIM logs:", error);
                 document.getElementById('sim-logs-table-body').innerHTML = `
-                    <tr><td colspan="4" class="py-6 text-center text-red-500">Error loading logs from Firestore.</td></tr>
+                    <tr><td colspan="4" class="py-6 text-center text-red-500">Error loading logs: ${error.message}</td></tr>
                 `;
             });
+        }
+
+        function renderLogs(docs) {
+            const tbody = document.getElementById('sim-logs-table-body');
+            tbody.innerHTML = ''; 
+
+            if (docs.length > 0) {
+                docs.sort((a, b) => {
+                    let tA = a.timestamp && a.timestamp.toMillis ? a.timestamp.toMillis() : 0;
+                    let tB = b.timestamp && b.timestamp.toMillis ? b.timestamp.toMillis() : 0;
+                    return tB - tA;
+                });
+
+                docs.forEach((log) => {
+                    let timeStr = 'Just now';
+                    if (log.timestamp && log.timestamp.toDate) {
+                        timeStr = log.timestamp.toDate().toLocaleString();
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-purple-50/50 transition";
+                    tr.innerHTML = `
+                        <td class="py-4 px-6 font-semibold text-gray-900 flex items-center space-x-2">
+                            <span class="w-7 h-7 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                            </span>
+                            <span>Physical SIM Changed</span>
+                        </td>
+                        <td class="py-4 px-6 font-mono text-gray-600">${log.carrierName || log.identifier || 'Unknown Carrier'}</td>
+                        <td class="py-4 px-6 text-gray-500">${timeStr}</td>
+                        <td class="py-4 px-6">
+                            <span class="bg-red-100 text-red-600 px-2.5 py-1 rounded-full text-[10px] font-bold">${log.status || 'Alert'}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="py-10 text-center text-gray-400 font-medium">
+                            <i class="fa-solid fa-circle-check text-green-500 text-lg mb-2 block"></i>
+                            No SIM swaps detected. Your device is secure.
+                        </td>
+                    </tr>
+                `;
+            }
         }
 
         window.toggleProfileDropdown = function() {

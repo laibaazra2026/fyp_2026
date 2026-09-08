@@ -1,175 +1,165 @@
-import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter_sms/flutter_sms.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sim_reader/sim_reader.dart';
+import 'package:flutter_sms/flutter_sms.dart';
 
 class SimService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 1. Request Runtime Permissions for Phone and SMS
-  Future<bool> requestPermissions() async {
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.phone,
-      Permission.sms,
-    ].request();
+  static const String _baselineCarrierKey = 'baseline_carrier_name';
+  static const String _baselineSerialKey = 'baseline_sim_serial';
 
-    return statuses[Permission.phone]!.isGranted &&
-        statuses[Permission.sms]!.isGranted;
-  }
-
-  // 2. Real Physical SIM Change Detection
-  Future<void> checkPhysicalSimSwap() async {
-    bool hasPermission = await requestPermissions();
-    if (!hasPermission) {
-      print("SIM Detection Error: Phone or SMS permissions denied by user.");
-      return;
-    }
-
-    User? user = _auth.currentUser;
-    if (user == null) return;
-
+  /// Step 1: Real physical SIM check method called on app boot or manual screen refresh
+  Future<bool> checkPhysicalSimSwap() async {
     try {
-      // Fetch live physical SIM info from the hardware slot
-      SimInfo? simInfo;
-      try {
-        simInfo = await SimReader.getSimInfo();
-      } catch (e) {
-        print("SimReader hardware exception: $e");
+      // 1. Fetch real SIM info using the package
+      SimInfo? simInfo = await SimReader.getSimInfo();
+      if (simInfo == null) {
+        print("⚠️ SimReader returned null. No active SIM info found.");
+        return false;
       }
 
-      // Extract the real physical SIM serial number (ICCID) or subscriber ID
-      String currentSimIdentifier =
-          simInfo?.simSerialNumber ?? simInfo?.subscriberId ?? '';
+      String currentCarrier = simInfo.carrierName ?? 'Unknown';
 
-      // Fallback to device hardware fingerprint ONLY if the SIM slot is unreadable
-      if (currentSimIdentifier.isEmpty || currentSimIdentifier == 'UNKNOWN') {
-        DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-        currentSimIdentifier =
-            "${androidInfo.board}_${androidInfo.device}_${androidInfo.id}";
-      }
+      // Combine carrier name with identifier/country code to guarantee uniqueness on Android
+      String rawIdentifier =
+          simInfo.simSerialNumber ??
+          simInfo.subscriberId ??
+          simInfo.countryCode ??
+          'Unknown_ID';
 
-      String? oldSimToken = await _secureStorage.read(key: 'trusted_sim_token');
-      String? trustedNumbersStr = await _secureStorage.read(
-        key: 'trusted_numbers',
+      String currentIdentifier = "${currentCarrier}_$rawIdentifier";
+
+      print(
+        "🔍 Live SIM Check -> Carrier: $currentCarrier, Identifier: $currentIdentifier",
       );
 
-      // Default emergency contacts fallback
-      if (trustedNumbersStr == null || trustedNumbersStr.isEmpty) {
-        trustedNumbersStr =
-            "+923144984339,+923128719043,+923157633912,+923005171794,+923241923864";
-        await _secureStorage.write(
-          key: 'trusted_numbers',
-          value: trustedNumbersStr,
-        );
-      }
+      // 2. Read stored baseline values from local secure storage
+      String? baselineCarrier = await _secureStorage.read(
+        key: _baselineCarrierKey,
+      );
+      String? baselineIdentifier = await _secureStorage.read(
+        key: _baselineSerialKey,
+      );
 
-      DocumentReference userDoc = _firestore.collection('users').doc(user.uid);
-
-      if (oldSimToken == null) {
-        // First-time setup: Save current real SIM signature as trusted
+      // 3. If no baseline exists, this is the very first run (e.g., Jazz SIM inserted)
+      if (baselineCarrier == null || baselineIdentifier == null) {
         await _secureStorage.write(
-          key: 'trusted_sim_token',
-          value: currentSimIdentifier,
+          key: _baselineCarrierKey,
+          value: currentCarrier,
         );
-        await userDoc.set({
-          'trustedSimToken': currentSimIdentifier,
-          'simRegisteredAt': FieldValue.serverTimestamp(),
-          'trustedNumbers': trustedNumbersStr.split(','),
-        }, SetOptions(merge: true));
-        print("Baseline SIM registered successfully: $currentSimIdentifier");
-      } else if (oldSimToken != currentSimIdentifier) {
-        // 🚨 REAL PHYSICAL SIM SWAP DETECTED 🚨
+        await _secureStorage.write(
+          key: _baselineSerialKey,
+          value: currentIdentifier,
+        );
         print(
-          "REAL SIM SWAP DETECTED! Old: $oldSimToken, New: $currentSimIdentifier",
+          "📌 Baseline SIM successfully registered: $currentCarrier ($currentIdentifier)",
         );
-
-        if (trustedNumbersStr.isNotEmpty) {
-          List<String> trustedNumbers = trustedNumbersStr.split(',');
-          String alertMessage =
-              "SECURITY ALERT: Physical SIM card has been changed on user account!";
-          await _sendAlertSms(trustedNumbers, alertMessage);
-        }
-
-        // Update local secure storage to the new SIM token
-        await _secureStorage.write(
-          key: 'trusted_sim_token',
-          value: currentSimIdentifier,
-        );
-
-        // Log the real swap to Firestore
-        await _firestore.collection('sim_logs').add({
-          'userId': user.uid,
-          'userEmail': user.email ?? 'Unknown User',
-          'oldIdentifier': oldSimToken,
-          'newIdentifier': currentSimIdentifier,
-          'carrierName': simInfo?.carrierName ?? 'Unknown Carrier',
-          'timestamp': FieldValue.serverTimestamp(),
-          'status': 'Real Physical SIM Swap Detected',
-        });
-
-        await userDoc.update({
-          'trustedSimToken': currentSimIdentifier,
-          'lastSimSwapDetected': FieldValue.serverTimestamp(),
-        });
+        return false; // No swap yet, baseline established
       }
+
+      // 4. Compare current SIM data against the baseline to detect a real physical swap (e.g., Zong inserted)
+      if (currentIdentifier != baselineIdentifier ||
+          currentCarrier != baselineCarrier) {
+        print(
+          "🚨 REAL PHYSICAL SIM SWAP DETECTED! Old: $baselineCarrier, New: $currentCarrier",
+        );
+
+        // Log the swap event to Firestore
+        await _logSimSwapToFirestore(currentCarrier, currentIdentifier);
+
+        // Trigger automated SMS alert to trusted numbers
+        await _sendEmergencySmsAlert(currentCarrier);
+
+        // Update baseline to the new SIM so it stops spamming alerts
+        await _secureStorage.write(
+          key: _baselineCarrierKey,
+          value: currentCarrier,
+        );
+        await _secureStorage.write(
+          key: _baselineSerialKey,
+          value: currentIdentifier,
+        );
+
+        return true; // Swap detected
+      }
+
+      print("✅ SIM status secure: No mismatch found.");
+      return false;
     } catch (e) {
-      print('Real SIM Swap check critical error: $e');
+      print("❌ Error checking physical SIM swap: $e");
+      return false;
     }
   }
 
-  // 3. SMS Dispatcher
-  Future<void> _sendAlertSms(List<String> recipients, String message) async {
+  Future<void> _logSimSwapToFirestore(
+    String newCarrier,
+    String newIdentifier,
+  ) async {
     try {
-      String result = await sendSMS(message: message, recipients: recipients)
-          .catchError((onError) {
-            print("SMS Error: $onError");
-            return "Failed";
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print("❌ Cannot log to Firestore: No authenticated user found.");
+        return;
+      }
+
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('sim_logs')
+          .add({
+            'carrierName': newCarrier,
+            'identifier': newIdentifier,
+            'timestamp': FieldValue.serverTimestamp(),
+            'status': 'Mismatch Alert',
           });
-      print("SMS Dispatch Result: $result");
+      print("☁️ SIM swap successfully logged to Firestore.");
     } catch (e) {
-      print("SMS Dispatch Exception: $e");
+      print("❌ Failed to log SIM swap to Firestore: $e");
     }
   }
 
-  // 4. Save Emergency Contacts
-  Future<void> saveTrustedNumbers(List<String> numbers) async {
-    String joinedNumbers = numbers.join(',');
-    await _secureStorage.write(key: 'trusted_numbers', value: joinedNumbers);
+  Future<void> _sendEmergencySmsAlert(String newCarrier) async {
+    try {
+      String? trustedStr = await _secureStorage.read(
+        key: 'trusted_emergency_numbers',
+      );
+      if (trustedStr == null || trustedStr.isEmpty) return;
 
-    User? user = _auth.currentUser;
-    if (user != null) {
-      await _firestore.collection('users').doc(user.uid).set({
-        'trustedNumbers': numbers,
-      }, SetOptions(merge: true));
+      List<String> recipients = trustedStr
+          .split(',')
+          .map((n) => n.trim())
+          .toList();
+      String message =
+          "🚨 Security Alert: Physical SIM card was swapped! New Carrier: $newCarrier. Device is protected.";
+
+      await sendSMS(message: message, recipients: recipients);
+      print("📩 Emergency SMS alert sent successfully.");
+    } catch (e) {
+      print("❌ Failed to send emergency SMS: $e");
     }
   }
 
-  // 5. Fetch User Logs
   Future<List<Map<String, dynamic>>> getUserSimLogs() async {
-    User? user = _auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return [];
 
-    try {
-      QuerySnapshot snapshot = await _firestore
-          .collection('sim_logs')
-          .where('userId', isEqualTo: user.uid)
-          .orderBy('timestamp', descending: true)
-          .get();
+    QuerySnapshot snapshot = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('sim_logs')
+        .orderBy('timestamp', descending: true)
+        .get();
 
-      return snapshot.docs.map((doc) {
-        var data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    } catch (e) {
-      return [];
-    }
+    return snapshot.docs
+        .map((doc) => doc.data() as Map<String, dynamic>)
+        .toList();
+  }
+
+  Future<void> saveTrustedNumbers(List<String> numbers) async {
+    String joined = numbers.join(',');
+    await _secureStorage.write(key: 'trusted_emergency_numbers', value: joined);
   }
 }

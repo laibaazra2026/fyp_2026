@@ -23,7 +23,9 @@ class _SimScreenState extends State<SimScreen> {
 
   Future<void> _loadSimData() async {
     setState(() => _isLoading = true);
+    // 1. Run the check (this registers baseline or detects swap & writes to Firestore)
     await _simService.checkPhysicalSimSwap();
+    // 2. Fetch updated logs from Firestore
     List<Map<String, dynamic>> logs = await _simService.getUserSimLogs();
     setState(() {
       _simLogs = logs;
@@ -104,6 +106,12 @@ class _SimScreenState extends State<SimScreen> {
         backgroundColor: Colors.purple.shade700,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // Manual Check Button to force re-running the SIM detection
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Check SIM Now',
+            onPressed: _loadSimData,
+          ),
           IconButton(
             icon: const Icon(Icons.contact_phone),
             tooltip: 'View Emergency Contacts',
@@ -115,29 +123,45 @@ class _SimScreenState extends State<SimScreen> {
           ? const Center(child: CircularProgressIndicator(color: Colors.purple))
           : _simLogs.isEmpty
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.sim_card_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'No SIM Swaps Detected',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.sim_card_outlined,
+                      size: 64,
+                      color: Colors.grey.shade400,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Your device SIM is secure and verified.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No SIM Swaps Detected',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Your device SIM is secure and verified.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple.shade700,
+                      ),
+                      onPressed: _loadSimData,
+                      icon: const Icon(Icons.search, color: Colors.white),
+                      label: const Text(
+                        'Re-Scan SIM Status',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           : RefreshIndicator(
@@ -183,7 +207,6 @@ class _SimScreenState extends State<SimScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 4),
-                          // Updated to display carrier name instead of deviceModel
                           Text(
                             'Carrier: ${log['carrierName'] ?? 'Unknown'}',
                             style: const TextStyle(fontSize: 12),
