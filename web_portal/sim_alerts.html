@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIM Logs - Device Protection Admin</title>
+    <title>All Users SIM Logs - Device Protection Admin</title>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -119,6 +119,7 @@
         }
         tr:hover {
             background: #f9f9f9;
+            cursor: pointer;
         }
         .refresh-btn {
             background: #841EA0;
@@ -212,7 +213,7 @@
 
     <div class="main">
         <div class="header">
-            <h1>📱 Physical SIM Swap Logs</h1>
+            <h1>📱 All Users Physical SIM Swap Logs</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
@@ -232,11 +233,11 @@
         </div>
 
         <div class="table-container">
-            <button class="refresh-btn" onclick="loadSimAlerts()">🔄 Refresh</button>
-            <div id="loading" class="loading">Loading SIM logs from Firestore...</div>
+            <button class="refresh-btn" onclick="loadAllUsersSimLogs()">🔄 Refresh</button>
+            <div id="loading" class="loading">Loading all users SIM logs from Firestore...</div>
             <div id="empty" class="empty" style="display:none;">
-                📱 No SIM change logs found.<br>
-                <small>When a physical SIM swap is detected from the mobile app, it will appear here.</small>
+                📱 No SIM change logs found across any users.<br>
+                <small>When any mobile user incurs a physical SIM swap, it will populate in this table.</small>
             </div>
             <table id="simTable" style="display:none;">
                 <thead>
@@ -244,11 +245,11 @@
                         <th>#</th>
                         <th>User Email</th>
                         <th>Device Model</th>
-                        <th>Old SIM ID</th>
-                        <th>New SIM ID</th>
-                        <th>Status</th>
+                        <th>Old SIM Identifier</th>
+                        <th>New SIM Identifier</th>
+                        <th>Status / Event</th>
                         <th>Read State</th>
-                        <th>Time</th>
+                        <th>Timestamp</th>
                     </tr>
                 </thead>
                 <tbody id="simBody">
@@ -277,7 +278,7 @@
             }
         });
 
-        async function loadSimAlerts() {
+        async function loadAllUsersSimLogs() {
             try {
                 const loading = document.getElementById('loading');
                 const empty = document.getElementById('empty');
@@ -288,7 +289,7 @@
                 empty.style.display = 'none';
                 table.style.display = 'none';
 
-                // Perfectly mapped to match 'sim_logs' collection fields written by Flutter SimService
+                // Queries the complete 'sim_logs' collection globally for all users matching Flutter app data structure
                 const snapshot = await db.collection('sim_logs')
                     .orderBy('timestamp', 'desc')
                     .limit(100)
@@ -350,14 +351,14 @@
                         <td>${timeStr}</td>
                     `;
 
-                    // Click row to mark unread logs as read directly in Firestore
+                    // Click row to mark unread log as read instantly in Firestore and refresh table
                     row.onclick = async function() {
                         if (!isRead) {
                             try {
                                 await db.collection('sim_logs').doc(doc.id).update({
                                     'isRead': true
                                 });
-                                loadSimAlerts();
+                                loadAllUsersSimLogs();
                             } catch (err) {
                                 console.error('Error updating read status:', err);
                             }
@@ -384,7 +385,7 @@
             });
         }
 
-        loadSimAlerts();
+        loadAllUsersSimLogs();
     </script>
 </body>
 </html>
