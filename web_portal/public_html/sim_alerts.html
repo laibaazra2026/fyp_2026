@@ -3,15 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIM Logs - Device Protection</title>
+    <title>SIM Logs - Device Protection Admin</title>
 
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
         * {
@@ -54,7 +50,7 @@
         .main {
             margin-left: 250px;
             padding: 30px;
-            width: 100%;
+            width: calc(100% - 250px);
         }
         .header {
             display: flex;
@@ -74,6 +70,9 @@
             border-radius: 10px;
             font-size: 16px;
             cursor: pointer;
+        }
+        .logout-btn:hover {
+            background: #6A1B8A;
         }
         .stats {
             display: grid;
@@ -116,23 +115,10 @@
         td {
             padding: 12px;
             border-bottom: 1px solid #eee;
+            font-size: 14px;
         }
         tr:hover {
             background: #f9f9f9;
-        }
-        .alert-new {
-            background: #ff9800;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-        }
-        .alert-old {
-            background: #4CAF50;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
         }
         .refresh-btn {
             background: #841EA0;
@@ -142,6 +128,9 @@
             border-radius: 8px;
             cursor: pointer;
             margin-bottom: 15px;
+        }
+        .refresh-btn:hover {
+            background: #6A1B8A;
         }
         .loading {
             text-align: center;
@@ -164,10 +153,6 @@
             background: #ff9800;
             color: white;
         }
-        .badge-device {
-            background: #f44336;
-            color: white;
-        }
         .badge-read {
             background: #4CAF50;
             color: white;
@@ -175,6 +160,13 @@
         .badge-unread {
             background: #f44336;
             color: white;
+        }
+        .code-text {
+            font-family: monospace;
+            font-size: 12px;
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
         .sim-change {
             background: #fff3e0;
@@ -196,6 +188,7 @@
             .main {
                 margin-left: 70px;
                 padding: 15px;
+                width: calc(100% - 70px);
             }
             .stats {
                 grid-template-columns: 1fr;
@@ -205,7 +198,6 @@
 </head>
 <body>
 
-    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -218,22 +210,20 @@
         <a href="payments.html">💳 Subscriptions</a>
     </div>
 
-    
     <div class="main">
         <div class="header">
-            <h1>📱 SIM Change Logs</h1>
+            <h1>📱 Physical SIM Swap Logs</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
-        
         <div class="stats">
             <div class="stat-card">
                 <h3 id="totalAlerts">0</h3>
-                <p>Total SIM Changes</p>
+                <p>Total SIM Swap Logs</p>
             </div>
             <div class="stat-card">
                 <h3 id="todayAlerts">0</h3>
-                <p>Today's Changes</p>
+                <p>Today's Swaps</p>
             </div>
             <div class="stat-card">
                 <h3 id="unreadAlerts">0</h3>
@@ -241,24 +231,23 @@
             </div>
         </div>
 
-        
         <div class="table-container">
             <button class="refresh-btn" onclick="loadSimAlerts()">🔄 Refresh</button>
-            <div id="loading" class="loading">Loading SIM logs...</div>
+            <div id="loading" class="loading">Loading SIM logs from Firestore...</div>
             <div id="empty" class="empty" style="display:none;">
-                📱 No SIM change logs yet<br>
-                <small>When someone changes their SIM, it will appear here.</small>
+                📱 No SIM change logs found.<br>
+                <small>When a physical SIM swap is detected from the mobile app, it will appear here.</small>
             </div>
             <table id="simTable" style="display:none;">
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>User</th>
-                        <th>Old SIM</th>
-                        <th>New SIM</th>
-                        <th>Old Carrier</th>
-                        <th>New Carrier</th>
+                        <th>User Email</th>
+                        <th>Device Model</th>
+                        <th>Old SIM ID</th>
+                        <th>New SIM ID</th>
                         <th>Status</th>
+                        <th>Read State</th>
                         <th>Time</th>
                     </tr>
                 </thead>
@@ -269,28 +258,25 @@
     </div>
 
     <script>
-        
         const firebaseConfig = {
-  apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
-  authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
-  projectId: "fyp-mobile-app-and-web-portal",
-  storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
-  messagingSenderId: "38986827146",
-  appId: "1:38986827146:web:9042f34efac22b99163473"
-};
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:9042f34efac22b99163473"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'index.html';
             }
         });
 
-        
         async function loadSimAlerts() {
             try {
                 const loading = document.getElementById('loading');
@@ -302,12 +288,12 @@
                 empty.style.display = 'none';
                 table.style.display = 'none';
 
-                const snapshot = await db.collection('sim_alerts')
+                // Perfectly mapped to match 'sim_logs' collection fields written by Flutter SimService
+                const snapshot = await db.collection('sim_logs')
                     .orderBy('timestamp', 'desc')
                     .limit(100)
                     .get();
 
-                
                 document.getElementById('totalAlerts').textContent = snapshot.size;
 
                 let todayCount = 0;
@@ -339,52 +325,42 @@
 
                 snapshot.forEach((doc) => {
                     const data = doc.data();
-
-                    
-                    const isSimChange = data.type === 'SIM_CHANGE';
-
                     const row = document.createElement('tr');
-                    row.className = isSimChange ? 'sim-change' : '';
+                    row.className = 'sim-change';
 
-                    
                     let timeStr = 'N/A';
-                    if (data.timestamp) {
+                    if (data.timestamp && data.timestamp.seconds) {
                         const date = new Date(data.timestamp.seconds * 1000);
                         timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
                     }
 
-                    
-                    let statusBadge = '';
-                    if (data.isRead) {
-                        statusBadge = '<span class="badge badge-read">✅ Read</span>';
-                    } else {
-                        statusBadge = '<span class="badge badge-unread">🔴 Unread</span>';
-                    }
-
-                    
-                    let typeBadge = '<span class="badge badge-sim">SIM</span>';
-                    if (data.type === 'DEVICE_CHANGE') {
-                        typeBadge = '<span class="badge badge-device">Device</span>';
-                    }
+                    const isRead = data.isRead === true;
+                    let statusBadge = isRead 
+                        ? '<span class="badge badge-read">✅ Read</span>' 
+                        : '<span class="badge badge-unread">🔴 Unread</span>';
 
                     row.innerHTML = `
                         <td>${count}</td>
-                        <td><strong>${data.userName || data.userEmail || 'Unknown'}</strong></td>
-                        <td><code>${data.oldSimSerial ? data.oldSimSerial.substring(0, 8) + '...' : 'N/A'}</code></td>
-                        <td><code style="color:#ff9800;font-weight:bold;">${data.newSimSerial ? data.newSimSerial.substring(0, 8) + '...' : 'N/A'}</code></td>
-                        <td>${data.oldCarrier || 'N/A'}</td>
-                        <td><strong style="color:#ff9800;">${data.newCarrier || 'N/A'}</strong></td>
+                        <td><strong>${data.userEmail || data.userId || 'Unknown'}</strong></td>
+                        <td>${data.deviceModel || 'N/A'}</td>
+                        <td><span class="code-text">${data.oldSimIdentifier || 'N/A'}</span></td>
+                        <td><span class="code-text" style="color:#ff9800;font-weight:bold;">${data.newSimIdentifier || 'N/A'}</span></td>
+                        <td><span class="badge badge-sim">${data.status || 'SIM Swap'}</span></td>
                         <td>${statusBadge}</td>
                         <td>${timeStr}</td>
                     `;
 
-                    
+                    // Click row to mark unread logs as read directly in Firestore
                     row.onclick = async function() {
-                        if (!data.isRead) {
-                            await db.collection('sim_alerts').doc(doc.id).update({
-                                'isRead': true
-                            });
-                            loadSimAlerts();
+                        if (!isRead) {
+                            try {
+                                await db.collection('sim_logs').doc(doc.id).update({
+                                    'isRead': true
+                                });
+                                loadSimAlerts();
+                            } catch (err) {
+                                console.error('Error updating read status:', err);
+                            }
                         }
                     };
 
@@ -396,22 +372,19 @@
                 table.style.display = 'table';
 
             } catch (error) {
-                console.error('Error loading SIM alerts:', error);
+                console.error('Error loading SIM logs:', error);
                 document.getElementById('loading').textContent = '❌ Error loading SIM logs: ' + error.message;
                 document.getElementById('loading').style.display = 'block';
             }
         }
 
-        
         function logout() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             });
         }
 
-        
         loadSimAlerts();
     </script>
-
 </body>
 </html>
