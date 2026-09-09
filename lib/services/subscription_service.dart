@@ -5,7 +5,6 @@ class SubscriptionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Exact 5 test numbers configured in your Firebase Auth Console
   static final List<String> authorizedTestNumbers = [
     '03005171794',
     '03144964339',
@@ -14,7 +13,6 @@ class SubscriptionService {
     '03157633912',
   ];
 
-  // Helper to centralize phone number normalization
   String normalizeNumber(String value) {
     String cleaned = value.trim();
     if (cleaned.startsWith('+92')) {
@@ -25,7 +23,6 @@ class SubscriptionService {
     return cleaned;
   }
 
-  // Validation supporting both 03XX and +92 formats
   String? validateAndNormalizeNumber(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter a mobile number';
@@ -46,7 +43,6 @@ class SubscriptionService {
     return null;
   }
 
-  // Sandbox SMS Simulation Engine logging to Firestore
   Future<bool> sendSandboxSms({
     required String recipientNumber,
     required String planName,
