@@ -1,7 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
 
 class SandboxSmsService {
-  static const List<String> whitelistNumbers = [
+  // Singleton pattern
+  static final SandboxSmsService _instance = SandboxSmsService._internal();
+  factory SandboxSmsService() => _instance;
+  SandboxSmsService._internal();
+
+  final List<String> allowedTestNumbers = [
     '+923005171794',
     '+923144964339',
     '+923241923864',
@@ -9,54 +14,30 @@ class SandboxSmsService {
     '+923157633912',
   ];
 
-  String? validateNumber(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Mobile number is required';
-    }
-    String cleaned = value.trim();
-    if (!cleaned.startsWith('+92') && !cleaned.startsWith('03')) {
-      return 'Must start with +92 or 03';
-    }
-    if (cleaned.startsWith('03')) {
-      cleaned = '+92${cleaned.substring(1)}';
-    }
-    if (!whitelistNumbers.contains(cleaned)) {
-      return 'Number not whitelisted for Sandbox test';
-    }
-    return null;
-  }
+  final List<Map<String, String>> _inboxMessages = [];
 
-  Future<void> sendSandboxSms({
-    required String recipientNumber,
-    required String planName,
-    required double price,
-    required String gateway,
-  }) async {
-    String normalized = recipientNumber.trim();
-    if (normalized.startsWith('03')) {
-      normalized = '+92${normalized.substring(1)}';
+  // Send simulated SMS/OTP to the mock inbox
+  Future<bool> sendMockOtp(String phoneNumber) async {
+    // Normalize format
+    String cleanNumber = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    if (!allowedTestNumbers.contains(cleanNumber)) {
+      return false;
     }
 
-    if (!whitelistNumbers.contains(normalized)) {
-      throw Exception('Unauthorized sandbox number.');
-    }
+    // Generate random 4-digit code (or default to 1234 for easy testing)
+    String otp = '1234';
 
-    String gatewayPrefix = gateway.toLowerCase().contains('jazz')
-        ? 'JazzCash'
-        : 'EasyPaisa';
-    String txnId =
-        'TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
-    String messageBody =
-        'ALERT: Paid PKR ${price.toStringAsFixed(0)} for $planName via $gatewayPrefix. Ref: $txnId.';
-
-    await FirebaseFirestore.instance.collection('sms_logs').add({
-      'recipient': normalized,
-      'gateway': gatewayPrefix,
-      'plan': planName,
-      'amount': price,
-      'message': messageBody,
-      'transactionId': txnId,
-      'timestamp': FieldValue.serverTimestamp(),
+    _inboxMessages.insert(0, {
+      'sender': 'JazzCash/EasyPaisa',
+      'body':
+          'Your secure transaction OTP is $otp. Do not share this PIN with anyone.',
+      'time': DateTime.now().toString().substring(11, 16),
+      'phone': cleanNumber,
     });
+
+    await Future.delayed(const Duration(milliseconds: 800));
+    return true;
   }
+
+  List<Map<String, String>> getInboxMessages() => _inboxMessages;
 }
