@@ -291,26 +291,26 @@
                 empty.style.display = 'none';
                 table.style.display = 'none';
 
-                const usersSnapshot = await db.collection('users').get();
+                // FIXED: Use collectionGroup to pull all "sim_logs" subcollections across all users in ONE read request
+                const simLogsSnapshot = await db.collectionGroup('sim_logs').get();
                 let allLogs = [];
 
-                for (const userDoc of usersSnapshot.docs) {
-                    const userData = userDoc.data();
-                    const uid = userDoc.id;
-                    const userEmail = userData.email || uid;
+                simLogsSnapshot.forEach(logDoc => {
+                    const data = logDoc.data();
+                    
+                    // Extract the user's UID directly from the document's Firestore path: "users/{uid}/sim_logs/{logId}"
+                    const pathSegments = logDoc.ref.path.split('/');
+                    const uid = pathSegments.length > 1 ? pathSegments[1] : 'Unknown';
 
-                    const simLogsSnapshot = await db.collection('users').doc(uid).collection('sim_logs').get();
-
-                    simLogsSnapshot.forEach(logDoc => {
-                        allLogs.push({
-                            id: logDoc.id,
-                            userId: uid,
-                            userEmail: userEmail,
-                            ...logDoc.data()
-                        });
+                    allLogs.push({
+                        id: logDoc.id,
+                        userId: uid,
+                        userEmail: data.userEmail || uid, // Falls back to UID if email isn't stored in log
+                        ...data
                     });
-                }
+                });
 
+                // Sort logs by timestamp (newest first)
                 allLogs.sort((a, b) => {
                     const timeA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : new Date(a.timestamp || 0).getTime();
                     const timeB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : new Date(b.timestamp || 0).getTime();

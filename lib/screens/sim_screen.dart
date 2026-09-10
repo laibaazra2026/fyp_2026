@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/sim_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/sim_service.dart';
 
 class SimScreen extends StatefulWidget {
   const SimScreen({super.key});
@@ -12,23 +13,13 @@ class SimScreen extends StatefulWidget {
 
 class _SimScreenState extends State<SimScreen> {
   final SimService _simService = SimService();
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _simLogs = [];
+  final String? _userId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    _loadSimData();
-  }
-
-  Future<void> _loadSimData() async {
-    setState(() => _isLoading = true);
-    await _simService.checkPhysicalSimSwap();
-    List<Map<String, dynamic>> logs = await _simService.getUserSimLogs();
-    setState(() {
-      _simLogs = logs;
-      _isLoading = false;
-    });
+    // Check for SIM swap on screen open
+    _simService.checkPhysicalSimSwap();
   }
 
   // Dialog to view/edit trusted numbers
@@ -95,6 +86,10 @@ class _SimScreenState extends State<SimScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_userId == null) {
+      return const Scaffold(body: Center(child: Text('User not logged in')));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -107,7 +102,7 @@ class _SimScreenState extends State<SimScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Check SIM Now',
-            onPressed: _loadSimData,
+            onPressed: () => _simService.checkPhysicalSimSwap(),
           ),
           IconButton(
             icon: const Icon(Icons.contact_phone),
@@ -116,10 +111,22 @@ class _SimScreenState extends State<SimScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.purple))
-          : _simLogs.isEmpty
-          ? Center(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(_userId)
+            .collection('sim_logs')
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.purple),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -150,7 +157,7 @@ class _SimScreenState extends State<SimScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.purple.shade700,
                       ),
-                      onPressed: _loadSimData,
+                      onPressed: () => _simService.checkPhysicalSimSwap(),
                       icon: const Icon(Icons.search, color: Colors.white),
                       label: const Text(
                         'Re-Scan SIM Status',
@@ -160,84 +167,84 @@ class _SimScreenState extends State<SimScreen> {
                   ],
                 ),
               ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadSimData,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _simLogs.length,
-                itemBuilder: (context, index) {
-                  var log = _simLogs[index];
-                  var rawTimestamp = log['timestamp'];
-                  String formattedDate = 'Just now';
+            );
+          }
 
-                  if (rawTimestamp is Timestamp) {
-                    formattedDate = DateFormat(
-                      'yyyy-MM-dd – hh:mm a',
-                    ).format(rawTimestamp.toDate());
-                  } else if (rawTimestamp is String) {
-                    DateTime? parsedDate = DateTime.tryParse(rawTimestamp);
-                    if (parsedDate != null) {
-                      formattedDate = DateFormat(
-                        'yyyy-MM-dd – hh:mm a',
-                      ).format(parsedDate);
-                    }
-                  }
+          final simLogs = snapshot.data!.docs;
 
-                  return Card(
-                    elevation: 3,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: simLogs.length,
+            itemBuilder: (context, index) {
+              var log = simLogs[index].data() as Map<String, dynamic>;
+              var rawTimestamp = log['timestamp'];
+              String formattedDate = 'Just now';
+
+              if (rawTimestamp is Timestamp) {
+                formattedDate = DateFormat(
+                  'yyyy-MM-dd – hh:mm a',
+                ).format(rawTimestamp.toDate());
+              } else if (rawTimestamp is String) {
+                DateTime? parsedDate = DateTime.tryParse(rawTimestamp);
+                if (parsedDate != null) {
+                  formattedDate = DateFormat(
+                    'yyyy-MM-dd – hh:mm a',
+                  ).format(parsedDate);
+                }
+              }
+
+              return Card(
+                elevation: 3,
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      shape: BoxShape.circle,
                     ),
-                    child: ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.orange,
-                        ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  title: const Text(
+                    'Physical SIM Changed',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        'Carrier: ${log['carrierName'] ?? 'Unknown'}',
+                        style: const TextStyle(fontSize: 12),
                       ),
-                      title: const Text(
-                        'Physical SIM Changed',
+                      Text(
+                        'Time: $formattedDate',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
                         ),
                       ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 4),
-                          Text(
-                            'Carrier: ${log['carrierName'] ?? 'Unknown'}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          Text(
-                            'Time: $formattedDate',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      trailing: const Chip(
-                        label: Text(
-                          'Alert',
-                          style: TextStyle(color: Colors.white, fontSize: 10),
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
+                    ],
+                  ),
+                  trailing: const Chip(
+                    label: Text(
+                      'Alert',
+                      style: TextStyle(color: Colors.white, fontSize: 10),
                     ),
-                  );
-                },
-              ),
-            ),
+                    backgroundColor: Colors.red,
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
