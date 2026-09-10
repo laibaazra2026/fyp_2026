@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../services/command_service.dart';
 import '../services/security_guard_service.dart';
 import '../utils/feature_access_card.dart';
+import '../widgets/feature_gate.dart';
 import 'login_screen.dart';
 import 'gps_screen.dart';
 import 'subscription_screen.dart';
@@ -174,44 +175,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
-  }
-
-  Future<void> _checkSubscriptionAndProceed({
-    required BuildContext context,
-    required String featureName,
-    required VoidCallback onSubscribed,
-  }) async {
-    if (user == null) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return const Center(
-          child: CircularProgressIndicator(color: Colors.purple),
-        );
-      },
-    );
-
-    try {
-      String currentPlan = await _subscriptionService.getCurrentPlan();
-
-      if (!context.mounted) return;
-
-      Navigator.pop(context);
-
-      if (currentPlan.toLowerCase() != 'free') {
-        onSubscribed();
-      } else {
-        _showUpgradeDialogBox();
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-
-      Navigator.pop(context);
-
-      _showUpgradeDialogBox();
-    }
   }
 
   Future<bool> _checkAndRequestLocationPermission(BuildContext context) async {
@@ -786,32 +749,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   isLocked: true,
 
                   onTap: () {
-                    _checkSubscriptionAndProceed(
+                    _securityGuard.runModuleIfTheftModeOn(
                       context: context,
-                      featureName: 'Backup & Restore',
+                      moduleName: 'Backup & Restore',
+                      moduleTask: () async {
+                        bool hasPermission =
+                            await _checkAndRequestBackupPermissions(context);
 
-                      onSubscribed: () async {
-                        _securityGuard.runModuleIfTheftModeOn(
-                          context: context,
-                          moduleName: 'Backup & Restore',
-
-                          moduleTask: () async {
-                            bool hasPermission =
-                                await _checkAndRequestBackupPermissions(
-                                  context,
-                                );
-
-                            if (hasPermission && context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const BackupRestoreScreen(),
-                                ),
-                              );
-                            }
-                          },
-                        );
+                        if (hasPermission && context.mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const FeatureGate(
+                                requiredPlan: 'family',
+                                featureName: 'Backup & Restore',
+                                child: BackupRestoreScreen(),
+                              ),
+                            ),
+                          );
+                        }
                       },
                     );
                   },

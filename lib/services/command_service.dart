@@ -39,6 +39,24 @@ class CommandService {
     }
   }
 
+  // 🚀 Added: Send remote commands to target user device from any portal
+  Future<void> sendCommandToUser(
+    String targetUserId,
+    String commandType,
+  ) async {
+    try {
+      await _firestore.collection('commands').add({
+        'userId': targetUserId,
+        'type': commandType, // e.g., 'LOCK', 'RING', 'THEFT_MODE'
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      print('🚀 Command $commandType sent successfully to user $targetUserId');
+    } catch (e) {
+      print('❌ Error sending command: $e');
+    }
+  }
+
   void listenForCommands(BuildContext context) {
     User? user = _auth.currentUser;
     if (user == null) {

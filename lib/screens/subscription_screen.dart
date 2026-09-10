@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+import '../models/purchase_cart_item.dart';
 import '../services/subscription_service.dart';
 import '../services/sandbox_sms_service.dart';
-import 'backup_restore_screen.dart';
-import 'gateway_success_screen.dart';
-import 'sms_inbox_screen.dart';
+import 'card_checkout_screen.dart';
+import 'invoices/jazzcash_invoice_screen.dart';
+import 'invoices/easypaisa_invoice_screen.dart';
+import 'invoices/card_invoice_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
+
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
-  final PageController _pageController = PageController(viewportFraction: 0.85);
-  late ConfettiController _confettiController;
+  late final PageController _pageController;
+  late final ConfettiController _confettiController;
 
   String _currentPlan = 'free';
   int _currentPage = 0;
@@ -36,31 +39,43 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(viewportFraction: 0.85);
     _confettiController = ConfettiController(
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 1),
     );
-    _confettiController.play();
     _loadCurrentPlan();
   }
 
   @override
   void dispose() {
-    _confettiController.dispose();
     _pageController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
   Future<void> _loadCurrentPlan() async {
     String plan = await _subscriptionService.getCurrentPlan();
     if (!mounted) return;
+
+    int targetPage = 0;
+    if (plan.toLowerCase() == 'premium') targetPage = 1;
+    if (plan.toLowerCase() == 'family') targetPage = 2;
+
     setState(() {
-      _currentPlan = plan;
-      if (plan == 'premium') _currentPage = 1;
-      if (plan == 'family') _currentPage = 2;
+      _currentPlan = plan.toLowerCase();
+      _currentPage = targetPage;
     });
+
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        targetPage,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
-  void _showPaymentMethodDialog(String planName, double price) {
+  void _showPaymentMethodDialog(PurchaseCartItem cartItem) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -75,7 +90,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Select Payment Method for $planName',
+                'Select Payment Method for ${cartItem.title}',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -84,7 +99,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Amount to pay: Rs. ${price.toStringAsFixed(0)}',
+                'Amount to pay: Rs. ${cartItem.price.toStringAsFixed(0)}',
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
               ),
               const SizedBox(height: 20),
@@ -104,10 +119,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   'JazzCash Mobile Account',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: const Text('Secure Mobile Checkout'),
+                subtitle: const Text('Secure Wallet OTP Checkout'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showSecureCheckoutDialog(planName, price, 'JazzCash');
+                  _showSecureCheckoutDialog(cartItem, 'JazzCash Wallet');
                 },
               ),
               const Divider(),
@@ -124,10 +139,46 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   'EasyPaisa Wallet',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: const Text('Secure Mobile Checkout'),
+                subtitle: const Text('Secure Wallet OTP Checkout'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showSecureCheckoutDialog(planName, price, 'EasyPaisa');
+                  _showSecureCheckoutDialog(cartItem, 'EasyPaisa Wallet');
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.credit_card, color: Colors.blue),
+                ),
+                title: const Text(
+                  'Credit / Debit Card',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('PayFast / Visa / Mastercard / Stripe'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CardCheckoutScreen(cartItem: cartItem),
+                    ),
+                  );
+
+                  if (!mounted) return;
+
+                  if (result != null && result['success'] == true) {
+                    _processCardUpgrade(
+                      cartItem,
+                      result['method'],
+                      result['txnId'],
+                    );
+                  }
                 },
               ),
             ],
@@ -138,8 +189,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   void _showSecureCheckoutDialog(
-    String planName,
-    double price,
+    PurchaseCartItem cartItem,
     String paymentMethod,
   ) {
     final TextEditingController phoneController = TextEditingController();
@@ -163,7 +213,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Paying PKR ${price.toStringAsFixed(0)} for $planName Tier',
+                      'Paying PKR ${cartItem.price.toStringAsFixed(0)} for ${cartItem.title}',
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 13,
@@ -246,12 +296,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                           if (!mounted) return;
                           Navigator.pop(dialogContext);
-                          _processUpgrade(
-                            planName,
-                            price,
-                            paymentMethod,
-                            enteredPhone,
-                          );
+                          _processUpgrade(cartItem, paymentMethod);
                         },
                   child: isLoading
                       ? const SizedBox(
@@ -275,35 +320,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Future<void> _processUpgrade(
-    String planName,
-    double price,
+  Future<void> _processCardUpgrade(
+    PurchaseCartItem cartItem,
     String paymentMethod,
-    String phone,
+    String txnId,
   ) async {
     try {
-      String txnId =
-          'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
-
       await _subscriptionService.updateSubscriptionWithMethod(
-        planName.toLowerCase(),
-        price,
+        cartItem.featureId.replaceAll('tier_', ''),
+        cartItem.price.toString(),
         paymentMethod,
       );
 
       if (!mounted) return;
 
-      setState(() => _currentPlan = planName.toLowerCase());
+      setState(() => _currentPlan = cartItem.featureId.replaceAll('tier_', ''));
       _confettiController.play();
 
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => GatewaySuccessScreen(
-            planName: planName,
-            price: price,
-            paymentMethod: paymentMethod,
-            transactionId: txnId,
+          builder: (context) => CardInvoiceScreen(
+            authCode: txnId,
+            totalAmount: cartItem.price,
+            cartItemOrItems: cartItem,
           ),
         ),
       );
@@ -318,36 +358,128 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Subscription Plans',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+  Future<void> _processUpgrade(
+    PurchaseCartItem cartItem,
+    String paymentMethod,
+  ) async {
+    try {
+      String txnId =
+          'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
+      await _subscriptionService.updateSubscriptionWithMethod(
+        cartItem.featureId.replaceAll('tier_', ''),
+        cartItem.price.toString(),
+        paymentMethod,
+      );
+
+      if (!mounted) return;
+
+      setState(() => _currentPlan = cartItem.featureId.replaceAll('tier_', ''));
+      _confettiController.play();
+
+      if (paymentMethod.toLowerCase().contains('jazzcash')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => JazzCashInvoiceScreen(
+              items: [cartItem],
+              txnId: txnId,
+              totalAmount: cartItem.price,
+            ),
+          ),
+        );
+      } else if (paymentMethod.toLowerCase().contains('easypaisa')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EasypaisaInvoiceScreen(
+              items: [cartItem],
+              token: txnId,
+              totalAmount: cartItem.price,
+            ),
+          ),
+        );
+      } else {
+        _showSuccessDialog(cartItem, paymentMethod, txnId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to complete upgrade: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: Colors.purple.shade700,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+      );
+    }
+  }
+
+  void _showSuccessDialog(
+    PurchaseCartItem cartItem,
+    String paymentMethod,
+    String txnId,
+  ) {
+    _confettiController.play();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 10),
+            Text('Payment Successful!'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('You are now subscribed to the ${cartItem.title}.'),
+            const SizedBox(height: 8),
+            Text('Amount Paid: Rs. ${cartItem.price.toStringAsFixed(0)}'),
+            Text('Method: $paymentMethod'),
+            Text('Transaction ID: $txnId'),
+          ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.message_outlined, color: Colors.white),
-            tooltip: 'Sandbox SMS Inbox',
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple.shade700,
+            ),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SmsInboxScreen()),
-              );
+              Navigator.pop(context);
+              setState(() {});
             },
+            child: const Text('Done', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          Container(
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: const Text(
+              'Subscription Plans',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            backgroundColor: Colors.purple.shade700,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -385,9 +517,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       'Select a tier that matches your security needs and unlock advanced safety features.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: Colors.white,
                         fontSize: 13,
                         height: 1.4,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -424,8 +557,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ],
                           isCurrent: _currentPlan == 'premium',
                           buttonText: 'Upgrade to Premium',
-                          onTap: () =>
-                              _showPaymentMethodDialog('Premium', 99.0),
+                          onTap: () {
+                            final cartItem = PurchaseCartItem(
+                              featureId: 'tier_premium',
+                              title: 'Premium Plan',
+                              price: 99.0,
+                            );
+                            _showPaymentMethodDialog(cartItem);
+                          },
                         ),
                         _buildTierCard(
                           name: 'Family',
@@ -437,8 +576,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ],
                           isCurrent: _currentPlan == 'family',
                           buttonText: 'Upgrade to Family',
-                          onTap: () =>
-                              _showPaymentMethodDialog('Family', 199.0),
+                          onTap: () {
+                            final cartItem = PurchaseCartItem(
+                              featureId: 'tier_family',
+                              title: 'Family Plan',
+                              price: 199.0,
+                            );
+                            _showPaymentMethodDialog(cartItem);
+                          },
                         ),
                       ],
                     ),
@@ -466,27 +611,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: 1.57,
-              particleDrag: 0.05,
-              emissionFrequency: 0.05,
-              numberOfParticles: 20,
-              gravity: 0.2,
-              shouldLoop: false,
-              colors: const [
-                Colors.green,
-                Colors.blue,
-                Colors.pink,
-                Colors.orange,
-                Colors.yellow,
-              ],
-            ),
+        ),
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive,
+            shouldLoop: false,
+            colors: const [
+              Colors.green,
+              Colors.blue,
+              Colors.pink,
+              Colors.orange,
+              Colors.purple,
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -565,8 +706,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
             const Divider(height: 24),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: ListView(
                 children: features.map((feature) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -594,8 +734,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 }).toList(),
               ),
             ),
-            const Spacer(),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             if (onTap != null && !isCurrent)
               SizedBox(
                 width: double.infinity,
