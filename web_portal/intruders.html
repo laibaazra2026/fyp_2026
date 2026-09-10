@@ -134,7 +134,6 @@
 </head>
 <body>
 
-    
     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
@@ -147,7 +146,6 @@
          <a href="payments.html">💳 Subscriptions</a>
     </div>
 
-    
     <div class="main">
         <div class="header">
             <h1>📸 Intruder Photos</h1>
@@ -161,16 +159,14 @@
     </div>
 
     <script>
-        
         const firebaseConfig = {
-  apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
-  authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
-  projectId: "fyp-mobile-app-and-web-portal",
-  storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
-  messagingSenderId: "38986827146",
-  appId: "1:38986827146:web:9042f34efac22b99163473"
-};
-        
+            apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
+            authDomain: "fyp-mobile-app-and-web-portal.firebaseapp.com",
+            projectId: "fyp-mobile-app-and-web-portal",
+            storageBucket: "fyp-mobile-app-and-web-portal.firebasestorage.app",
+            messagingSenderId: "38986827146",
+            appId: "1:38986827146:web:9042f34efac22b99163473"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -179,16 +175,24 @@
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'index.html';
+            } else {
+                loadIntruders();
             }
         });
 
-        
         async function loadIntruders() {
             try {
-                const snapshot = await db.collection('intruder_photos')
-                    .orderBy('timestamp', 'desc')
-                    .limit(30)
-                    .get();
+                const user = auth.currentUser;
+                if (!user) return;
+
+                let query = db.collection('intruder_photos');
+
+                // If logged-in user is not the admin, filter to only show their own photos using userId
+                if (user.email !== "azralaiba53@gmail.com") {
+                    query = query.where('userId', '==', user.uid);
+                }
+
+                const snapshot = await query.orderBy('timestamp', 'desc').limit(30).get();
 
                 const gallery = document.getElementById('gallery');
                 gallery.innerHTML = '';
@@ -209,14 +213,16 @@
                         new Date(data.timestamp.seconds * 1000).toLocaleString() : 
                         'Unknown';
 
-                    
                     const imageSrc = data.imageBase64 ? `data:image/jpeg;base64,${data.imageBase64}` : '';
+                    
+                    // Fallback to userEmail, or display userId cleanly if email isn't available
+                    const identifier = data.userEmail || data.userId || 'Unknown User';
 
                     card.innerHTML = `
                         <img src="${imageSrc}" alt="Intruder Photo" 
                              onerror="this.src='https://via.placeholder.com/250x200?text=Image+Not+Found'">
                         <div class="photo-info">
-                            <p>📧 ${data.userEmail || 'Unknown User'}</p>
+                            <p>👤 ${identifier}</p>
                             <p class="time">🕐 ${time}</p>
                         </div>
                     `;
@@ -232,15 +238,11 @@
             }
         }
 
-        
         function logout() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             });
         }
-
-        
-        loadIntruders();
     </script>
 
 </body>
