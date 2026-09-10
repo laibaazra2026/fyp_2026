@@ -1,8 +1,8 @@
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sim_reader/sim_reader.dart';
-import 'package:flutter_sms/flutter_sms.dart';
 
 class SimService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
@@ -10,6 +10,7 @@ class SimService {
 
   static const String _baselineCarrierKey = 'baseline_carrier_name';
   static const String _baselineSerialKey = 'baseline_sim_serial';
+  static const String _localLogsKey = 'local_sim_swap_logs';
 
   /// Step 1: Real physical SIM check method called on app boot or manual screen refresh
   Future<bool> checkPhysicalSimSwap() async {
@@ -44,7 +45,7 @@ class SimService {
         key: _baselineSerialKey,
       );
 
-      // 3. If no baseline exists, this is the very first run (e.g., Jazz SIM inserted)
+      // 3. If no baseline exists, this is the very first run
       if (baselineCarrier == null || baselineIdentifier == null) {
         await _secureStorage.write(
           key: _baselineCarrierKey,
@@ -60,17 +61,21 @@ class SimService {
         return false; // No swap yet, baseline established
       }
 
-      // 4. Compare current SIM data against the baseline to detect a real physical swap (e.g., Zong inserted)
-      if (currentIdentifier != baselineIdentifier ||
-          currentCarrier != baselineCarrier) {
+      // 4. Compare current SIM data against the baseline to detect a real physical swap
+      if ((currentIdentifier != baselineIdentifier ||
+              currentCarrier != baselineCarrier) &&
+          currentIdentifier != 'Unknown_ID') {
         print(
           "🚨 REAL PHYSICAL SIM SWAP DETECTED! Old: $baselineCarrier, New: $currentCarrier",
         );
 
-        // Log the swap event to Firestore
+        // Save locally first so logs never disappear from the app UI
+        await _saveLogLocally(currentCarrier, currentIdentifier);
+
+        // Log the swap event to Firestore (User + Admin portals)
         await _logSimSwapToFirestore(currentCarrier, currentIdentifier);
 
-        // Trigger automated SMS alert to trusted numbers
+        // Trigger simulated emergency alert for trusted numbers (Free - No carrier SMS cost)
         await _sendEmergencySmsAlert(currentCarrier);
 
         // Update baseline to the new SIM so it stops spamming alerts
@@ -94,6 +99,41 @@ class SimService {
     }
   }
 
+  /// Save logs locally on the device to prevent them from disappearing
+  Future<void> _saveLogLocally(String carrier, String identifier) async {
+    try {
+      List<Map<String, dynamic>> existingLogs = await getUserSimLogs();
+
+      final newLog = {
+        'carrierName': carrier,
+        'identifier': identifier,
+        'timestamp': DateTime.now().toIso8601String(),
+        'status': 'Mismatch Alert',
+      };
+
+      existingLogs.insert(0, newLog); // Keep latest at top
+
+      // Convert any Timestamp objects back to strings before encoding to JSON storage
+      final encodableLogs = existingLogs.map((log) {
+        final map = Map<String, dynamic>.from(log);
+        if (map['timestamp'] is Timestamp) {
+          map['timestamp'] = (map['timestamp'] as Timestamp)
+              .toDate()
+              .toIso8601String();
+        }
+        return map;
+      }).toList();
+
+      await _secureStorage.write(
+        key: _localLogsKey,
+        value: jsonEncode(encodableLogs),
+      );
+      print("💾 SIM log securely cached locally.");
+    } catch (e) {
+      print("❌ Failed to save log locally: $e");
+    }
+  }
+
   Future<void> _logSimSwapToFirestore(
     String newCarrier,
     String newIdentifier,
@@ -105,17 +145,26 @@ class SimService {
         return;
       }
 
+      final logData = {
+        'userId': user.uid,
+        'userEmail': user.email ?? 'Unknown',
+        'carrierName': newCarrier,
+        'identifier': newIdentifier,
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'Mismatch Alert',
+      };
+
+      // Log to user portal collection
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('sim_logs')
-          .add({
-            'carrierName': newCarrier,
-            'identifier': newIdentifier,
-            'timestamp': FieldValue.serverTimestamp(),
-            'status': 'Mismatch Alert',
-          });
-      print("☁️ SIM swap successfully logged to Firestore.");
+          .add(logData);
+
+      // Log to global collection for admin portal visibility
+      await _firestore.collection('all_sim_swap_logs').add(logData);
+
+      print("☁️ SIM swap successfully logged to Firestore & Admin portal.");
     } catch (e) {
       print("❌ Failed to log SIM swap to Firestore: $e");
     }
@@ -132,30 +181,88 @@ class SimService {
           .split(',')
           .map((n) => n.trim())
           .toList();
-      String message =
-          "🚨 Security Alert: Physical SIM card was swapped! New Carrier: $newCarrier. Device is protected.";
 
-      await sendSMS(message: message, recipients: recipients);
-      print("📩 Emergency SMS alert sent successfully.");
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Save the simulated alert with the emergency numbers attached so you can display them in the UI drawer
+        final fakeAlertData = {
+          'userId': user.uid,
+          'carrierName': newCarrier,
+          'emergencyNumbers': recipients,
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'Simulated Alert',
+          'message':
+              '🚨 Simulated SMS to ${recipients.join(", ")}: Physical SIM swapped to $newCarrier!',
+        };
+
+        // Save to Firestore so your app drawer / alert notification icon can display it seamlessly
+        await _firestore.collection('sim_swap_alerts').add(fakeAlertData);
+      }
+
+      print(
+        "📱 Simulated emergency alert generated for trusted numbers (No carrier SMS cost).",
+      );
     } catch (e) {
-      print("❌ Failed to send emergency SMS: $e");
+      print("❌ Failed to create simulated alert: $e");
     }
   }
 
+  /// Fetch logs for the User Portal (reads local storage first so they never vanish)
   Future<List<Map<String, dynamic>>> getUserSimLogs() async {
+    try {
+      String? localData = await _secureStorage.read(key: _localLogsKey);
+      if (localData != null && localData.isNotEmpty) {
+        List<dynamic> decoded = jsonDecode(localData);
+        return decoded.map((item) {
+          final map = item as Map<String, dynamic>;
+          if (map['timestamp'] is String) {
+            map['timestamp'] = Timestamp.fromDate(
+              DateTime.parse(map['timestamp']),
+            );
+          }
+          return map;
+        }).toList();
+      }
+    } catch (e) {
+      print("❌ Error reading local logs: $e");
+    }
+
+    // Fallback to Firestore if local storage cache is empty
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return [];
 
-    QuerySnapshot snapshot = await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('sim_logs')
-        .orderBy('timestamp', descending: true)
-        .get();
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('sim_logs')
+          .orderBy('timestamp', descending: true)
+          .get();
 
-    return snapshot.docs
-        .map((doc) => doc.data() as Map<String, dynamic>)
-        .toList();
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      print("❌ Error fetching Firestore logs: $e");
+      return [];
+    }
+  }
+
+  /// Fetch all users' logs for the Admin Portal
+  Future<List<Map<String, dynamic>>> getAllUsersSimLogsForAdmin() async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('all_sim_swap_logs')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      print("❌ Error fetching admin logs: $e");
+      return [];
+    }
   }
 
   Future<void> saveTrustedNumbers(List<String> numbers) async {

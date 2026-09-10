@@ -329,7 +329,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _logout(BuildContext context) async {
-    await FirebaseFirestore.instance.clearPersistence();
+    try {
+      await FirebaseFirestore.instance.clearPersistence();
+    } catch (_) {}
     await FirebaseAuth.instance.signOut();
 
     if (!context.mounted) return;
@@ -688,7 +690,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               mainAxisSpacing: 16,
 
-              // Keeps the cards square
               childAspectRatio: 1.0,
 
               children: [
@@ -927,7 +928,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _logout() async {
-    await FirebaseFirestore.instance.clearPersistence();
+    try {
+      await FirebaseFirestore.instance.clearPersistence();
+    } catch (_) {}
     await FirebaseAuth.instance.signOut();
 
     if (!mounted) return;

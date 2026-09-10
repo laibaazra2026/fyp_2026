@@ -38,6 +38,9 @@ class IntruderService {
 
       await controller.initialize();
 
+      // Give the camera sensor time to warm up and expose properly to avoid black images
+      await Future.delayed(const Duration(milliseconds: 700));
+
       XFile image = await controller.takePicture();
       await controller.dispose();
 

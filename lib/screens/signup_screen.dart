@@ -24,6 +24,14 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isLoading = false;
   String _errorMessage = '';
 
+  // Exact allowed test numbers list
+  final List<String> _allowedNumbers = [
+    '+923144964339',
+    '+923128719043',
+    '+923005171794',
+    '+923157633912',
+  ];
+
   String? _validatePassword(String password) {
     if (password.isEmpty) return 'Password cannot be empty.';
     if (password.length < 8) {
@@ -42,6 +50,18 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
+  String? _validatePakistaniPhone(String phone) {
+    if (phone.isEmpty) return 'Phone number cannot be empty.';
+    final regExp = RegExp(r'^\+923[0-9]{9}$');
+    if (!regExp.hasMatch(phone)) {
+      return 'Must be a valid Pakistani mobile number (e.g., +923001234567).';
+    }
+    if (!_allowedNumbers.contains(phone)) {
+      return 'This phone number is not authorized for testing.';
+    }
+    return null;
+  }
+
   Future<void> _signup() async {
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
@@ -55,6 +75,20 @@ class _SignupScreenState extends State<SignupScreen> {
     String? passwordError = _validatePassword(_passwordController.text);
     if (passwordError != null) {
       setState(() => _errorMessage = passwordError);
+      return;
+    }
+
+    String? phoneError = _validatePakistaniPhone(_phoneController.text.trim());
+    if (phoneError != null) {
+      setState(() => _errorMessage = 'Your Phone: $phoneError');
+      return;
+    }
+
+    String? emergencyPhoneError = _validatePakistaniPhone(
+      _emergencyPhoneController.text.trim(),
+    );
+    if (emergencyPhoneError != null) {
+      setState(() => _errorMessage = 'Emergency Phone: $emergencyPhoneError');
       return;
     }
 
@@ -87,7 +121,6 @@ class _SignupScreenState extends State<SignupScreen> {
     await FirebaseAuth.instance.verifyPhoneNumber(
       phoneNumber: ownerPhone,
       verificationCompleted: (PhoneAuthCredential credential) async {
-        // Auto-resolution if supported, move straight to emergency verification
         await _startEmergencyPhoneVerification(uid);
       },
       verificationFailed: (FirebaseAuthException e) {
@@ -269,7 +302,6 @@ class _SignupScreenState extends State<SignupScreen> {
         smsCode: smsCode,
       );
 
-      // Both phones verified! Finalize account and save to Firestore.
       await _finalizeRegistration(uid);
     } catch (e) {
       setState(() {
@@ -279,7 +311,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // STEP 4: Finalize and save details to Firestore
   Future<void> _finalizeRegistration(String uid) async {
     try {
       await Permission.phone.request();
@@ -297,7 +328,6 @@ class _SignupScreenState extends State<SignupScreen> {
         print("Could not fetch initial SIM info: $e");
       }
 
-      // Save user profile with BOTH numbers verified
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'uid': uid,
         'name': _nameController.text.trim(),
@@ -339,192 +369,198 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        color: const Color(0xFF841EA0),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Card(
-                elevation: 10,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(30),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF841EA0).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.person_add,
-                          size: 60,
+      backgroundColor: const Color(0xFF841EA0),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              elevation: 10,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(30),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF841EA0).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person_add,
+                        size: 60,
+                        color: Color(0xFF841EA0),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Create Account',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF841EA0),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Protect your device today',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Full Name',
+                        prefixIcon: const Icon(
+                          Icons.person,
                           color: Color(0xFF841EA0),
                         ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Create Account',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email Address',
+                        prefixIcon: const Icon(
+                          Icons.email,
                           color: Color(0xFF841EA0),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Protect your device today',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      const SizedBox(height: 30),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Password (8+ chars, A-Z, 0-9)',
+                        prefixIcon: const Icon(
+                          Icons.lock,
+                          color: Color(0xFF841EA0),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Your Phone (+923XXXXXXXXX)',
+                        hintText: '+923144964339',
+                        prefixIcon: const Icon(
+                          Icons.phone,
+                          color: Color(0xFF841EA0),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _emergencyPhoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Emergency Phone (+923XXXXXXXXX)',
+                        hintText: '+923128719043',
+                        prefixIcon: const Icon(
+                          Icons.phone_android,
+                          color: Color(0xFF841EA0),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
 
-                      TextField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Full Name',
-                          prefixIcon: const Icon(
-                            Icons.person,
-                            color: Color(0xFF841EA0),
+                    if (_errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Email Address',
-                          prefixIcon: const Icon(
-                            Icons.email,
-                            color: Color(0xFF841EA0),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password (8+ chars, A-Z, 0-9)',
-                          prefixIcon: const Icon(
-                            Icons.lock,
-                            color: Color(0xFF841EA0),
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
+                          child: Text(
+                            _errorMessage,
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontSize: 13,
                             ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: InputDecoration(
-                          labelText: 'Your Phone (Sandbox OTP Verified)',
-                          hintText: '+923001234567',
-                          prefixIcon: const Icon(
-                            Icons.phone,
-                            color: Color(0xFF841EA0),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _emergencyPhoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: InputDecoration(
-                          labelText: 'Emergency Phone (Sandbox OTP Verified)',
-                          hintText: '+923007654321',
-                          prefixIcon: const Icon(
-                            Icons.phone_android,
-                            color: Color(0xFF841EA0),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
 
-                      if (_errorMessage.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _errorMessage,
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: 13,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _signup,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF841EA0),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _signup,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF841EA0),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  'Sign up ',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
                                 ),
-                        ),
+                              )
+                            : const Text(
+                                'Sign up',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

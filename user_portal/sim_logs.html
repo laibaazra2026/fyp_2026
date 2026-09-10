@@ -162,27 +162,15 @@
         });
 
         function fetchSimLogs(uid) {
-            const rootLogsQuery = collection(db, 'sim_logs');
+            // Directly target the authenticated user's private subcollection
+            const subCollectionQuery = collection(db, 'users', uid, 'sim_logs');
             
-            onSnapshot(rootLogsQuery, (snapshot) => {
-                let docs = [];
+            onSnapshot(subCollectionQuery, (snapshot) => {
+                let subDocs = [];
                 snapshot.forEach((doc) => {
-                    let data = doc.data();
-                    if (!data.userId || data.userId === uid || data.uid === uid) {
-                        docs.push(data);
-                    }
+                    subDocs.push(doc.data());
                 });
-
-                if (docs.length > 0) {
-                    renderLogs(docs);
-                } else {
-                    const subCollectionQuery = collection(db, `users/${uid}/sim_logs`);
-                    onSnapshot(subCollectionQuery, (subSnapshot) => {
-                        let subDocs = [];
-                        subSnapshot.forEach((doc) => subDocs.push(doc.data()));
-                        renderLogs(subDocs);
-                    });
-                }
+                renderLogs(subDocs);
             }, (error) => {
                 console.error("Error fetching SIM logs:", error);
                 document.getElementById('sim-logs-table-body').innerHTML = `

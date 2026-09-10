@@ -23,130 +23,235 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            color: #333;
         }
 
-        .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            width: 400px;
+        .login-card {
+            background: #ffffff;
+            padding: 40px 36px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+            width: 420px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
         }
 
-        .login-container h1 {
+        .brand-icon {
+            width: 60px;
+            height: 60px;
+            background: #f7edfc;
             color: #841EA0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 26px;
+            margin: 0 auto 18px auto;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .login-container p {
-            color: #666;
-            margin: 10px 0 20px 0;
+        .login-card h1 {
+            color: #212121;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .login-card p {
+            color: #757575;
+            margin-bottom: 24px;
             font-size: 14px;
         }
 
-        .login-container input {
-            width: 100%;
-            padding: 14px;
-            margin-bottom: 12px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            font-size: 15px;
+        .input-group {
+            position: relative;
+            margin-bottom: 16px;
+            text-align: left;
         }
 
-        .login-container input:focus {
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #616161;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            background: #fafafa;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 45px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #757575;
+            padding: 0;
+            box-shadow: none;
+            width: auto;
+        }
+
+        .toggle-password:hover {
+            color: #841EA0;
+            background: none;
+        }
+
+        .login-card input:focus {
             outline: none;
             border-color: #841EA0;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(132, 30, 160, 0.1);
+        }
+
+        .login-card input:disabled {
+            background: #eeeeee;
+            color: #9e9e9e;
+            cursor: not-allowed;
         }
 
         .rules-hint {
             font-size: 11px;
-            color: #666;
+            color: #757575;
             text-align: left;
-            margin-bottom: 14px;
+            margin-bottom: 20px;
             line-height: 1.4;
-            padding: 0 4px;
+            background: #f9f9f9;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border-left: 3px solid #841EA0;
         }
 
-        .forgot-container {
+        .nav-actions {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 24px;
             font-size: 13px;
         }
 
-        .forgot-link, .toggle-mode {
+        .nav-link {
             color: #841EA0;
             text-decoration: none;
             font-weight: 600;
             cursor: pointer;
+            transition: color 0.2s;
         }
 
-        .forgot-link:hover, .toggle-mode:hover {
+        .nav-link:hover {
+            color: #6A1B8A;
             text-decoration: underline;
         }
 
-        .login-container button {
+        .login-card > button#actionBtn {
             width: 100%;
             padding: 14px;
             background: #841EA0;
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 12px rgba(132, 30, 160, 0.3);
         }
 
-        .login-container button:hover {
+        .login-card > button#actionBtn:hover {
             background: #6A1B8A;
         }
 
+        .login-card > button#actionBtn:active {
+            transform: scale(0.98);
+        }
+
         .message {
-            margin-top: 12px;
+            margin-top: 16px;
+            padding: 10px 14px;
+            border-radius: 8px;
             font-size: 13px;
+            display: none;
             word-break: break-word;
+            text-align: left;
         }
 
-        .error {
-            color: red;
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+            display: block;
         }
 
-        .success {
-            color: green;
+        .message.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+            display: block;
         }
 
         .footer {
-            margin-top: 20px;
-            color: #999;
+            margin-top: 30px;
+            color: #9e9e9e;
             font-size: 12px;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 16px;
         }
     </style>
 </head>
 <body>
 
-    <div class="login-container">
-        <h1 id="formTitle">🔒 Admin Portal</h1>
+    <div class="login-card">
+        <div class="brand-icon">🔒</div>
+        <h1 id="formTitle">Admin Portal</h1>
         <p id="formSubtitle">Sign in to manage Device Protection</p>
 
-        <input type="email" id="email" placeholder="Admin Email (azralaiba53@gmail.com)" />
-        <input type="password" id="password" placeholder="Password" />
-        
-        <div class="rules-hint">
-            Password rules: No spaces, min 1 uppercase letter, 1 lowercase letter, and 1 digit.
+        <div class="input-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" placeholder="azralaiba53@gmail.com" />
         </div>
 
-        <div class="forgot-container">
-            <a href="#" id="toggleModeBtn" class="toggle-mode">Need to register admin? Sign Up</a>
-            <a href="#" id="forgotBtn" class="forgot-link">Forgot Password?</a>
+        <div class="input-group">
+            <label for="password">Password</label>
+            <div class="password-wrapper">
+                <input type="password" id="password" placeholder="••••••••" />
+                <button type="button" id="togglePasswordBtn" class="toggle-password" title="Show/Hide Password">👁️</button>
+            </div>
+        </div>
+        
+        <div class="rules-hint">
+            <strong>Password Requirements:</strong> No spaces, min 1 uppercase, 1 lowercase, and 1 digit.
+        </div>
+
+        <div class="nav-actions">
+            <a href="#" id="toggleModeBtn" class="nav-link">Need to register admin? Sign Up</a>
+            <a href="#" id="forgotBtn" class="nav-link">Forgot Password?</a>
         </div>
 
         <button id="actionBtn">Login</button>
 
         <div id="message" class="message"></div>
-        <div class="footer">© 2026 Device Protection</div>
+        <div class="footer">&copy; 2026 Device Protection</div>
     </div>
 
     <script>
@@ -168,43 +273,47 @@
         const actionBtn = document.getElementById('actionBtn');
         const toggleModeBtn = document.getElementById('toggleModeBtn');
         const forgotBtn = document.getElementById('forgotBtn');
+        const passwordInput = document.getElementById('password');
+        const togglePasswordBtn = document.getElementById('togglePasswordBtn');
 
         let isSignUpMode = false;
-
         const ADMIN_EMAIL = "azralaiba53@gmail.com";
 
-        // Strict Password Validator Rule
+        // Show/Hide Password Toggle Handler
+        togglePasswordBtn.addEventListener('click', () => {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                togglePasswordBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                togglePasswordBtn.textContent = '👁️';
+            }
+        });
+
         function validatePassword(password) {
-            if (/\s/.test(password)) {
-                return "Password cannot contain spaces.";
-            }
-            if (!/[A-Z]/.test(password)) {
-                return "Password must contain at least one uppercase letter.";
-            }
-            if (!/[a-z]/.test(password)) {
-                return "Password must contain at least one lowercase letter.";
-            }
-            if (!/\d/.test(password)) {
-                return "Password must contain at least one digit/number.";
-            }
+            if (/\s/.test(password)) return "Password cannot contain spaces.";
+            if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter.";
+            if (!/[a-z]/.test(password)) return "Password must contain at least one lowercase letter.";
+            if (!/\d/.test(password)) return "Password must contain at least one digit.";
             return null;
         }
 
-        // Toggle between Login and Admin Registration views
         toggleModeBtn.addEventListener('click', (e) => {
             e.preventDefault();
             isSignUpMode = !isSignUpMode;
+            msgBox.className = 'message';
             msgBox.textContent = '';
+            
             if (isSignUpMode) {
-                formTitle.textContent = "📝 Admin Registration";
+                formTitle.textContent = "Admin Registration";
                 formSubtitle.textContent = "Register the exclusive admin account";
                 actionBtn.textContent = "Register Admin";
                 toggleModeBtn.textContent = "Already registered? Login";
                 forgotBtn.style.display = 'none';
                 document.getElementById('email').value = ADMIN_EMAIL;
-                document.getElementById('email').disabled = true; // Lock email to unique admin account
+                document.getElementById('email').disabled = true;
             } else {
-                formTitle.textContent = "🔒 Admin Portal";
+                formTitle.textContent = "Admin Portal";
                 formSubtitle.textContent = "Sign in to manage Device Protection";
                 actionBtn.textContent = "Login";
                 toggleModeBtn.textContent = "Need to register admin? Sign Up";
@@ -213,27 +322,24 @@
             }
         });
 
-        // Handle Form Action (Login or Signup)
         actionBtn.addEventListener('click', async () => {
             const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            msgBox.textContent = '';
+            const password = passwordInput.value;
             msgBox.className = 'message';
+            msgBox.textContent = '';
 
             if (!email || !password) {
-                msgBox.textContent = 'Please fill all fields.';
+                msgBox.textContent = 'Please fill out all required fields.';
                 msgBox.classList.add('error');
                 return;
             }
 
-            // Strict Admin Email Enforcement
             if (email !== ADMIN_EMAIL) {
-                msgBox.textContent = 'Access Denied: Only azralaiba53@gmail.com is authorized as admin.';
+                msgBox.textContent = 'Access Denied: Unauthorized admin identity.';
                 msgBox.classList.add('error');
                 return;
             }
 
-            // Validate password complexity rules
             const passwordError = validatePassword(password);
             if (passwordError) {
                 msgBox.textContent = passwordError;
@@ -243,24 +349,18 @@
 
             try {
                 if (isSignUpMode) {
-                    // Register the exclusive admin account
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                    msgBox.textContent = 'Admin account registered successfully! Redirecting...';
+                    await auth.createUserWithEmailAndPassword(email, password);
+                    msgBox.textContent = 'Admin registered successfully! Redirecting...';
                     msgBox.classList.add('success');
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 1500);
+                    setTimeout(() => window.location.href = 'dashboard.html', 1500);
                 } else {
-                    // Authenticate Admin Login
                     const userCredential = await auth.signInWithEmailAndPassword(email, password);
                     if (userCredential.user.email === ADMIN_EMAIL) {
-                        msgBox.textContent = 'Login successful! Redirecting to dashboard...';
+                        msgBox.textContent = 'Authentication successful! Redirecting...';
                         msgBox.classList.add('success');
-                        setTimeout(() => {
-                            window.location.href = 'dashboard.html';
-                        }, 1000);
+                        setTimeout(() => window.location.href = 'dashboard.html', 1000);
                     } else {
-                        msgBox.textContent = 'Access Denied: Unauthorized user.';
+                        msgBox.textContent = 'Access Denied: Invalid credentials profile.';
                         msgBox.classList.add('error');
                         await auth.signOut();
                     }
@@ -271,22 +371,21 @@
             }
         });
 
-        // Forgot Password Handler
         forgotBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value.trim();
-            msgBox.textContent = '';
             msgBox.className = 'message';
+            msgBox.textContent = '';
 
             if (!email || email !== ADMIN_EMAIL) {
-                msgBox.textContent = 'Please enter the valid admin email (azralaiba53@gmail.com) first.';
+                msgBox.textContent = 'Please provide the valid admin email first.';
                 msgBox.classList.add('error');
                 return;
             }
 
             try {
                 await auth.sendPasswordResetEmail(email);
-                msgBox.textContent = 'Password reset link sent to admin email inbox.';
+                msgBox.textContent = 'Password reset email sent. Check your inbox.';
                 msgBox.classList.add('success');
             } catch (err) {
                 msgBox.textContent = err.message;
@@ -294,6 +393,5 @@
             }
         });
     </script>
-
 </body>
 </html>

@@ -23,9 +23,7 @@ class _SimScreenState extends State<SimScreen> {
 
   Future<void> _loadSimData() async {
     setState(() => _isLoading = true);
-    // 1. Run the check (this registers baseline or detects swap & writes to Firestore)
     await _simService.checkPhysicalSimSwap();
-    // 2. Fetch updated logs from Firestore
     List<Map<String, dynamic>> logs = await _simService.getUserSimLogs();
     setState(() {
       _simLogs = logs;
@@ -48,7 +46,7 @@ class _SimScreenState extends State<SimScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Trusted numbers configured for emergency SMS alerts upon SIM change:',
+              'Trusted numbers configured for emergency alerts upon SIM change:',
               style: TextStyle(fontSize: 12),
             ),
             const SizedBox(height: 12),
@@ -106,7 +104,6 @@ class _SimScreenState extends State<SimScreen> {
         backgroundColor: Colors.purple.shade700,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          // Manual Check Button to force re-running the SIM detection
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Check SIM Now',
@@ -171,12 +168,21 @@ class _SimScreenState extends State<SimScreen> {
                 itemCount: _simLogs.length,
                 itemBuilder: (context, index) {
                   var log = _simLogs[index];
-                  Timestamp? timestamp = log['timestamp'] as Timestamp?;
-                  String formattedDate = timestamp != null
-                      ? DateFormat(
-                          'yyyy-MM-dd – hh:mm a',
-                        ).format(timestamp.toDate())
-                      : 'Just now';
+                  var rawTimestamp = log['timestamp'];
+                  String formattedDate = 'Just now';
+
+                  if (rawTimestamp is Timestamp) {
+                    formattedDate = DateFormat(
+                      'yyyy-MM-dd – hh:mm a',
+                    ).format(rawTimestamp.toDate());
+                  } else if (rawTimestamp is String) {
+                    DateTime? parsedDate = DateTime.tryParse(rawTimestamp);
+                    if (parsedDate != null) {
+                      formattedDate = DateFormat(
+                        'yyyy-MM-dd – hh:mm a',
+                      ).format(parsedDate);
+                    }
+                  }
 
                   return Card(
                     elevation: 3,
