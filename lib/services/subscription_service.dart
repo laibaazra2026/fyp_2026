@@ -21,8 +21,9 @@ class SubscriptionService {
 
   Future<void> updateSubscriptionWithMethod(
     String tier,
+    String price,
     String paymentMethod,
-    String phoneNumber,
+    String txnId,
   ) async {
     try {
       final user = _auth.currentUser;
@@ -30,8 +31,11 @@ class SubscriptionService {
 
       await _firestore.collection('users').doc(user.uid).set({
         'subscriptionTier': tier,
+        'subscriptionPlan': tier,
+        'subscriptionStatus': 'active',
+        'planPrice': double.tryParse(price) ?? 0.0,
         'paymentMethod': paymentMethod,
-        'phoneNumber': phoneNumber,
+        'lastTransactionId': txnId,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {

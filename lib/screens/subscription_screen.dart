@@ -330,6 +330,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         cartItem.featureId.replaceAll('tier_', ''),
         cartItem.price.toString(),
         paymentMethod,
+        txnId,
       );
 
       if (!mounted) return;
@@ -370,6 +371,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         cartItem.featureId.replaceAll('tier_', ''),
         cartItem.price.toString(),
         paymentMethod,
+        txnId,
       );
 
       if (!mounted) return;
