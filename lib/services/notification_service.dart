@@ -108,6 +108,25 @@ class NotificationService {
     await batch.commit();
   }
 
+  /// Completely delete all notifications for the current user.
+  Future<void> clearAllNotifications() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final batch = _firestore.batch();
+    final allDocs = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('notifications')
+        .get();
+
+    for (var doc in allDocs.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
+
   /// Delete a notification document from Firestore.
   Future<void> deleteNotification(String notificationId) async {
     final user = _auth.currentUser;

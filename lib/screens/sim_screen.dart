@@ -22,68 +22,6 @@ class _SimScreenState extends State<SimScreen> {
     _simService.checkPhysicalSimSwap();
   }
 
-  // Dialog to view/edit trusted numbers
-  void _showTrustedNumbersDialog() {
-    final TextEditingController controller = TextEditingController(
-      text:
-          "+923144984339,+923128719043,+923157633912,+923005171794,+923241923864",
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Emergency Contacts'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Trusted numbers configured for emergency alerts upon SIM change:',
-              style: TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Trusted Numbers',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.phone,
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple.shade700,
-            ),
-            onPressed: () async {
-              List<String> numbers = controller.text
-                  .split(',')
-                  .map((n) => n.trim())
-                  .where((n) => n.isNotEmpty)
-                  .toList();
-
-              await _simService.saveTrustedNumbers(numbers);
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Trusted numbers saved successfully!'),
-                ),
-              );
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_userId == null) {
@@ -103,11 +41,6 @@ class _SimScreenState extends State<SimScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Check SIM Now',
             onPressed: () => _simService.checkPhysicalSimSwap(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.contact_phone),
-            tooltip: 'View Emergency Contacts',
-            onPressed: _showTrustedNumbersDialog,
           ),
         ],
       ),

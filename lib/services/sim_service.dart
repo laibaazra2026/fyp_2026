@@ -75,9 +75,6 @@ class SimService {
         // Log the swap event to Firestore (User + Admin portals)
         await _logSimSwapToFirestore(currentCarrier, currentIdentifier);
 
-        // Trigger simulated emergency alert for trusted numbers (Free - No carrier SMS cost)
-        await _sendEmergencySmsAlert(currentCarrier);
-
         // Update baseline to the new SIM so it stops spamming alerts
         await _secureStorage.write(
           key: _baselineCarrierKey,
@@ -170,43 +167,6 @@ class SimService {
     }
   }
 
-  Future<void> _sendEmergencySmsAlert(String newCarrier) async {
-    try {
-      String? trustedStr = await _secureStorage.read(
-        key: 'trusted_emergency_numbers',
-      );
-      if (trustedStr == null || trustedStr.isEmpty) return;
-
-      List<String> recipients = trustedStr
-          .split(',')
-          .map((n) => n.trim())
-          .toList();
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        // Save the simulated alert with the emergency numbers attached so you can display them in the UI drawer
-        final fakeAlertData = {
-          'userId': user.uid,
-          'carrierName': newCarrier,
-          'emergencyNumbers': recipients,
-          'timestamp': FieldValue.serverTimestamp(),
-          'status': 'Simulated Alert',
-          'message':
-              '🚨 Simulated SMS to ${recipients.join(", ")}: Physical SIM swapped to $newCarrier!',
-        };
-
-        // Save to Firestore so your app drawer / alert notification icon can display it seamlessly
-        await _firestore.collection('sim_swap_alerts').add(fakeAlertData);
-      }
-
-      print(
-        "📱 Simulated emergency alert generated for trusted numbers (No carrier SMS cost).",
-      );
-    } catch (e) {
-      print("❌ Failed to create simulated alert: $e");
-    }
-  }
-
   /// Fetch logs for the User Portal (reads local storage first so they never vanish)
   Future<List<Map<String, dynamic>>> getUserSimLogs() async {
     try {
@@ -263,10 +223,5 @@ class SimService {
       print("❌ Error fetching admin logs: $e");
       return [];
     }
-  }
-
-  Future<void> saveTrustedNumbers(List<String> numbers) async {
-    String joined = numbers.join(',');
-    await _secureStorage.write(key: 'trusted_emergency_numbers', value: joined);
   }
 }

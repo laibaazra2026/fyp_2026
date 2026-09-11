@@ -50,7 +50,7 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                     children: [
                       TextButton(
                         onPressed: () async {
-                          await _notificationService.markAllAsRead();
+                          await _notificationService.clearAllNotifications();
                         },
                         child: const Text(
                           'Clear All',
