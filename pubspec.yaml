@@ -65,6 +65,8 @@ dependencies:
   workmanager: ^0.10.10
   flutter_launcher_icons: ^0.14.4
   encrypt: ^5.0.3
+  pdf: ^3.13.0
+  printing: ^5.15.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

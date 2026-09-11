@@ -11,6 +11,9 @@ class NotificationBellIcon extends StatefulWidget {
 class _NotificationBellIconState extends State<NotificationBellIcon> {
   final NotificationService _notificationService = NotificationService();
 
+  // Optional: If you want to poll or listen to changes,
+  // you can callsetState from a periodic listener or ensure your service uses a ChangeNotifier.
+
   void _showNotificationsPanel(BuildContext context) {
     setState(() {
       _notificationService.markAllAsRead();
@@ -18,70 +21,88 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          height: 400,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              height: 400,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Payment Notifications',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Payment Notifications',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
-                  Icon(Icons.notifications_active, color: Colors.blue),
+                  const Divider(height: 20),
+                  Expanded(
+                    child: _notificationService.notifications.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No recent payment notifications.',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount:
+                                _notificationService.notifications.length,
+                            itemBuilder: (context, index) {
+                              final item =
+                                  _notificationService.notifications[index];
+                              return Card(
+                                elevation: 1,
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                child: ListTile(
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Colors.green,
+                                    child: Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    item.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${item.body}\n${item.timestamp}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  isThreeLine: true,
+                                ),
+                              );
+                            },
+                          ),
+                  ),
                 ],
               ),
-              const Divider(height: 20),
-              Expanded(
-                child: _notificationService.notifications.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No recent payment notifications.',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _notificationService.notifications.length,
-                        itemBuilder: (context, index) {
-                          final item =
-                              _notificationService.notifications[index];
-                          return Card(
-                            elevation: 1,
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            child: ListTile(
-                              leading: const CircleAvatar(
-                                backgroundColor: Colors.green,
-                                child: Icon(Icons.check, color: Colors.white),
-                              ),
-                              title: Text(
-                                item.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${item.body}\n${item.timestamp}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              isThreeLine: true,
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
-    );
+    ).then((_) {
+      // Refresh home screen bell badge when bottom sheet is closed
+      setState(() {});
+    });
   }
 
   @override

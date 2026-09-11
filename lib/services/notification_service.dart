@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class NotificationItem {
   final String title;
@@ -41,4 +43,40 @@ class NotificationService {
       n.isRead = true;
     }
   }
+}
+
+/// Centralized helper function for all 3 payment methods (JazzCash, EasyPaisa, Card)
+Future<void> handleSuccessfulPayment({
+  required String gateway,
+  required String planName,
+  required String transactionId,
+  required String mobileNo,
+  required String amount,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  // 1. Update user subscription in Firestore
+  await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+    'subscriptionPlan': planName,
+    'paymentGateway': gateway,
+    'verifiedPhoneNumber': mobileNo,
+    'lastTransactionId': transactionId,
+    'subscribedAt': FieldValue.serverTimestamp(),
+  });
+
+  // 2. Log to payment_requests collection for admin review
+  await FirebaseFirestore.instance.collection('payment_requests').add({
+    'userId': user.uid,
+    'email': user.email ?? 'N/A',
+    'plan': planName,
+    'gateway': gateway,
+    'transactionId': transactionId,
+    'mobileNo': mobileNo,
+    'timestamp': FieldValue.serverTimestamp(),
+    'status': 'Verified',
+  });
+
+  // 3. Trigger the bell notification UI
+  NotificationService().addPaymentNotification(gateway, amount, transactionId);
 }

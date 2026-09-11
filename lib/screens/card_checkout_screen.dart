@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/purchase_cart_item.dart';
-import '../services/notification_service.dart'; // <-- Added import for notifications
+import '../services/notification_service.dart'; // Contains NotificationService and handleSuccessfulPayment
 
 enum PaymentGatewayType { payfast, jazzCashCard, stripe }
 
@@ -47,18 +47,22 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
 
     String txnId =
         'CC-TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    String gatewayName = _getGatewayName(_selectedGateway);
+    String amountStr = widget.cartItem.price.toStringAsFixed(0);
 
-    // Automatically trigger the payment success notification
-    NotificationService().addPaymentNotification(
-      _getGatewayName(_selectedGateway),
-      widget.cartItem.price.toStringAsFixed(0),
-      txnId,
+    // Call the centralized handler to update Firestore, logs, and notifications
+    await handleSuccessfulPayment(
+      gateway: gatewayName,
+      planName: widget.cartItem.title,
+      transactionId: txnId,
+      mobileNo: 'N/A', // Cards don't require mobile numbers
+      amount: amountStr,
     );
 
     // Return result back to subscription screen
     Navigator.pop(context, {
       'success': true,
-      'method': _getGatewayName(_selectedGateway),
+      'method': gatewayName,
       'txnId': txnId,
     });
   }
