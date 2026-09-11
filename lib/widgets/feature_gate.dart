@@ -86,7 +86,7 @@ class FeatureGate extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'This security feature requires the ${requiredPlan.toUpperCase()} tier or higher. Upgrade your subscription to unlock remote controls and advanced protection capabilities.',
+                    'This security feature requires the ${requiredPlan.toUpperCase()} tier. Upgrade your subscription to unlock backup and restore feature.',
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 14,
