@@ -40,10 +40,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(viewportFraction: 0.85);
+    // Increased duration for a longer-lasting celebration effect when opening
     _confettiController = ConfettiController(
-      duration: const Duration(seconds: 1),
+      duration: const Duration(seconds: 3),
     );
     _loadCurrentPlan();
+
+    // Trigger confetti immediately when the screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _confettiController.play();
+    });
   }
 
   @override
@@ -620,12 +626,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             confettiController: _confettiController,
             blastDirectionality: BlastDirectionality.explosive,
             shouldLoop: false,
+            // Increased particle count and emission properties for a high-impact happy effect
+            numberOfParticles: 30,
+            gravity: 0.2,
             colors: const [
               Colors.green,
               Colors.blue,
               Colors.pink,
               Colors.orange,
               Colors.purple,
+              Colors.yellowAccent,
+              Colors.cyanAccent,
             ],
           ),
         ),
