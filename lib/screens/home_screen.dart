@@ -8,6 +8,7 @@ import '../services/command_service.dart';
 import '../services/security_guard_service.dart';
 import '../utils/feature_access_card.dart';
 import '../widgets/feature_gate.dart';
+import '../widgets/notification_bell_icon.dart'; // <-- Added import for the notification bell
 import 'login_screen.dart';
 import 'gps_screen.dart';
 import 'subscription_screen.dart';
@@ -334,6 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
 
         actions: [
+          const NotificationBellIcon(), // <-- Added Notification Bell to actions[cite: 1]
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(

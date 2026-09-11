@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/purchase_cart_item.dart';
+import '../services/notification_service.dart'; // <-- Added import for notifications
 
 enum PaymentGatewayType { payfast, jazzCashCard, stripe }
 
@@ -46,6 +47,13 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
 
     String txnId =
         'CC-TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
+    // Automatically trigger the payment success notification
+    NotificationService().addPaymentNotification(
+      _getGatewayName(_selectedGateway),
+      widget.cartItem.price.toStringAsFixed(0),
+      txnId,
+    );
 
     // Return result back to subscription screen
     Navigator.pop(context, {
