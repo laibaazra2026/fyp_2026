@@ -11,10 +11,19 @@ class NotificationBellIcon extends StatefulWidget {
 class _NotificationBellIconState extends State<NotificationBellIcon> {
   final NotificationService _notificationService = NotificationService();
 
-  void _showNotificationsPanel(BuildContext context) {
-    // Mark all as read in Firestore when panel opens
-    _notificationService.markAllAsRead();
+  Color _getGatewayColor(String title) {
+    final lowerTitle = title.toLowerCase();
+    if (lowerTitle.contains('jazzcash')) {
+      return Colors.red;
+    } else if (lowerTitle.contains('easypaisa')) {
+      return Colors.green;
+    } else if (lowerTitle.contains('card') || lowerTitle.contains('credit')) {
+      return Colors.blue;
+    }
+    return Colors.green; // Default fallback
+  }
 
+  void _showNotificationsPanel(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -24,7 +33,7 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(20),
-          height: 450,
+          height: 480,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -35,9 +44,26 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                     'Payment Notifications',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          _notificationService.markAllAsRead();
+                        },
+                        child: const Text(
+                          'Clear All',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.black),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -65,13 +91,18 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                       itemCount: notifications.length,
                       itemBuilder: (context, index) {
                         final item = notifications[index];
+                        final gatewayColor = _getGatewayColor(item.title);
+
                         return Card(
                           elevation: 1,
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           child: ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Colors.green,
-                              child: Icon(Icons.check, color: Colors.white),
+                            leading: CircleAvatar(
+                              backgroundColor: gatewayColor,
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                              ),
                             ),
                             title: Text(
                               item.title,
