@@ -198,56 +198,70 @@ class CommandService {
 
   Future<void> _ringPhone(BuildContext context, String docId) async {
     try {
-      try {
-        if (_audioPlayer.state == PlayerState.playing ||
-            _audioPlayer.state == PlayerState.paused) {
-          await _audioPlayer.stop();
-        }
-
-        await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-        await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
-      } catch (audioError) {
-        print('⚠️ Error playing asset audio: $audioError');
+      if (_audioPlayer.state == PlayerState.playing ||
+          _audioPlayer.state == PlayerState.paused) {
+        await _audioPlayer.stop();
       }
 
-      await _updateCommandStatus(docId, 'completed');
-
-      BuildContext? dialogContext =
-          navigatorKey.currentContext ?? (context.mounted ? context : null);
-
-      if (dialogContext != null) {
-        showDialog(
-          context: dialogContext,
-          barrierDismissible: false,
-          builder: (dialogCtx) => AlertDialog(
-            title: const Text('🔔 Phone Ringing'),
-            content: const Text(
-              'Your device is ringing loudly from a remote command!',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  try {
-                    if (_audioPlayer.state == PlayerState.playing ||
-                        _audioPlayer.state == PlayerState.paused) {
-                      await _audioPlayer.stop();
-                    }
-                  } catch (stopError) {
-                    print('⚠️ Error stopping audio: $stopError');
-                  }
-                  if (Navigator.canPop(dialogCtx)) {
-                    Navigator.pop(dialogCtx);
-                  }
-                },
-                child: const Text('Stop Ringing'),
-              ),
-            ],
+      // Configure audio context to bypass standard media limits on Android
+      await _audioPlayer.setAudioContext(
+        AudioContext(
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: true,
+            stayAwake: true,
+            contentType: AndroidContentType.sonification,
+            usageType: AndroidUsageType.alarm,
           ),
-        );
-      }
-    } catch (e) {
-      print('❌ Error ringing phone: $e');
-      await _updateCommandStatus(docId, 'failed');
+          iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+        ),
+      );
+
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+
+      // Force volume level explicitly to maximum
+      await _audioPlayer.setVolume(1.0);
+
+      // Play sound asset
+      await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
+      print('✅ Ringtone audio playback started successfully.');
+    } catch (audioError) {
+      print('❌ CRITICAL AUDIO PLAYER ERROR: $audioError');
+    }
+
+    await _updateCommandStatus(docId, 'completed');
+
+    BuildContext? dialogContext =
+        navigatorKey.currentContext ?? (context.mounted ? context : null);
+
+    if (dialogContext != null) {
+      showDialog(
+        context: dialogContext,
+        barrierDismissible: false,
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('🔔 Phone Ringing'),
+          content: const Text(
+            'Your device is ringing loudly from a remote command!',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                try {
+                  if (_audioPlayer.state == PlayerState.playing ||
+                      _audioPlayer.state == PlayerState.paused) {
+                    await _audioPlayer.stop();
+                  }
+                } catch (stopError) {
+                  print('⚠️ Error stopping audio: $stopError');
+                }
+                if (Navigator.canPop(dialogCtx)) {
+                  Navigator.pop(dialogCtx);
+                }
+              },
+              child: const Text('Stop Ringing'),
+            ),
+          ],
+        ),
+      );
     }
   }
 

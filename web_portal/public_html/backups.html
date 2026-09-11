@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloud Backups - Device Protection</title>
 
-    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -117,8 +115,7 @@
 </head>
 <body>
 
-    
-  <div class="sidebar">
+    <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
         <a href="users.html">👥 Users</a>
@@ -130,7 +127,6 @@
         <a href="payments.html">💳 Subscriptions</a>
     </div>
 
-    
     <div class="main">
         <div class="header">
             <h1>☁️ User Cloud Backups</h1>
@@ -158,7 +154,6 @@
         </div>
     </div>
 
-    
     <div class="modal fade" id="backupModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
@@ -172,16 +167,15 @@
                         <li class="list-group-item">Loading contacts...</li>
                     </ul>
 
-                    <h5 class="fw-bold mb-3" style="color: #841EA0;">📸 Backed Up Photos / Media</h5>
-                    <div id="modalMediaGrid" class="row">
-                        <p class="text-muted">Loading media...</p>
-                    </div>
+                    <h5 class="fw-bold mb-3" style="color: #841EA0;">📋 Backed Up Call Logs</h5>
+                    <ul id="modalCallLogsList" class="list-group">
+                        <li class="list-group-item">Loading call logs...</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -254,63 +248,79 @@
 
         async function openUserBackups(userId) {
             const contactsList = document.getElementById('modalContactsList');
-            const mediaGrid = document.getElementById('modalMediaGrid');
+            const callLogsList = document.getElementById('modalCallLogsList');
 
             contactsList.innerHTML = '<li class="list-group-item">Loading contacts...</li>';
-            mediaGrid.innerHTML = '<p class="text-muted">Loading media...</p>';
+            callLogsList.innerHTML = '<li class="list-group-item">Loading call logs...</li>';
 
             const backupModal = new bootstrap.Modal(document.getElementById('backupModal'));
             backupModal.show();
 
             try {
-                const contactDoc = await db.collection('users').doc(userId).collection('backup_contacts').doc('my_contacts').get();
+                // Matches exact document path: users/{userId}/backups/device_backup
+                const backupDoc = await db.collection('users').doc(userId).collection('backups').doc('device_backup').get();
+                
                 contactsList.innerHTML = '';
-                if (contactDoc.exists && contactDoc.data().contacts) {
-                    const contacts = contactDoc.data().contacts;
-                    contacts.forEach(c => {
-                        const li = document.createElement('li');
-                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                        
-                        const strong = document.createElement('strong');
-                        strong.textContent = c.name;
-                        
-                        const span = document.createElement('span');
-                        span.className = 'badge bg-secondary';
-                        span.textContent = c.phone;
-                        
-                        li.appendChild(strong);
-                        li.appendChild(span);
-                        contactsList.appendChild(li);
-                    });
-                } else {
-                    contactsList.innerHTML = '<li class="list-group-item text-danger">No contacts backed up for this user.</li>';
-                }
+                callLogsList.innerHTML = '';
 
-                const mediaSnapshot = await db.collection('users').doc(userId).collection('media_backups').get();
-                mediaGrid.innerHTML = '';
-                if (!mediaSnapshot.empty) {
-                    mediaSnapshot.forEach(doc => {
-                        const data = doc.data();
-                        
-                        const col = document.createElement('div');
-                        col.className = 'col-md-4 mb-3';
-                        
-                        const card = document.createElement('div');
-                        card.className = 'card shadow-sm';
-                        
-                        const img = document.createElement('img');
-                        img.src = data.url;
-                        img.className = 'card-img-top';
-                        img.alt = 'Backup Image';
-                        img.style.height = '140px';
-                        img.style.objectFit = 'cover';
-                        
-                        card.appendChild(img);
-                        col.appendChild(card);
-                        mediaGrid.appendChild(col);
-                    });
+                if (backupDoc.exists) {
+                    const data = backupDoc.data();
+                    
+                    // Render Contacts
+                    const contacts = data.contacts || [];
+                    if (contacts.length > 0) {
+                        contacts.forEach(c => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            
+                            const strong = document.createElement('strong');
+                            strong.textContent = c.name || 'Unknown';
+                            
+                            const span = document.createElement('span');
+                            span.className = 'badge bg-secondary';
+                            span.textContent = c.phone || 'No Phone';
+                            
+                            li.appendChild(strong);
+                            li.appendChild(span);
+                            contactsList.appendChild(li);
+                        });
+                    } else {
+                        contactsList.innerHTML = '<li class="list-group-item text-danger">No contacts backed up for this user.</li>';
+                    }
+
+                    // Render Call Logs
+                    const callLogs = data.callLogs || [];
+                    if (callLogs.length > 0) {
+                        callLogs.forEach(log => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            
+                            const infoDiv = document.createElement('div');
+                            const strong = document.createElement('strong');
+                            strong.textContent = log.name || log.number || 'Unknown';
+                            
+                            const small = document.createElement('small');
+                            small.className = 'text-muted d-block';
+                            small.textContent = `Type: ${log.type || 'N/A'} | Time: ${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}`;
+                            
+                            infoDiv.appendChild(strong);
+                            infoDiv.appendChild(small);
+
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-primary';
+                            badge.textContent = log.type || 'CALL';
+
+                            li.appendChild(infoDiv);
+                            li.appendChild(badge);
+                            callLogsList.appendChild(li);
+                        });
+                    } else {
+                        callLogsList.innerHTML = '<li class="list-group-item text-danger">No call logs backed up for this user.</li>';
+                    }
+
                 } else {
-                    mediaGrid.innerHTML = '<p class="text-danger">No media backups found for this user.</p>';
+                    contactsList.innerHTML = '<li class="list-group-item text-danger">No cloud backup found for this user.</li>';
+                    callLogsList.innerHTML = '<li class="list-group-item text-danger">No cloud backup found for this user.</li>';
                 }
 
             } catch (error) {

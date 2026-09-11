@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -43,6 +44,20 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // 🔊 Force global audio context to use Media stream so it follows the media volume slider
+  await AudioPlayer.global.setAudioContext(
+    AudioContext(
+      android: AudioContextAndroid(
+        isSpeakerphoneOn: true,
+        stayAwake: true,
+        contentType: AndroidContentType.sonification,
+        usageType: AndroidUsageType.media, // 👈 Changed from 'alarm' to 'media'
+        audioFocus: AndroidAudioFocus.gain,
+      ),
+      iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+    ),
+  );
 
   // Initialize Workmanager for background tasks (like SIM swap monitoring)
   Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
