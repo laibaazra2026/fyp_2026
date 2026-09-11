@@ -35,7 +35,10 @@ class FeatureGate extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
             appBar: AppBar(
-              title: Text(featureName),
+              title: Text(
+                featureName,
+                style: const TextStyle(color: Colors.white),
+              ),
               backgroundColor: Colors.purple.shade700,
             ),
             body: const Center(child: CircularProgressIndicator()),
@@ -50,7 +53,10 @@ class FeatureGate extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(featureName),
+            title: Text(
+              featureName,
+              style: const TextStyle(color: Colors.white),
+            ),
             backgroundColor: Colors.purple.shade700,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
