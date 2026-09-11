@@ -3,6 +3,7 @@ import 'package:confetti/confetti.dart';
 import '../models/purchase_cart_item.dart';
 import '../services/subscription_service.dart';
 import '../services/sandbox_sms_service.dart';
+import '../services/notification_service.dart'; // Added import for notifications
 import 'card_checkout_screen.dart';
 import 'invoices/jazzcash_invoice_screen.dart';
 import 'invoices/easypaisa_invoice_screen.dart';
@@ -40,13 +41,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(viewportFraction: 0.85);
-    // Increased duration for a longer-lasting celebration effect when opening
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 3),
     );
     _loadCurrentPlan();
 
-    // Trigger confetti immediately when the screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _confettiController.play();
     });
@@ -128,7 +127,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 subtitle: const Text('Secure Wallet OTP Checkout'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showSecureCheckoutDialog(cartItem, 'JazzCash Wallet');
+                  _showSecureCheckoutDialog(cartItem, 'JazzCash');
                 },
               ),
               const Divider(),
@@ -148,7 +147,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 subtitle: const Text('Secure Wallet OTP Checkout'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showSecureCheckoutDialog(cartItem, 'EasyPaisa Wallet');
+                  _showSecureCheckoutDialog(cartItem, 'EasyPaisa');
                 },
               ),
               const Divider(),
@@ -181,7 +180,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (result != null && result['success'] == true) {
                     _processCardUpgrade(
                       cartItem,
-                      result['method'],
+                      result['method'] ?? 'Stripe Global',
                       result['txnId'],
                     );
                   }
@@ -302,7 +301,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                           if (!mounted) return;
                           Navigator.pop(dialogContext);
-                          _processUpgrade(cartItem, paymentMethod);
+                          _processUpgrade(
+                            cartItem,
+                            paymentMethod,
+                            enteredPhone,
+                          );
                         },
                   child: isLoading
                       ? const SizedBox(
@@ -332,11 +335,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String txnId,
   ) async {
     try {
-      await _subscriptionService.updateSubscriptionWithMethod(
-        cartItem.featureId.replaceAll('tier_', ''),
-        cartItem.price.toString(),
-        paymentMethod,
-        txnId,
+      // Trigger centralized handler which updates subscription, logs request, and saves notification
+      await handleSuccessfulPayment(
+        gateway: paymentMethod,
+        planName: cartItem.featureId.replaceAll('tier_', ''),
+        transactionId: txnId,
+        mobileNo: 'Card Checkout',
+        amount: cartItem.price.toStringAsFixed(0),
       );
 
       if (!mounted) return;
@@ -368,16 +373,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Future<void> _processUpgrade(
     PurchaseCartItem cartItem,
     String paymentMethod,
+    String mobileNo,
   ) async {
     try {
       String txnId =
           'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-      await _subscriptionService.updateSubscriptionWithMethod(
-        cartItem.featureId.replaceAll('tier_', ''),
-        cartItem.price.toString(),
-        paymentMethod,
-        txnId,
+      // Trigger centralized handler which updates subscription, logs request, and saves notification safely
+      await handleSuccessfulPayment(
+        gateway: paymentMethod,
+        planName: cartItem.featureId.replaceAll('tier_', ''),
+        transactionId: txnId,
+        mobileNo: mobileNo,
+        amount: cartItem.price.toStringAsFixed(0),
       );
 
       if (!mounted) return;
@@ -626,7 +634,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             confettiController: _confettiController,
             blastDirectionality: BlastDirectionality.explosive,
             shouldLoop: false,
-            // Increased particle count and emission properties for a high-impact happy effect
             numberOfParticles: 30,
             gravity: 0.2,
             colors: const [

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/purchase_cart_item.dart';
-import '../services/notification_service.dart'; // Contains NotificationService and handleSuccessfulPayment
+import '../services/notification_service.dart'; 
 
 enum PaymentGatewayType { payfast, jazzCashCard, stripe }
 

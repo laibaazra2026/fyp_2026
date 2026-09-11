@@ -11,13 +11,9 @@ class NotificationBellIcon extends StatefulWidget {
 class _NotificationBellIconState extends State<NotificationBellIcon> {
   final NotificationService _notificationService = NotificationService();
 
-  // Optional: If you want to poll or listen to changes,
-  // you can callsetState from a periodic listener or ensure your service uses a ChangeNotifier.
-
   void _showNotificationsPanel(BuildContext context) {
-    setState(() {
-      _notificationService.markAllAsRead();
-    });
+    // Mark all as read in Firestore when panel opens
+    _notificationService.markAllAsRead();
 
     showModalBottomSheet(
       context: context,
@@ -26,116 +22,136 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Container(
-              padding: const EdgeInsets.all(20),
-              height: 400,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        return Container(
+          padding: const EdgeInsets.all(20),
+          height: 450,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Payment Notifications',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
+                  const Text(
+                    'Payment Notifications',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const Divider(height: 20),
-                  Expanded(
-                    child: _notificationService.notifications.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No recent payment notifications.',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount:
-                                _notificationService.notifications.length,
-                            itemBuilder: (context, index) {
-                              final item =
-                                  _notificationService.notifications[index];
-                              return Card(
-                                elevation: 1,
-                                margin: const EdgeInsets.symmetric(vertical: 6),
-                                child: ListTile(
-                                  leading: const CircleAvatar(
-                                    backgroundColor: Colors.green,
-                                    child: Icon(
-                                      Icons.check,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  title: Text(
-                                    item.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    '${item.body}\n${item.timestamp}',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  isThreeLine: true,
-                                ),
-                              );
-                            },
-                          ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-            );
-          },
+              const Divider(height: 20),
+              Expanded(
+                child: StreamBuilder<List<NotificationItem>>(
+                  stream: _notificationService.getUserNotifications(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No recent payment notifications.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      );
+                    }
+
+                    final notifications = snapshot.data!;
+
+                    return ListView.builder(
+                      itemCount: notifications.length,
+                      itemBuilder: (context, index) {
+                        final item = notifications[index];
+                        return Card(
+                          elevation: 1,
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              backgroundColor: Colors.green,
+                              child: Icon(Icons.check, color: Colors.white),
+                            ),
+                            title: Text(
+                              item.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${item.body}\n${item.timestamp}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            isThreeLine: true,
+                            trailing: IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                _notificationService.deleteNotification(
+                                  item.id,
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
-    ).then((_) {
-      // Refresh home screen bell badge when bottom sheet is closed
-      setState(() {});
-    });
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () => _showNotificationsPanel(context),
-        ),
-        if (_notificationService.unreadCount > 0)
-          Positioned(
-            right: 11,
-            top: 11,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${_notificationService.unreadCount}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
+    return StreamBuilder<int>(
+      stream: _notificationService.getUnreadCountStream(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+
+        return Stack(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () => _showNotificationsPanel(context),
             ),
-          ),
-      ],
+            if (unreadCount > 0)
+              Positioned(
+                right: 11,
+                top: 11,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
