@@ -32,14 +32,23 @@ class IntruderService {
 
       final controller = CameraController(
         frontCamera,
-        ResolutionPreset.low,
+        ResolutionPreset
+            .medium, // Medium resolution helps avoid low-light sensor glitches on some devices
         enableAudio: false,
       );
 
       await controller.initialize();
 
-      // Give the camera sensor time to warm up and expose properly to avoid black images
-      await Future.delayed(const Duration(milliseconds: 700));
+      // Fix for black images: Lock exposure and focus to let the sensor process light properly
+      try {
+        await controller.setExposureMode(ExposureMode.auto);
+        await controller.setFocusMode(FocusMode.auto);
+      } catch (e) {
+        print("⚠️ Could not set auto exposure/focus modes: $e");
+      }
+
+      // Give the camera sensor enough warm-up time to calculate lighting
+      await Future.delayed(const Duration(milliseconds: 1200));
 
       XFile image = await controller.takePicture();
       await controller.dispose();
