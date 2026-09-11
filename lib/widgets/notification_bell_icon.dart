@@ -17,7 +17,9 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
       return Colors.red;
     } else if (lowerTitle.contains('easypaisa')) {
       return Colors.green;
-    } else if (lowerTitle.contains('card') || lowerTitle.contains('credit')) {
+    } else if (lowerTitle.contains('card') ||
+        lowerTitle.contains('mastercard') ||
+        lowerTitle.contains('visa')) {
       return Colors.blue;
     }
     return Colors.green; // Default fallback
@@ -47,8 +49,8 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                   Row(
                     children: [
                       TextButton(
-                        onPressed: () {
-                          _notificationService.markAllAsRead();
+                        onPressed: () async {
+                          await _notificationService.markAllAsRead();
                         },
                         child: const Text(
                           'Clear All',
