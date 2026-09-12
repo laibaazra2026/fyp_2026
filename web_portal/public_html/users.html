@@ -136,7 +136,7 @@
 </head>
 <body>
 
- <div class="sidebar">
+     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
         <a href="users.html" class="active">👥 Users</a>
@@ -144,7 +144,7 @@
         <a href="locations.html">📍 Locations</a>
         <a href="intruders.html">📸 Intruders</a>
         <a href="commands.html">🎮 Commands</a>
-        <a href="backups.html">☁️ Backups</a>
+        <a href="backups.html"  >☁️ Backups</a>
         <a href="payments.html">💳 Subscriptions</a>
     </div>
 
@@ -168,7 +168,8 @@
                         <th>Email</th>
                         <th>Phone</th>
                         <th>Emergency Phone</th>
-                        <th>Payment Method</th>
+                        <th>Carrier</th>
+                        <th>Country</th>
                         <th>Theft Mode</th>
                         <th>Joined Date</th>
                     </tr>
@@ -245,7 +246,8 @@
                         <td>${data.email || 'N/A'}</td>
                         <td>${data.phone || 'N/A'}</td>
                         <td>${data.emergencyPhone || 'N/A'}</td>
-                        <td>${data.paymentMethod || 'N/A'}</td>
+                        <td>${data.baselineCarrier || data.carrier || data.simCarrier || 'N/A'}</td>
+                        <td>${data.baselineCountry || 'N/A'}</td>
                         <td>${theftModeBadge}</td>
                         <td>${timeStr}</td>
                     `;
