@@ -14,15 +14,41 @@
         .sidebar h2 { margin-bottom: 30px; font-size: 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 15px; }
         .sidebar a { display: block; color: white; padding: 12px 15px; text-decoration: none; border-radius: 10px; margin: 5px 0; }
         .sidebar a:hover, .sidebar .active { background: #6A1B8A; }
-        .main { margin-left: 250px; padding: 30px; width: 100%; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .table-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .main { margin-left: 230px; padding: 30px; width: calc(100% - 230px); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        
+        /* KPI Cards */
+        .kpi-container { display: flex; gap: 20px; margin-bottom: 25px; }
+        .kpi-card { background: white; padding: 20px; border-radius: 15px; flex: 1; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .kpi-card h4 { color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-card h2 { color: #841EA0; margin-top: 8px; font-size: 24px; }
+        
+        /* Two-Column Master-Detail Layout */
+        .workspace-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
+        
+        .table-card, .inspector-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .controls-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .search-input { padding: 8px 12px; width: 100%; max-width: 280px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; outline: none; }
+        .search-input:focus { border-color: #841EA0; }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
-        th { background: #f9f9f9; color: #333; }
-        .badge { background: #841EA0; color: white; padding: 5px 10px; border-radius: 6px; font-weight: bold; }
+        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; cursor: pointer; }
+        th { background: #f9f9f9; color: #333; cursor: default; }
+        tr:hover { background-color: #faf5fb; }
+        .badge { background: #841EA0; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 10px; }
+        
+        /* Inspector Pane Styles */
+        .inspector-card h3 { margin-bottom: 15px; font-size: 16px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .detail-group { margin-bottom: 12px; }
+        .detail-group label { display: block; font-size: 11px; color: #777; text-transform: uppercase; margin-bottom: 3px; }
+        .detail-group p { font-size: 14px; color: #222; font-weight: 500; word-break: break-all; }
+        .inspector-actions { margin-top: 20px; display: flex; gap: 10px; }
+        .action-btn { background: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; flex: 1; }
+        .action-btn:hover { background: #c62828; }
+        
         .logout-btn { background: #7b1fa2; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
         .logout-btn:hover { background: #6a1b9a; }
+        .placeholder-text { color: #888; text-align: center; padding: 40px 20px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -31,7 +57,7 @@
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
         <a href="users.html">👥 Users</a>
-        <a href="sim_alerts.html" >📱 SIM Logs</a>
+        <a href="sim_alerts.html">📱 SIM Logs</a>
         <a href="locations.html">📍 Locations</a>
         <a href="intruders.html">📸 Intruders</a>
         <a href="commands.html">🎮 Commands</a>
@@ -42,28 +68,53 @@
     <!-- Main Content -->
     <div class="main">
         <div class="header">
-            <h1>💎 Paid Subscriptions Log</h1>
+            <h1>💎 Paid Subscriptions Control Center</h1>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
 
-        <div class="table-card">
-            <h3>Active Paid Users (Sandbox / JazzCash / EasyPaisa Verified)</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>User ID</th>
-                        <th>User Email</th>
-                        <th>Purchased Plan</th>
-                        <th>Gateway</th>
-                        <th>Verified Mobile No</th>
-                        <th>Transaction ID</th>
-                        <th>Date & Time of Purchase</th>
-                    </tr>
-                </thead>
-                <tbody id="paidTableBody">
-                    <tr><td colspan="7" style="text-align:center;">Loading paid records...</td></tr>
-                </tbody>
-            </table>
+        <!-- KPI Summary Cards -->
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <h4>Total Active Paid Users</h4>
+                <h2 id="totalPaidCount">0</h2>
+            </div>
+            <div class="kpi-card">
+                <h4>Estimated Monthly Revenue</h4>
+                <h2 id="totalRevenue">PKR 0</h2>
+            </div>
+        </div>
+
+        <!-- Two-Column Workspace Grid -->
+        <div class="workspace-grid">
+            <!-- Left Column: Transaction Ledger Table -->
+            <div class="table-card">
+                <div class="controls-bar">
+                    <h3>Transactions Ledger</h3>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search email or txn ID..." onkeyup="filterTable()">
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User Email</th>
+                            <th>Plan</th>
+                            <th>Gateway</th>
+                            <th>Transaction ID</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paidTableBody">
+                        <tr><td colspan="5" style="text-align:center;">Loading records...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Right Column: Details Inspector & Override Panel -->
+            <div class="inspector-card">
+                <h3>🔍 Transaction Inspector</h3>
+                <div id="inspectorContent">
+                    <p class="placeholder-text">Click any transaction row on the left to inspect complete metadata and execute administrative overrides.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -80,6 +131,8 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        let allPaidRecords = [];
 
         auth.onAuthStateChanged((user) => {
             if (!user) {
@@ -101,51 +154,160 @@
             const tableBody = document.getElementById('paidTableBody');
             try {
                 const snapshot = await db.collection('users').get();
-                tableBody.innerHTML = '';
-
-                let paidCount = 0;
+                allPaidRecords = [];
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    
-                    const plan = data.subscriptionPlan || data.plan || 'Free';
+                    const tier = data.subscriptionTier || data.subscriptionPlan || 'free';
 
-                    if (plan && plan.toLowerCase() !== 'free' && plan !== '') {
-                        paidCount++;
-                        const email = data.email || 'N/A';
-                        const gateway = data.paymentMethod || data.paymentGateway || 'N/A';
-                        const verifiedPhone = data.verifiedPhoneNumber || data.billingPhone || 'N/A';
-                        const txnId = data.lastTransactionId || 'N/A';
-                        
-                        let formattedDate = 'N/A';
-                        const timeField = data.subscribedAt || data.subscriptionUpdatedAt || data.timestamp;
-                        if (timeField && typeof timeField.toDate === 'function') {
-                            formattedDate = timeField.toDate().toLocaleString();
-                        } else if (timeField && timeField.seconds) {
-                            formattedDate = new Date(timeField.seconds * 1000).toLocaleString();
-                        }
-
-                        tableBody.innerHTML += `
-                            <tr>
-                                <td><small>${doc.id}</small></td>
-                                <td>${email}</td>
-                                <td><span class="badge">${plan.toUpperCase()}</span></td>
-                                <td>${gateway}</td>
-                                <td>${verifiedPhone}</td>
-                                <td><code>${txnId}</code></td>
-                                <td>${formattedDate}</td>
-                            </tr>
-                        `;
+                    // Surface users whose tier is not free, or who have a recorded transaction ID
+                    if (tier.toLowerCase() !== 'free' || data.lastTransactionId) {
+                        allPaidRecords.push({ id: doc.id, ...data, plan: tier });
                     }
                 });
 
-                if (paidCount === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">No paid subscriptions found yet. Use the mobile app sandbox to purchase a plan!</td></tr>';
-                }
+                renderTable(allPaidRecords);
+                updateKPIs(allPaidRecords);
 
             } catch (error) {
-                console.error('Error loading paid users:', error);
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">Error loading records</td></tr>';
+                console.error('Error loading subscriptions:', error);
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error loading records</td></tr>';
+            }
+        }
+
+        function renderTable(records) {
+            const tableBody = document.getElementById('paidTableBody');
+            tableBody.innerHTML = '';
+
+            if (records.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No active subscriptions found.</td></tr>';
+                return;
+            }
+
+            records.forEach(data => {
+                const email = data.email || 'N/A';
+                const gateway = data.paymentMethod || data.paymentGateway || 'N/A';
+                const txnId = data.lastTransactionId || 'N/A';
+                
+                let formattedDate = 'N/A';
+                const timeField = data.updatedAt || data.subscribedAt;
+                if (timeField && typeof timeField.toDate === 'function') {
+                    formattedDate = timeField.toDate().toLocaleDateString();
+                } else if (timeField && timeField.seconds) {
+                    formattedDate = new Date(timeField.seconds * 1000).toLocaleDateString();
+                }
+
+                const recordString = encodeURIComponent(JSON.stringify(data));
+
+                tableBody.innerHTML += `
+                    <tr onclick='inspectRecord("${recordString}")'>
+                        <td>${email}</td>
+                        <td><span class="badge">${data.plan.toUpperCase()}</span></td>
+                        <td>${gateway}</td>
+                        <td><code>${txnId}</code></td>
+                        <td>${formattedDate}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function inspectRecord(encodedData) {
+            const data = JSON.parse(decodeURIComponent(encodedData));
+            const inspector = document.getElementById('inspectorContent');
+
+            const email = data.email || 'N/A';
+            const plan = (data.plan || 'Free').toUpperCase();
+            const gateway = data.paymentMethod || data.paymentGateway || 'N/A';
+            const verifiedPhone = data.verifiedPhoneNumber || data.phone || 'N/A';
+            const txnId = data.lastTransactionId || 'N/A';
+            const price = data.planPrice ? `PKR ${data.planPrice}` : 'N/A';
+            
+            let formattedDate = 'N/A';
+            const timeField = data.updatedAt || data.subscribedAt;
+            if (timeField && typeof timeField.toDate === 'function') {
+                formattedDate = timeField.toDate().toLocaleString();
+            } else if (timeField && timeField.seconds) {
+                formattedDate = new Date(timeField.seconds * 1000).toLocaleString();
+            }
+
+            inspector.innerHTML = `
+                <div class="detail-group">
+                    <label>Firebase User UID</label>
+                    <p><small>${data.id}</small></p>
+                </div>
+                <div class="detail-group">
+                    <label>Account Email</label>
+                    <p>${email}</p>
+                </div>
+                <div class="detail-group">
+                    <label>Active Plan & Price</label>
+                    <p><span class="badge">${plan}</span> (${price})</p>
+                </div>
+                <div class="detail-group">
+                    <label>Payment Gateway / Method</label>
+                    <p>${gateway}</p>
+                </div>
+                <div class="detail-group">
+                    <label>Verified Phone / Details</label>
+                    <p>${verifiedPhone}</p>
+                </div>
+                <div class="detail-group">
+                    <label>Last Transaction ID</label>
+                    <p><code>${txnId}</code></p>
+                </div>
+                <div class="detail-group">
+                    <label>Last Updated Timestamp</label>
+                    <p>${formattedDate}</p>
+                </div>
+                <div class="inspector-actions">
+                    <button class="action-btn" onclick="revokePlan('${data.id}')">Revoke Plan</button>
+                </div>
+            `;
+        }
+
+        function updateKPIs(records) {
+            let totalRevenue = 0;
+            records.forEach(r => {
+                if (r.planPrice && typeof r.planPrice === 'number') {
+                    totalRevenue += r.planPrice;
+                } else {
+                    let planLower = r.plan.toLowerCase();
+                    if (planLower.includes('premium')) totalRevenue += 99;
+                    if (planLower.includes('family') || planLower.includes('pro')) totalRevenue += 199;
+                }
+            });
+
+            document.getElementById('totalPaidCount').innerText = records.length;
+            document.getElementById('totalRevenue').innerText = `PKR ${totalRevenue.toLocaleString()}`;
+        }
+
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allPaidRecords.filter(r => {
+                return (r.email && r.email.toLowerCase().includes(query)) ||
+                       (r.plan && r.plan.toLowerCase().includes(query)) ||
+                       (r.lastTransactionId && r.lastTransactionId.toLowerCase().includes(query)) ||
+                       (r.id && r.id.toLowerCase().includes(query));
+            });
+            renderTable(filtered);
+        }
+
+        async function revokePlan(userId) {
+            if (confirm("Are you sure you want to revoke this user's subscription and revert them to the Free tier?")) {
+                try {
+                    await db.collection('users').doc(userId).update({
+                        subscriptionTier: 'free',
+                        subscriptionPlan: 'free',
+                        subscriptionStatus: 'inactive',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    alert("User successfully reverted to Free tier.");
+                    document.getElementById('inspectorContent').innerHTML = '<p class="placeholder-text">Record updated. Select another transaction.</p>';
+                    loadPaidUsersTable();
+                } catch (error) {
+                    console.error("Error revoking plan:", error);
+                    alert("Failed to update user record.");
+                }
             }
         }
     </script>
