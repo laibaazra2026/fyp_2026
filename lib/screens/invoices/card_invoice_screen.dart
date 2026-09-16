@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../models/purchase_cart_item.dart';
+import '../../services/app_config.dart';
 
 class CardInvoiceScreen extends StatelessWidget {
   final List<PurchaseCartItem> items;
@@ -29,13 +30,29 @@ class CardInvoiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String currentDate = DateTime.now().toString().split('.').first;
+
+    final String prefix = AppConfig.isLiveProductionMode
+        ? 'LIVE-PF'
+        : 'SANDBOX-MOCK';
     final String gatewayRef =
-        'PF-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+        '$prefix-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
+    final Color themeColor = AppConfig.isLiveProductionMode
+        ? Colors.blue.shade800
+        : Colors.purple.shade700;
+
+    final Color containerBgColor = AppConfig.isLiveProductionMode
+        ? Colors.blue.shade50
+        : Colors.purple.shade50;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Official Payment Receipt'),
-        backgroundColor: Colors.blue.shade800,
+        title: Text(
+          AppConfig.isLiveProductionMode
+              ? 'Official Payment Receipt (Live)'
+              : 'Official Payment Receipt (Sandbox Mock)',
+        ),
+        backgroundColor: themeColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -54,39 +71,71 @@ class CardInvoiceScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'PAYFAST GATEWAY',
+                              AppConfig.isLiveProductionMode
+                                  ? 'PAYFAST GATEWAY (LIVE)'
+                                  : 'PAYFAST GATEWAY (SANDBOX / MOCK)',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: Colors.blue,
+                                color: themeColor,
                               ),
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Secure Card Transaction Voucher',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  AppConfig.isLiveProductionMode
+                                      ? Icons.verified
+                                      : Icons.science,
+                                  size: 14,
+                                  color: AppConfig.isLiveProductionMode
+                                      ? Colors.blue
+                                      : Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppConfig.isLiveProductionMode
+                                      ? 'Secure Card Transaction Voucher'
+                                      : 'Sandbox Card Simulation',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        Icon(Icons.credit_card, color: Colors.blue, size: 32),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: containerBgColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            AppConfig.isLiveProductionMode
+                                ? Icons.credit_card
+                                : Icons.account_balance_wallet,
+                            color: themeColor,
+                            size: 28,
+                          ),
+                        ),
                       ],
                     ),
                     const Divider(height: 30),
 
-                    // Professional Receipt Metadata
                     _buildMetaRow(
                       'Transaction Status',
-                      'APPROVED',
+                      AppConfig.isLiveProductionMode
+                          ? 'APPROVED (LIVE)'
+                          : 'APPROVED (MOCK SIMULATION)',
                       color: Colors.green,
                     ),
                     const SizedBox(height: 8),
@@ -111,7 +160,6 @@ class CardInvoiceScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
 
-                    // Preserved item mapping logic
                     ...items.map(
                       (item) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -132,7 +180,6 @@ class CardInvoiceScreen extends StatelessWidget {
 
                     const Divider(height: 30),
 
-                    // Total Paid Row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -147,7 +194,7 @@ class CardInvoiceScreen extends StatelessWidget {
                           'PKR $totalAmount',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade800,
+                            color: themeColor,
                             fontSize: 18,
                           ),
                         ),
@@ -155,20 +202,23 @@ class CardInvoiceScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 30),
 
-                    // Real Functional Print / Save Receipt Button
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade800,
+                          backgroundColor: themeColor,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         onPressed: () async {
-                          await _printInvoice(currentDate, gatewayRef);
+                          await _printInvoice(
+                            currentDate,
+                            gatewayRef,
+                            themeColor,
+                          );
                         },
                         icon: const Icon(Icons.print),
                         label: const Text(
@@ -190,15 +240,23 @@ class CardInvoiceScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _printInvoice(String currentDate, String gatewayRef) async {
+  Future<void> _printInvoice(
+    String currentDate,
+    String gatewayRef,
+    Color themeColor,
+  ) async {
     final pdf = pw.Document();
+
+    final int pdfColorValue = AppConfig.isLiveProductionMode
+        ? 0xFF1565C0 // Colors.blue.shade800
+        : 0xFF6A1B9A; // Colors.purple.shade800
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Padding(
-            padding: const pw.EdgeInsets.all(24), // Fixed with pw. prefix
+            padding: const pw.EdgeInsets.all(24),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -209,11 +267,13 @@ class CardInvoiceScreen extends StatelessWidget {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          'PAYFAST GATEWAY',
+                          AppConfig.isLiveProductionMode
+                              ? 'PAYFAST GATEWAY (LIVE)'
+                              : 'PAYFAST GATEWAY (SANDBOX / MOCK)',
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
                             fontSize: 18,
-                            color: PdfColors.blue800,
+                            color: PdfColor.fromInt(pdfColorValue),
                           ),
                         ),
                         pw.SizedBox(height: 4),
@@ -230,7 +290,12 @@ class CardInvoiceScreen extends StatelessWidget {
                   ],
                 ),
                 pw.Divider(height: 30),
-                _buildPdfMetaRow('Transaction Status', 'APPROVED'),
+                _buildPdfMetaRow(
+                  'Transaction Status',
+                  AppConfig.isLiveProductionMode
+                      ? 'APPROVED (LIVE)'
+                      : 'APPROVED (MOCK SIMULATION)',
+                ),
                 pw.SizedBox(height: 8),
                 _buildPdfMetaRow('Authorization Code', authCode),
                 pw.SizedBox(height: 8),
@@ -274,7 +339,7 @@ class CardInvoiceScreen extends StatelessWidget {
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 18,
-                        color: PdfColors.blue800,
+                        color: PdfColor.fromInt(pdfColorValue),
                       ),
                     ),
                   ],
@@ -286,7 +351,6 @@ class CardInvoiceScreen extends StatelessWidget {
       ),
     );
 
-    // Triggers the native OS print and save PDF interface
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'Invoice-$gatewayRef.pdf',

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:call_log/call_log.dart';
+import 'app_config.dart'; // Make sure this import points to your AppConfig file
 
 class BackupRestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -9,6 +10,7 @@ class BackupRestoreService {
 
   Future<bool> _checkSubscription(String userId) async {
     try {
+      // Queries Firestore directly in both Live and Sandbox modes so your gating works everywhere!
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
           .doc(userId)
@@ -23,7 +25,8 @@ class BackupRestoreService {
       if (data == null) return false;
 
       String? plan = data['subscriptionPlan'];
-      print('🔍 Found subscription plan: $plan');
+      String envName = AppConfig.isLiveProductionMode ? "Live" : "Sandbox";
+      print('🔍 Found subscription plan ($envName): $plan');
 
       bool isValid =
           plan != null && plan.isNotEmpty && plan.toLowerCase() != 'free';
@@ -44,7 +47,9 @@ class BackupRestoreService {
 
       bool hasAccess = await _checkSubscription(user.uid);
       if (!hasAccess) {
-        print('❌ Backup blocked: No active subscription plan detected.');
+        print(
+          '❌ Backup blocked: No active subscription plan detected. User needs to upgrade.',
+        );
         return false;
       }
 
@@ -100,7 +105,9 @@ class BackupRestoreService {
 
       bool hasAccess = await _checkSubscription(user.uid);
       if (!hasAccess) {
-        print('❌ Restore blocked: No active subscription plan detected.');
+        print(
+          '❌ Restore blocked: No active subscription plan detected. User needs to upgrade.',
+        );
         return null;
       }
 

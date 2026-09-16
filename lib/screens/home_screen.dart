@@ -6,9 +6,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/command_service.dart';
 import '../services/security_guard_service.dart';
+import '../services/app_config.dart'; // <-- Added import for AppConfig
 import '../utils/feature_access_card.dart';
 import '../widgets/feature_gate.dart';
-import '../widgets/notification_bell_icon.dart'; // <-- Added import for the notification bell
+import '../widgets/notification_bell_icon.dart'; // <-- Added import for notification bell[cite: 1]
 import 'login_screen.dart';
 import 'gps_screen.dart';
 import 'subscription_screen.dart';
@@ -310,11 +311,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final String? photoUrl = user?.photoURL;
-
     final String displayName =
         user?.displayName ?? user?.email?.split('@')[0] ?? 'User';
-
     final String email = user?.email ?? 'No email';
+    final bool isLive = AppConfig.isLiveProductionMode;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -322,20 +322,47 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.purple.shade700,
         elevation: 0,
-
-        title: const Text(
-          'Home Dashboard',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Home Dashboard',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isLive
+                        ? Colors.green.shade800
+                        : Colors.purple.shade900,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isLive ? 'MODE: LIVE' : 'MODE: SANDBOX',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-
         iconTheme: const IconThemeData(color: Colors.white),
-
         actions: [
-          const NotificationBellIcon(), // <-- Added Notification Bell to actions[cite: 1]
+          const NotificationBellIcon(), //[cite: 1]
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
@@ -375,7 +402,6 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: Colors.purple.shade700),
-
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
                 backgroundImage: photoUrl != null
@@ -394,17 +420,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : null,
               ),
-
               accountName: Text(
                 displayName,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-
               accountEmail: Text(email),
-
               onDetailsPressed: () {
                 Navigator.pop(context);
-
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -413,13 +435,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-
             ListTile(
               leading: const Icon(Icons.star, color: Colors.amber),
               title: const Text('Subscription & Plans'),
               onTap: () {
                 Navigator.pop(context);
-
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -428,13 +448,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-
             ListTile(
               leading: const Icon(Icons.settings, color: Colors.grey),
               title: const Text('Settings & Profile'),
               onTap: () {
                 Navigator.pop(context);
-
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -443,11 +461,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-
             const Spacer(),
-
             const Divider(),
-
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text(
@@ -459,7 +474,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               onTap: () => _logout(context),
             ),
-
             const SizedBox(height: 20),
           ],
         ),
@@ -472,11 +486,8 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-
               width: double.infinity,
-
               padding: const EdgeInsets.all(20),
-
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: _isTheftModeActive
@@ -485,9 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-
                 borderRadius: BorderRadius.circular(20),
-
                 boxShadow: [
                   BoxShadow(
                     color: (_isTheftModeActive ? Colors.green : Colors.red)
@@ -497,17 +506,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
-
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
-
                     child: Icon(
                       _isTheftModeActive
                           ? Icons.security
@@ -516,9 +522,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       size: 32,
                     ),
                   ),
-
                   const SizedBox(width: 16),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,9 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 4),
-
                         Text(
                           _isTheftModeActive
                               ? 'All security modules are fully running'
@@ -548,7 +550,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-
                   Switch(
                     value: _isTheftModeActive,
                     activeColor: Colors.white,
@@ -560,18 +561,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.blue.shade200),
               ),
-
               child: Row(
                 children: [
                   Icon(
@@ -579,9 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.blue.shade700,
                     size: 28,
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,7 +588,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontSize: 15,
                           ),
                         ),
-
                         Text(
                           'Upgrade to unlock Backup & Remote Commands',
                           style: TextStyle(
@@ -604,7 +598,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.purple.shade700,
@@ -612,7 +605,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -621,7 +613,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       );
                     },
-
                     child: const Text(
                       'Upgrade',
                       style: TextStyle(color: Colors.white),
@@ -630,9 +621,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             const Text(
               'Security Modules',
               style: TextStyle(
@@ -641,34 +630,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.black87,
               ),
             ),
-
             const SizedBox(height: 12),
-
             GridView.count(
               crossAxisCount: 2,
-
               shrinkWrap: true,
-
               physics: const NeverScrollableScrollPhysics(),
-
               crossAxisSpacing: 16,
-
               mainAxisSpacing: 16,
-
               childAspectRatio: 1.0,
-
               children: [
                 FeatureAccessCard(
                   title: 'GPS Tracking',
                   subtitle: 'Live Map Location',
                   icon: Icons.my_location,
                   color: Colors.blue,
-
                   onTap: () {
                     _securityGuard.runModuleIfTheftModeOn(
                       context: context,
                       moduleName: 'GPS Tracking',
-
                       moduleTask: () async {
                         bool hasPermission =
                             await _checkAndRequestLocationPermission(context);
@@ -685,18 +664,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
                 FeatureAccessCard(
                   title: 'SIM/Device Alert',
                   subtitle: 'Tap to check security',
                   icon: Icons.sim_card,
                   color: Colors.orange,
-
                   onTap: () {
                     _securityGuard.runModuleIfTheftModeOn(
                       context: context,
                       moduleName: 'SIM Detection',
-
                       moduleTask: () async {
                         bool hasPermission =
                             await _checkAndRequestSimPermission(context);
@@ -713,7 +689,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
                 FeatureAccessCard(
                   title: 'Intruder Capture',
                   subtitle: 'Failed unlock snaps',
@@ -724,7 +699,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     _securityGuard.runModuleIfTheftModeOn(
                       context: context,
                       moduleName: 'Intruder Capture',
-
                       moduleTask: () async {
                         bool hasPermission =
                             await _checkAndRequestCameraPermission(context);
@@ -741,15 +715,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
                 FeatureAccessCard(
                   title: 'Backup & Restore',
                   subtitle: 'Contacts & Call Logs ☁️',
                   icon: Icons.cloud_sync,
                   color: Colors.purple,
-
                   isLocked: true,
-
                   onTap: () {
                     _securityGuard.runModuleIfTheftModeOn(
                       context: context,
@@ -792,15 +763,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
-
   late TextEditingController _nameController;
-
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-
     _nameController = TextEditingController(text: user?.displayName ?? '');
   }
 
@@ -820,7 +788,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           backgroundColor: Colors.red,
         ),
       );
-
       return;
     }
 
@@ -830,7 +797,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       await user?.updateDisplayName(newName);
-
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user?.uid)
@@ -911,27 +877,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: Colors.purple.shade700,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
             const SizedBox(height: 10),
-
             CircleAvatar(
               radius: 40,
               backgroundColor: Colors.purple.shade200,
-
               backgroundImage: user?.photoURL != null
                   ? NetworkImage(user!.photoURL!)
                   : null,
-
               child: user?.photoURL == null
                   ? Text(
                       user?.email != null && user!.email!.isNotEmpty
                           ? user!.email![0].toUpperCase()
                           : 'U',
-
                       style: TextStyle(
                         fontSize: 32,
                         color: Colors.purple.shade700,
@@ -940,48 +901,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     )
                   : null,
             ),
-
             const SizedBox(height: 12),
-
             Text(
               user?.email ?? 'No email',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
-
             const SizedBox(height: 30),
-
             TextField(
               controller: _nameController,
-
               decoration: InputDecoration(
                 labelText: 'Display Name',
-
                 prefixIcon: const Icon(Icons.person, color: Colors.purple),
-
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             SizedBox(
               width: double.infinity,
-
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.purple.shade700,
-
                   padding: const EdgeInsets.symmetric(vertical: 14),
-
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-
                 onPressed: _isLoading ? null : _updateProfileName,
-
                 child: _isLoading
                     ? const SizedBox(
                         height: 20,
@@ -1000,30 +947,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
               ),
             ),
-
             const SizedBox(height: 24),
-
             const Divider(),
-
             const SizedBox(height: 10),
-
             ListTile(
               leading: const Icon(Icons.lock_reset, color: Colors.purple),
-
               title: const Text('Reset Password'),
-
               subtitle: const Text('Send password reset email'),
-
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-
               onTap: _resetPassword,
             ),
-
             const Divider(),
-
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-
               title: const Text(
                 'Logout',
                 style: TextStyle(
@@ -1031,9 +967,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               subtitle: const Text('Sign out from your account'),
-
               onTap: _logout,
             ),
           ],

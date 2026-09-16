@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/app_config.dart';
 
 class NotificationItem {
   final String id;
@@ -141,7 +142,7 @@ class NotificationService {
   }
 }
 
-/// Centralized helper function for all 3 payment methods (JazzCash, EasyPaisa, Card)
+/// Centralized helper function supporting both Sandbox (Mock) and Real Live Payments
 Future<void> handleSuccessfulPayment({
   required String gateway,
   required String planName,
@@ -153,17 +154,25 @@ Future<void> handleSuccessfulPayment({
   if (user == null) return;
 
   final firestore = FirebaseFirestore.instance;
+  final bool isLive = AppConfig.isLiveProductionMode;
+
+  // Determine prefixes/labels based on live vs sandbox status
+  final String modeLabel = isLive ? 'LIVE' : 'SANDBOX (MOCK)';
+  final String statusLabel = isLive
+      ? 'Verified (Live)'
+      : 'Verified (Sandbox Simulation)';
 
   // 1. Update user subscription in Firestore
   await firestore.collection('users').doc(user.uid).set({
     'subscriptionPlan': planName,
-    'paymentGateway': gateway,
+    'paymentGateway': '$gateway ($modeLabel)',
     'verifiedPhoneNumber': mobileNo,
     'lastTransactionId': transactionId,
+    'isLivePayment': isLive,
     'subscribedAt': FieldValue.serverTimestamp(),
   }, SetOptions(merge: true));
 
-  // 2. Log to payment_requests collection for admin review
+  // 2. Log to payment_requests collection for admin review (tagged by mode)
   await firestore.collection('payment_requests').add({
     'userId': user.uid,
     'email': user.email ?? 'N/A',
@@ -171,20 +180,22 @@ Future<void> handleSuccessfulPayment({
     'gateway': gateway,
     'transactionId': transactionId,
     'mobileNo': mobileNo,
+    'mode': modeLabel,
     'timestamp': FieldValue.serverTimestamp(),
-    'status': 'Verified',
+    'status': statusLabel,
   });
 
-  // 3. Save a permanent notification to Firestore so it syncs across streams and UI real-time
-  await firestore
-      .collection('users')
-      .doc(user.uid)
-      .collection('notifications')
-      .add({
-        'title': 'Payment Successful ($gateway)',
-        'body': 'Your payment of PKR $amount was verified. Ref: $transactionId',
-        'type': 'payment_success',
-        'timestamp': FieldValue.serverTimestamp(),
-        'isRead': false,
-      });
+  // 3. Save a permanent notification to Firestore with clear mode indicators
+  await firestore.collection('users').doc(user.uid).collection('notifications').add({
+    'title': isLive
+        ? 'Payment Successful ($gateway)'
+        : 'Mock Payment Simulation ($gateway)',
+    'body': isLive
+        ? 'Your live payment of PKR $amount was verified. Ref: $transactionId'
+        : '[SANDBOX TEST] Simulated payment of PKR $amount processed. Ref: $transactionId',
+    'type': isLive ? 'payment_success_live' : 'payment_success_sandbox',
+    'isLive': isLive,
+    'timestamp': FieldValue.serverTimestamp(),
+    'isRead': false,
+  });
 }

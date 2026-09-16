@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/backup_restore_service.dart';
 import '../services/subscription_service.dart';
+import '../services/app_config.dart'; // Make sure this points to your AppConfig
 
 class BackupRestoreScreen extends StatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -52,7 +53,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
     }
   }
 
-  // 2️⃣ Full Backup Flow
+  // Full Backup Flow
   Future<void> _handleBackup() async {
     setState(() {
       _isLoading = true;
@@ -141,11 +142,42 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
 
   @override
   Widget build(BuildContext context) {
+    final bool isLive = AppConfig.isLiveProductionMode;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Cloud Backup & Restore',
-          style: TextStyle(color: Colors.white),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Cloud Backup & Restore',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isLive
+                        ? Colors.green.shade800
+                        : Colors.purple.shade900,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isLive ? 'MODE: LIVE' : 'MODE: SANDBOX',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         backgroundColor: Colors.purple.shade700,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -231,7 +263,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
                           );
                         },
                       ),
-
                 _restoredCallLogs.isEmpty
                     ? const Center(
                         child: Text('No call logs loaded or restored yet.'),

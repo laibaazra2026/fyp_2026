@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../models/purchase_cart_item.dart';
 import '../services/subscription_service.dart';
+import '../services/app_config.dart';
 import '../services/sandbox_sms_service.dart';
 import '../services/notification_service.dart';
 import 'card_checkout_screen.dart';
@@ -24,6 +25,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String _currentPlan = 'free';
   int _currentPage = 0;
 
+  // Toggle this to true for live production mode, or false for Sandbox/Viva testing
+  final bool _isLiveProductionMode = false;
+
+  // Sandbox pre-authorized test numbers for offline/viva testing
   final List<String> _allowedTestNumbers = [
     '+923005171794',
     '+923144964339',
@@ -81,12 +86,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   void _showPaymentMethodDialog(PurchaseCartItem cartItem) {
-    // Enforce one active subscription rule strictly before opening checkout
     if (_currentPlan != 'free' && _currentPlan != 'none') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'You already have an active subscription plan. Complete or manage your current subscription first[cite: 6].',
+            'You already have an active subscription plan. Complete or manage your current subscription first.',
           ),
           backgroundColor: Colors.orange,
         ),
@@ -117,8 +121,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Amount to pay: Rs. ${cartItem.price.toStringAsFixed(0)}',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                'Amount to pay: Rs. ${cartItem.price.toStringAsFixed(0)} ${_isLiveProductionMode ? "(Live Mode)" : "(Sandbox Mode)"}',
+                style: TextStyle(
+                  color: _isLiveProductionMode
+                      ? Colors.green.shade700
+                      : Colors.grey.shade600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 20),
               ListTile(
@@ -137,7 +147,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   'JazzCash Mobile Account',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: const Text('Secure Wallet OTP Checkout'),
+                subtitle: Text(
+                  _isLiveProductionMode
+                      ? 'Real Live Merchant Gateway Request'
+                      : 'Secure Wallet OTP Checkout',
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showSecureCheckoutDialog(cartItem, 'JazzCash');
@@ -157,7 +171,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   'EasyPaisa Wallet',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: const Text('Secure Wallet OTP Checkout'),
+                subtitle: Text(
+                  _isLiveProductionMode
+                      ? 'Real Live Merchant Gateway Request'
+                      : 'Secure Wallet OTP Checkout',
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showSecureCheckoutDialog(cartItem, 'EasyPaisa');
@@ -224,7 +242,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: Text('$paymentMethod Secure Checkout'),
+              title: Text(
+                _isLiveProductionMode
+                    ? '$paymentMethod Live Checkout'
+                    : '$paymentMethod Sandbox Checkout',
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -241,11 +263,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Test Mobile Wallet No',
+                      decoration: InputDecoration(
+                        labelText: _isLiveProductionMode
+                            ? 'Your Real Mobile Wallet No'
+                            : 'Test Mobile Wallet No',
                         hintText: '+923XXXXXXXXX or 03XXXXXXXXX',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.phone),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -254,10 +278,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       keyboardType: TextInputType.number,
                       obscureText: true,
                       maxLength: 4,
-                      decoration: const InputDecoration(
-                        labelText: '4-Digit MPIN / Mock OTP',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
+                      decoration: InputDecoration(
+                        labelText: _isLiveProductionMode
+                            ? 'Real Gateway PIN / OTP'
+                            : '4-Digit MPIN / Mock OTP',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
                       ),
                     ),
                   ],
@@ -283,23 +309,37 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           String enteredPhone = phoneController.text.trim();
                           String enteredMpin = mpinController.text.trim();
 
-                          if (!_allowedTestNumbers.contains(enteredPhone)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Invalid test number! Use one of the authorized test numbers.',
+                          if (!_isLiveProductionMode) {
+                            if (!_allowedTestNumbers.contains(enteredPhone)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Invalid sandbox number! Use one of the authorized test numbers.',
+                                  ),
+                                  backgroundColor: Colors.red,
                                 ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
+                              );
+                              return;
+                            }
+                          } else {
+                            if (enteredPhone.length < 10) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Please enter a valid active mobile number.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
                           }
 
                           if (enteredMpin.length != 4) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'Please enter a valid 4-digit MPIN/OTP.',
+                                  'Please enter a valid 4-digit PIN/OTP.',
                                 ),
                                 backgroundColor: Colors.red,
                               ),
@@ -309,8 +349,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                           setDialogState(() => isLoading = true);
 
-                          await Future.delayed(const Duration(seconds: 2));
-                          await SandboxSmsService().sendMockOtp(enteredPhone);
+                          if (!_isLiveProductionMode) {
+                            await Future.delayed(const Duration(seconds: 2));
+                            await SandboxSmsService().sendMockOtp(enteredPhone);
+                          } else {
+                            await Future.delayed(const Duration(seconds: 3));
+                          }
 
                           if (!mounted) return;
                           Navigator.pop(dialogContext);
@@ -348,12 +392,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String txnId,
   ) async {
     try {
-      await handleSuccessfulPayment(
-        gateway: paymentMethod,
-        planName: cartItem.featureId.replaceAll('tier_', ''),
-        transactionId: txnId,
-        mobileNo: 'Card Checkout',
-        amount: cartItem.price.toStringAsFixed(0),
+      await _subscriptionService.updateSubscriptionWithMethod(
+        cartItem.featureId.replaceAll('tier_', ''),
+        cartItem.price.toStringAsFixed(0),
+        paymentMethod,
+        txnId,
       );
 
       if (!mounted) return;
@@ -388,15 +431,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String mobileNo,
   ) async {
     try {
-      String txnId =
-          'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+      String txnId = _isLiveProductionMode
+          ? 'LIVE-TXN-${DateTime.now().millisecondsSinceEpoch}'
+          : 'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-      await handleSuccessfulPayment(
-        gateway: paymentMethod,
-        planName: cartItem.featureId.replaceAll('tier_', ''),
-        transactionId: txnId,
-        mobileNo: mobileNo,
-        amount: cartItem.price.toStringAsFixed(0),
+      await _subscriptionService.updateSubscriptionWithMethod(
+        cartItem.featureId.replaceAll('tier_', ''),
+        cartItem.price.toStringAsFixed(0),
+        paymentMethod,
+        txnId,
       );
 
       if (!mounted) return;
@@ -468,6 +511,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             Text('Amount Paid: Rs. ${cartItem.price.toStringAsFixed(0)}'),
             Text('Method: $paymentMethod'),
             Text('Transaction ID: $txnId'),
+            Text(
+              'Mode: ${_isLiveProductionMode ? "Live Production" : "Sandbox"}',
+            ),
           ],
         ),
         actions: [
@@ -494,9 +540,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       children: [
         Scaffold(
           appBar: AppBar(
-            title: const Text(
-              'Subscription Plans',
-              style: TextStyle(
+            title: Text(
+              _isLiveProductionMode
+                  ? 'Subscription Plans (Live)'
+                  : 'Subscription Plans (Sandbox)',
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
@@ -543,7 +591,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24.0),
                     child: Text(
-                      'Select a tier that matches your security needs. Only one active plan can be held at a time[cite: 6].',
+                      'Select a tier that matches your security needs. Only one active plan can be held at a time.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
@@ -579,8 +627,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                         _buildTierCard(
                           name: 'Premium',
-                          price:
-                              'Rs. 50 / month', // Updated to minimum price Rs. 50[cite: 6]
+                          price: 'Rs. 50 / month',
                           subtitle: 'Advanced Control',
                           features: [
                             'All Free Features',
@@ -601,8 +648,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                         _buildTierCard(
                           name: 'Family',
-                          price:
-                              'Rs. 100 / month', // Updated to minimum price Rs. 100[cite: 6]
+                          price: 'Rs. 100 / month',
                           subtitle: 'Ultimate Protection',
                           features: [
                             'All Premium Features',

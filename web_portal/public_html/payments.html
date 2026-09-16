@@ -36,6 +36,7 @@
         th { background: #f9f9f9; color: #333; cursor: default; }
         tr:hover { background-color: #faf5fb; }
         .badge { background: #841EA0; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 10px; }
+        .badge-mock { background: #e0e0e0; color: #333; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 10px; }
         
         /* Inspector Pane Styles */
         .inspector-card h3 { margin-bottom: 15px; font-size: 16px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -75,11 +76,11 @@
         <!-- KPI Summary Cards -->
         <div class="kpi-container">
             <div class="kpi-card">
-                <h4>Total Active Paid Users</h4>
+                <h4>Total Active Paid & Mock Users</h4>
                 <h2 id="totalPaidCount">0</h2>
             </div>
             <div class="kpi-card">
-                <h4>Estimated Monthly Revenue</h4>
+                <h4>Estimated Monthly Revenue (Live)</h4>
                 <h2 id="totalRevenue">PKR 0</h2>
             </div>
         </div>
@@ -89,15 +90,15 @@
             <!-- Left Column: Transaction Ledger Table -->
             <div class="table-card">
                 <div class="controls-bar">
-                    <h3>Transactions Ledger</h3>
-                    <input type="text" id="searchInput" class="search-input" placeholder="Search email or txn ID..." onkeyup="filterTable()">
+                    <h3>Subscriptions & Transactions Ledger</h3>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search email, plan, or txn ID..." onkeyup="filterTable()">
                 </div>
                 <table>
                     <thead>
                         <tr>
                             <th>User Email</th>
                             <th>Plan</th>
-                            <th>Gateway</th>
+                            <th>Mode / Gateway</th>
                             <th>Transaction ID</th>
                             <th>Date</th>
                         </tr>
@@ -158,11 +159,13 @@
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    const tier = data.subscriptionTier || data.subscriptionPlan || 'free';
+                    const tier = data.subscriptionTier || data.subscriptionPlan || data.plan || 'free';
+                    const isMock = data.mockUpgraded === true;
+                    const isPaidLive = data.isPaid === true || !!data.lastTransactionId;
 
-                    // Surface users whose tier is not free, or who have a recorded transaction ID
-                    if (tier.toLowerCase() !== 'free' || data.lastTransactionId) {
-                        allPaidRecords.push({ id: doc.id, ...data, plan: tier });
+                    // Include users who have an active tier (not free), are mock upgraded, or have completed a live payment
+                    if (tier.toLowerCase() !== 'free' || isMock || isPaidLive) {
+                        allPaidRecords.push({ id: doc.id, ...data, plan: tier, isMockUser: isMock });
                     }
                 });
 
@@ -180,14 +183,14 @@
             tableBody.innerHTML = '';
 
             if (records.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No active subscriptions found.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No active subscriptions or sandbox upgrades found.</td></tr>';
                 return;
             }
 
             records.forEach(data => {
                 const email = data.email || 'N/A';
-                const gateway = data.paymentMethod || data.paymentGateway || 'N/A';
-                const txnId = data.lastTransactionId || 'N/A';
+                const gateway = data.paymentMethod || data.paymentGateway || (data.isMockUser ? 'Sandbox / Mock' : 'Live Gateway');
+                const txnId = data.lastTransactionId || (data.isMockUser ? 'MOCK-TXN-' + data.id.substring(0, 6) : 'N/A');
                 
                 let formattedDate = 'N/A';
                 const timeField = data.updatedAt || data.subscribedAt;
@@ -197,13 +200,15 @@
                     formattedDate = new Date(timeField.seconds * 1000).toLocaleDateString();
                 }
 
+                const badgeClass = data.isMockUser ? 'badge-mock' : 'badge';
+                const modeLabel = data.isMockUser ? '🧪 Mock / Sandbox' : '💳 Live Payment';
                 const recordString = encodeURIComponent(JSON.stringify(data));
 
                 tableBody.innerHTML += `
                     <tr onclick='inspectRecord("${recordString}")'>
                         <td>${email}</td>
-                        <td><span class="badge">${data.plan.toUpperCase()}</span></td>
-                        <td>${gateway}</td>
+                        <td><span class="${badgeClass}">${data.plan.toUpperCase()}</span></td>
+                        <td>${modeLabel} (${gateway})</td>
                         <td><code>${txnId}</code></td>
                         <td>${formattedDate}</td>
                     </tr>
@@ -217,10 +222,11 @@
 
             const email = data.email || 'N/A';
             const plan = (data.plan || 'Free').toUpperCase();
-            const gateway = data.paymentMethod || data.paymentGateway || 'N/A';
+            const gateway = data.paymentMethod || data.paymentGateway || (data.isMockUser ? 'Sandbox / Mock Upgrade' : 'Standard Live');
             const verifiedPhone = data.verifiedPhoneNumber || data.phone || 'N/A';
-            const txnId = data.lastTransactionId || 'N/A';
-            const price = data.planPrice ? `PKR ${data.planPrice}` : 'N/A';
+            const txnId = data.lastTransactionId || (data.isMockUser ? 'Simulated Sandbox Token' : 'N/A');
+            const price = data.planPrice ? `PKR ${data.planPrice}` : (data.isMockUser ? 'Free / Simulated' : 'N/A');
+            const statusType = data.isMockUser ? '<span class="badge-mock">Sandbox Mode</span>' : '<span class="badge">Live Paid User</span>';
             
             let formattedDate = 'N/A';
             const timeField = data.updatedAt || data.subscribedAt;
@@ -231,6 +237,10 @@
             }
 
             inspector.innerHTML = `
+                <div class="detail-group">
+                    <label>Activation Type</label>
+                    <p>${statusType}</p>
+                </div>
                 <div class="detail-group">
                     <label>Firebase User UID</label>
                     <p><small>${data.id}</small></p>
@@ -244,7 +254,7 @@
                     <p><span class="badge">${plan}</span> (${price})</p>
                 </div>
                 <div class="detail-group">
-                    <label>Payment Gateway / Method</label>
+                    <label>Gateway / Method</label>
                     <p>${gateway}</p>
                 </div>
                 <div class="detail-group">
@@ -252,7 +262,7 @@
                     <p>${verifiedPhone}</p>
                 </div>
                 <div class="detail-group">
-                    <label>Last Transaction ID</label>
+                    <label>Transaction ID / Token</label>
                     <p><code>${txnId}</code></p>
                 </div>
                 <div class="detail-group">
@@ -260,24 +270,29 @@
                     <p>${formattedDate}</p>
                 </div>
                 <div class="inspector-actions">
-                    <button class="action-btn" onclick="revokePlan('${data.id}')">Revoke Plan</button>
+                    <button class="action-btn" onclick="revokePlan('${data.id}')">Revoke Plan & Access</button>
                 </div>
             `;
         }
 
         function updateKPIs(records) {
             let totalRevenue = 0;
+            let paidCount = 0;
+
             records.forEach(r => {
-                if (r.planPrice && typeof r.planPrice === 'number') {
-                    totalRevenue += r.planPrice;
-                } else {
-                    let planLower = r.plan.toLowerCase();
-                    if (planLower.includes('premium')) totalRevenue += 99;
-                    if (planLower.includes('family') || planLower.includes('pro')) totalRevenue += 199;
+                if (!r.isMockUser) {
+                    paidCount++;
+                    if (r.planPrice && typeof r.planPrice === 'number') {
+                        totalRevenue += r.planPrice;
+                    } else {
+                        let planLower = r.plan.toLowerCase();
+                        if (planLower.includes('premium')) totalRevenue += 999;
+                        if (planLower.includes('family') || planLower.includes('pro')) totalRevenue += 1999;
+                    }
                 }
             });
 
-            document.getElementById('totalPaidCount').innerText = records.length;
+            document.getElementById('totalPaidCount').innerText = records.length; // Shows total combined (Live + Mock)
             document.getElementById('totalRevenue').innerText = `PKR ${totalRevenue.toLocaleString()}`;
         }
 
@@ -298,10 +313,13 @@
                     await db.collection('users').doc(userId).update({
                         subscriptionTier: 'free',
                         subscriptionPlan: 'free',
+                        plan: 'free',
                         subscriptionStatus: 'inactive',
+                        mockUpgraded: false,
+                        isPaid: false,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    alert("User successfully reverted to Free tier.");
+                    alert("User successfully revoked and reverted to Free tier.");
                     document.getElementById('inspectorContent').innerHTML = '<p class="placeholder-text">Record updated. Select another transaction.</p>';
                     loadPaidUsersTable();
                 } catch (error) {

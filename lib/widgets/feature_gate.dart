@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/subscription_service.dart';
 import '../screens/subscription_screen.dart';
+import '../services/app_config.dart'; // Make sure this path matches your AppConfig location
 
 class FeatureGate extends StatelessWidget {
   final String requiredPlan; // 'free', 'premium', or 'family'
@@ -15,6 +16,13 @@ class FeatureGate extends StatelessWidget {
   });
 
   bool _hasAccess(String currentPlan, String required) {
+    // If we are in Sandbox mode, you can optionally grant all access for your defense,
+    // or let it enforce normally based on the user's plan.
+    if (!AppConfig.isLiveProductionMode) {
+      // Option: Uncomment the line below if you want everything unlocked during your Viva/Defense
+      // return true;
+    }
+
     if (required == 'free') return true;
     if (required == 'premium') {
       return currentPlan == 'premium' || currentPlan == 'family';
@@ -86,7 +94,7 @@ class FeatureGate extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'This security feature requires the ${requiredPlan.toUpperCase()} tier. Upgrade your subscription to unlock backup and restore feature.',
+                    'This security feature requires the ${requiredPlan.toUpperCase()} tier. Upgrade your subscription to unlock $featureName.',
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontSize: 14,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
+import '../services/app_config.dart'; // Make sure this path matches your AppConfig location
 
 class NotificationBellIcon extends StatefulWidget {
   const NotificationBellIcon({super.key});
@@ -42,9 +43,40 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Payment Notifications',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      const Text(
+                        'Payment Notifications',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Dual-Mode Environment Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppConfig.isLiveProductionMode
+                              ? Colors.green.shade100
+                              : Colors.purple.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          AppConfig.isLiveProductionMode ? 'LIVE' : 'SANDBOX',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppConfig.isLiveProductionMode
+                                ? Colors.green.shade800
+                                : Colors.purple.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   Row(
                     children: [
@@ -79,10 +111,12 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                     }
 
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Text(
-                          'No recent payment notifications.',
-                          style: TextStyle(color: Colors.grey),
+                          AppConfig.isLiveProductionMode
+                              ? 'No live payment notifications.'
+                              : 'No sandbox mock notifications.',
+                          style: const TextStyle(color: Colors.grey),
                         ),
                       );
                     }

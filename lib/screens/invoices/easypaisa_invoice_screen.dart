@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../models/purchase_cart_item.dart';
+import '../../services/app_config.dart';
 
 class EasypaisaInvoiceScreen extends StatelessWidget {
   final List<PurchaseCartItem> items;
@@ -19,13 +20,29 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String currentDate = DateTime.now().toString().split('.').first;
+
+    final String prefix = AppConfig.isLiveProductionMode
+        ? 'EP-LIVE'
+        : 'EP-SANDBOX';
     final String transactionId =
-        'EP-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+        '$prefix-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
+    final Color themeColor = AppConfig.isLiveProductionMode
+        ? const Color(0xFF00A651)
+        : Colors.purple.shade700;
+
+    final Color containerBgColor = AppConfig.isLiveProductionMode
+        ? const Color(0xFFE8F5E9)
+        : Colors.purple.shade50;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Easypaisa Digital Receipt'),
-        backgroundColor: const Color(0xFF00A651),
+        title: Text(
+          AppConfig.isLiveProductionMode
+              ? 'Easypaisa Verified Receipt (Live)'
+              : 'Easypaisa Digital Receipt (Sandbox Mock)',
+        ),
+        backgroundColor: themeColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -47,36 +64,56 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'EASYPAISA MOBILE WALLET',
+                              AppConfig.isLiveProductionMode
+                                  ? 'EASYPAISA MOBILE WALLET (LIVE)'
+                                  : 'EASYPAISA MOBILE WALLET (SANDBOX)',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
-                                color: Color(0xFF00A651),
+                                color: themeColor,
                               ),
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              'PayFast Verified Transaction',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  AppConfig.isLiveProductionMode
+                                      ? Icons.verified
+                                      : Icons.science,
+                                  size: 14,
+                                  color: AppConfig.isLiveProductionMode
+                                      ? Colors.blue
+                                      : Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppConfig.isLiveProductionMode
+                                      ? 'PayFast Real Payment Verified'
+                                      : 'PayFast Sandbox Simulation',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE8F5E9),
+                          decoration: BoxDecoration(
+                            color: containerBgColor,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.account_balance_wallet,
-                            color: Color(0xFF00A651),
+                          child: Icon(
+                            AppConfig.isLiveProductionMode
+                                ? Icons.person_pin_circle
+                                : Icons.account_balance_wallet,
+                            color: themeColor,
                             size: 28,
                           ),
                         ),
@@ -86,8 +123,10 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
 
                     _buildMetaRow(
                       'Transaction Status',
-                      'SUCCESS',
-                      color: const Color(0xFF00A651),
+                      AppConfig.isLiveProductionMode
+                          ? 'SUCCESS (LIVE PRODUCTION)'
+                          : 'SUCCESS (MOCK SIMULATION)',
+                      color: themeColor,
                     ),
                     const SizedBox(height: 8),
                     _buildMetaRow('Token Number', token, isMonospace: true),
@@ -144,9 +183,9 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
                         ),
                         Text(
                           'PKR $totalAmount',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF00A651),
+                            color: themeColor,
                             fontSize: 18,
                           ),
                         ),
@@ -159,14 +198,18 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
                       height: 48,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00A651),
+                          backgroundColor: themeColor,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         onPressed: () async {
-                          await _printInvoice(currentDate, transactionId);
+                          await _printInvoice(
+                            currentDate,
+                            transactionId,
+                            themeColor,
+                          );
                         },
                         icon: const Icon(Icons.print),
                         label: const Text(
@@ -188,15 +231,23 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _printInvoice(String currentDate, String transactionId) async {
+  Future<void> _printInvoice(
+    String currentDate,
+    String transactionId,
+    Color themeColor,
+  ) async {
     final pdf = pw.Document();
+
+    final int pdfColorValue = AppConfig.isLiveProductionMode
+        ? 0xFF00A651
+        : 0xFF6A1B9A;
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Padding(
-            padding: const pw.EdgeInsets.all(24), // Fixed with pw. prefix
+            padding: const pw.EdgeInsets.all(24),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -207,16 +258,20 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          'EASYPAISA MOBILE WALLET',
+                          AppConfig.isLiveProductionMode
+                              ? 'EASYPAISA MOBILE WALLET (LIVE)'
+                              : 'EASYPAISA MOBILE WALLET (SANDBOX)',
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
                             fontSize: 18,
-                            color: PdfColor.fromInt(0xFF00A651),
+                            color: PdfColor.fromInt(pdfColorValue),
                           ),
                         ),
                         pw.SizedBox(height: 4),
                         pw.Text(
-                          'PayFast Verified Transaction',
+                          AppConfig.isLiveProductionMode
+                              ? 'PayFast Verified Real Payment'
+                              : 'PayFast Sandbox Simulation',
                           style: const pw.TextStyle(
                             fontSize: 12,
                             color: PdfColors.grey700,
@@ -228,7 +283,12 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
                   ],
                 ),
                 pw.Divider(height: 30),
-                _buildPdfMetaRow('Transaction Status', 'SUCCESS'),
+                _buildPdfMetaRow(
+                  'Transaction Status',
+                  AppConfig.isLiveProductionMode
+                      ? 'SUCCESS (LIVE PRODUCTION)'
+                      : 'SUCCESS (MOCK SIMULATION)',
+                ),
                 pw.SizedBox(height: 8),
                 _buildPdfMetaRow('Token Number', token),
                 pw.SizedBox(height: 8),
@@ -272,7 +332,7 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 18,
-                        color: PdfColor.fromInt(0xFF00A651),
+                        color: PdfColor.fromInt(pdfColorValue),
                       ),
                     ),
                   ],

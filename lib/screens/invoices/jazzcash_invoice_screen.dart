@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../models/purchase_cart_item.dart';
+import '../../services/app_config.dart';
 
 class JazzCashInvoiceScreen extends StatelessWidget {
   final List<PurchaseCartItem> items;
@@ -19,13 +20,29 @@ class JazzCashInvoiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String currentDate = DateTime.now().toString().split('.').first;
+
+    final String prefix = AppConfig.isLiveProductionMode
+        ? 'JC-LIVE'
+        : 'JC-SANDBOX';
     final String gatewayRef =
-        'JC-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+        '$prefix-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
+    final Color themeColor = AppConfig.isLiveProductionMode
+        ? const Color(0xFFE61C24)
+        : Colors.orange.shade800;
+
+    final Color containerBgColor = AppConfig.isLiveProductionMode
+        ? const Color(0xFFFFEBEE)
+        : Colors.orange.shade50;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('JazzCash Transaction Receipt'),
-        backgroundColor: const Color(0xFFE61C24),
+        title: Text(
+          AppConfig.isLiveProductionMode
+              ? 'JazzCash Verified Receipt (Live)'
+              : 'JazzCash Transaction Receipt (Sandbox Mock)',
+        ),
+        backgroundColor: themeColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -47,36 +64,56 @@ class JazzCashInvoiceScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'JAZZCASH MOBILE ACCOUNT',
+                              AppConfig.isLiveProductionMode
+                                  ? 'JAZZCASH MOBILE ACCOUNT (LIVE)'
+                                  : 'JAZZCASH MOBILE ACCOUNT (SANDBOX)',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
-                                color: Color(0xFFE61C24),
+                                color: themeColor,
                               ),
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              'PayFast Verified Transaction',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  AppConfig.isLiveProductionMode
+                                      ? Icons.verified
+                                      : Icons.science,
+                                  size: 14,
+                                  color: AppConfig.isLiveProductionMode
+                                      ? Colors.blue
+                                      : Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppConfig.isLiveProductionMode
+                                      ? 'PayFast Real Payment Verified'
+                                      : 'PayFast Sandbox Simulation',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFEBEE),
+                          decoration: BoxDecoration(
+                            color: containerBgColor,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.phone_android,
-                            color: Color(0xFFE61C24),
+                          child: Icon(
+                            AppConfig.isLiveProductionMode
+                                ? Icons.person_pin_circle
+                                : Icons.phone_android,
+                            color: themeColor,
                             size: 28,
                           ),
                         ),
@@ -86,7 +123,9 @@ class JazzCashInvoiceScreen extends StatelessWidget {
 
                     _buildMetaRow(
                       'Transaction Status',
-                      'SUCCESS',
+                      AppConfig.isLiveProductionMode
+                          ? 'SUCCESS (LIVE PRODUCTION)'
+                          : 'SUCCESS (MOCK SIMULATION)',
                       color: Colors.green,
                     ),
                     const SizedBox(height: 8),
@@ -144,9 +183,9 @@ class JazzCashInvoiceScreen extends StatelessWidget {
                         ),
                         Text(
                           'PKR $totalAmount',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFE61C24),
+                            color: themeColor,
                             fontSize: 18,
                           ),
                         ),
@@ -159,7 +198,7 @@ class JazzCashInvoiceScreen extends StatelessWidget {
                       height: 48,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE61C24),
+                          backgroundColor: themeColor,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -191,12 +230,16 @@ class JazzCashInvoiceScreen extends StatelessWidget {
   Future<void> _printInvoice(String currentDate, String gatewayRef) async {
     final pdf = pw.Document();
 
+    final int pdfColorValue = AppConfig.isLiveProductionMode
+        ? 0xFFE61C24
+        : 0xFFEF6C00;
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Padding(
-            padding: const pw.EdgeInsets.all(24), // Fixed with pw. prefix
+            padding: const pw.EdgeInsets.all(24),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -207,16 +250,20 @@ class JazzCashInvoiceScreen extends StatelessWidget {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          'JAZZCASH MOBILE ACCOUNT',
+                          AppConfig.isLiveProductionMode
+                              ? 'JAZZCASH MOBILE ACCOUNT (LIVE)'
+                              : 'JAZZCASH MOBILE ACCOUNT (SANDBOX)',
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
                             fontSize: 18,
-                            color: PdfColor.fromInt(0xFFE61C24),
+                            color: PdfColor.fromInt(pdfColorValue),
                           ),
                         ),
                         pw.SizedBox(height: 4),
                         pw.Text(
-                          'PayFast Verified Transaction',
+                          AppConfig.isLiveProductionMode
+                              ? 'PayFast Verified Real Payment'
+                              : 'PayFast Sandbox Simulation',
                           style: const pw.TextStyle(
                             fontSize: 12,
                             color: PdfColors.grey700,
@@ -228,7 +275,12 @@ class JazzCashInvoiceScreen extends StatelessWidget {
                   ],
                 ),
                 pw.Divider(height: 30),
-                _buildPdfMetaRow('Transaction Status', 'SUCCESS'),
+                _buildPdfMetaRow(
+                  'Transaction Status',
+                  AppConfig.isLiveProductionMode
+                      ? 'SUCCESS (LIVE PRODUCTION)'
+                      : 'SUCCESS (MOCK SIMULATION)',
+                ),
                 pw.SizedBox(height: 8),
                 _buildPdfMetaRow('Transaction ID', txnId),
                 pw.SizedBox(height: 8),
@@ -272,7 +324,7 @@ class JazzCashInvoiceScreen extends StatelessWidget {
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 18,
-                        color: PdfColor.fromInt(0xFFE61C24),
+                        color: PdfColor.fromInt(pdfColorValue),
                       ),
                     ),
                   ],

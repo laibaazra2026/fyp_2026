@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/purchase_cart_item.dart';
 import '../services/notification_service.dart';
+import '../services/app_config.dart'; // Import config for live vs sandbox mode
 
 enum PaymentGatewayType { payfast, jazzCashCard, stripe }
 
@@ -25,6 +26,13 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
 
   bool _isLoading = false;
 
+  // Pre-authorized test cards for sandbox/viva testing mode
+  final List<String> _allowedTestCards = [
+    '4111 2222 3333 4444',
+    '5555 4444 3333 2222',
+    '4000 1234 5678 9010',
+  ];
+
   @override
   void dispose() {
     _cardNumberController.dispose();
@@ -37,6 +45,22 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
   void _processPayment() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Sandbox card validation check
+    String enteredCard = _cardNumberController.text.trim();
+    if (!AppConfig.isLiveProductionMode) {
+      if (!_allowedTestCards.contains(enteredCard)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Sandbox Mode: Please use a valid pre-authorized test card number.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _isLoading = true);
 
     // Simulate secure gateway processing delay
@@ -45,8 +69,10 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    String txnId =
-        'CC-TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    String txnId = AppConfig.isLiveProductionMode
+        ? 'CC-LIVE-TXN-${DateTime.now().millisecondsSinceEpoch}'
+        : 'CC-TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
     String gatewayName = _getGatewayName(_selectedGateway);
     String amountStr = widget.cartItem.price.toStringAsFixed(0);
 
@@ -82,9 +108,14 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Secure Card Checkout',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          AppConfig.isLiveProductionMode
+              ? 'Secure Card Checkout (Live)'
+              : 'Secure Card Checkout (Sandbox)',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: Colors.purple.shade700,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -98,7 +129,13 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
             children: [
               Text(
                 'Paying PKR ${widget.cartItem.price.toStringAsFixed(0)} for ${widget.cartItem.title}',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                style: TextStyle(
+                  color: AppConfig.isLiveProductionMode
+                      ? Colors.green.shade700
+                      : Colors.grey.shade600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 20),
               const Text(
@@ -138,7 +175,7 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person_outline),
                 ),
-                validator: (value) => value == null || value.isEmpty
+                validator: (value) => value == null || value.trim().isEmpty
                     ? 'Please enter cardholder name'
                     : null,
               ),
@@ -151,15 +188,17 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                   LengthLimitingTextInputFormatter(16),
                   CardNumberFormatter(),
                 ],
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Card Number',
-                  hintText: 'XXXX XXXX XXXX XXXX',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.credit_card),
+                  hintText: AppConfig.isLiveProductionMode
+                      ? 'XXXX XXXX XXXX XXXX'
+                      : 'Test Card: 4111 2222 3333 4444',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.credit_card),
                 ),
                 validator: (value) {
                   if (value == null || value.replaceAll(' ', '').length < 15) {
-                    return 'Enter a valid card number';
+                    return 'Enter a valid 16-digit card number';
                   }
                   return null;
                 },
@@ -184,7 +223,7 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.length < 5) {
-                          return 'Invalid expiry';
+                          return 'Invalid expiry (MM/YY)';
                         }
                         return null;
                       },
@@ -196,6 +235,7 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                       controller: _cvvController,
                       keyboardType: TextInputType.number,
                       obscureText: true,
+                      maxLength: 4,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(4),
