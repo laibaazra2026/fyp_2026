@@ -3,7 +3,7 @@ import 'package:confetti/confetti.dart';
 import '../models/purchase_cart_item.dart';
 import '../services/subscription_service.dart';
 import '../services/sandbox_sms_service.dart';
-import '../services/notification_service.dart'; // Added import for notifications
+import '../services/notification_service.dart';
 import 'card_checkout_screen.dart';
 import 'invoices/jazzcash_invoice_screen.dart';
 import 'invoices/easypaisa_invoice_screen.dart';
@@ -81,6 +81,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   void _showPaymentMethodDialog(PurchaseCartItem cartItem) {
+    // Enforce one active subscription rule strictly before opening checkout
+    if (_currentPlan != 'free' && _currentPlan != 'none') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You already have an active subscription plan. Complete or manage your current subscription first[cite: 6].',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -335,7 +348,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String txnId,
   ) async {
     try {
-      // Trigger centralized handler which updates subscription, logs request, and saves notification
       await handleSuccessfulPayment(
         gateway: paymentMethod,
         planName: cartItem.featureId.replaceAll('tier_', ''),
@@ -379,7 +391,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       String txnId =
           'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-      // Trigger centralized handler which updates subscription, logs request, and saves notification safely
       await handleSuccessfulPayment(
         gateway: paymentMethod,
         planName: cartItem.featureId.replaceAll('tier_', ''),
@@ -477,6 +488,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool hasActivePlan = _currentPlan != 'free' && _currentPlan != 'none';
+
     return Stack(
       children: [
         Scaffold(
@@ -530,7 +543,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24.0),
                     child: Text(
-                      'Select a tier that matches your security needs and unlock advanced safety features.',
+                      'Select a tier that matches your security needs. Only one active plan can be held at a time[cite: 6].',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
@@ -562,10 +575,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           isCurrent: _currentPlan == 'free',
                           buttonText: 'Current Plan',
                           onTap: null,
+                          hasActiveConflict: hasActivePlan,
                         ),
                         _buildTierCard(
                           name: 'Premium',
-                          price: 'Rs. 99 / month',
+                          price:
+                              'Rs. 50 / month', // Updated to minimum price Rs. 50[cite: 6]
                           subtitle: 'Advanced Control',
                           features: [
                             'All Free Features',
@@ -577,14 +592,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             final cartItem = PurchaseCartItem(
                               featureId: 'tier_premium',
                               title: 'Premium Plan',
-                              price: 99.0,
+                              price: 50.0,
                             );
                             _showPaymentMethodDialog(cartItem);
                           },
+                          hasActiveConflict:
+                              hasActivePlan && _currentPlan != 'premium',
                         ),
                         _buildTierCard(
                           name: 'Family',
-                          price: 'Rs. 199 / month',
+                          price:
+                              'Rs. 100 / month', // Updated to minimum price Rs. 100[cite: 6]
                           subtitle: 'Ultimate Protection',
                           features: [
                             'All Premium Features',
@@ -596,10 +614,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             final cartItem = PurchaseCartItem(
                               featureId: 'tier_family',
                               title: 'Family Plan',
-                              price: 199.0,
+                              price: 100.0,
                             );
                             _showPaymentMethodDialog(cartItem);
                           },
+                          hasActiveConflict:
+                              hasActivePlan && _currentPlan != 'family',
                         ),
                       ],
                     ),
@@ -659,6 +679,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     required bool isCurrent,
     required String buttonText,
     required VoidCallback? onTap,
+    required bool hasActiveConflict,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -755,7 +776,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            if (onTap != null && !isCurrent)
+            if (onTap != null && !isCurrent && !hasActiveConflict)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -790,12 +811,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                   ),
                   child: Text(
-                    isCurrent ? 'Current Active Plan' : buttonText,
+                    isCurrent
+                        ? 'Current Active Plan'
+                        : hasActiveConflict
+                        ? 'Plan Locked (Active Plan Exists)'
+                        : buttonText,
                     style: TextStyle(
                       color: isCurrent ? Colors.green : Colors.grey,
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
