@@ -36,7 +36,6 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(20),
-          // FIX: Reduced maxHeight from 0.75 to 0.65 to prevent the 13px renderflex overflow error
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.65,
           ),
@@ -44,47 +43,57 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // FIXED HEADER: Wrapped title/badge in Expanded to prevent horizontal overflow
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Payment Notifications',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Dual-Mode Environment Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppConfig.isLiveProductionMode
-                              ? Colors.green.shade100
-                              : Colors.purple.shade100,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          AppConfig.isLiveProductionMode ? 'LIVE' : 'SANDBOX',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppConfig.isLiveProductionMode
-                                ? Colors.green.shade800
-                                : Colors.purple.shade800,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Flexible(
+                          child: Text(
+                            'Payment Notifications',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        // Dual-Mode Environment Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppConfig.isLiveProductionMode
+                                ? Colors.green.shade100
+                                : Colors.purple.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            AppConfig.isLiveProductionMode ? 'LIVE' : 'SANDBOX',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppConfig.isLiveProductionMode
+                                  ? Colors.green.shade800
+                                  : Colors.purple.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                        ),
                         onPressed: () async {
                           await _notificationService.clearAllNotifications();
                         },
@@ -93,12 +102,18 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                           style: TextStyle(
                             color: Colors.blue,
                             fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.black),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],

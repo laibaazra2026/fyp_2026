@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/purchase_cart_item.dart';
 import '../services/notification_service.dart';
-import '../services/app_config.dart'; // Import config for live vs sandbox mode
+import '../services/app_config.dart';
 
 enum PaymentGatewayType { payfast, jazzCashCard, stripe }
 
@@ -26,7 +26,6 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
 
   bool _isLoading = false;
 
-  // Pre-authorized test cards for sandbox/viva testing mode
   final List<String> _allowedTestCards = [
     '4111 2222 3333 4444',
     '5555 4444 3333 2222',
@@ -42,28 +41,26 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
     super.dispose();
   }
 
-  // Method to show a month/year picker dialog
+  // Exact Day/Month/Year Calendar Picker Method
   Future<void> _selectExpiryDate(BuildContext context) async {
     final DateTime now = DateTime.now();
 
-    // Show a YearPicker or DatePicker dialog constrained to months & years
     DateTime? picked = await showDatePicker(
       context: context,
       initialDate: now,
       firstDate: now,
       lastDate: DateTime(now.year + 15, 12, 31),
-      helpText: 'Select Card Expiry Month & Year',
+      helpText: 'Select Card Expiry Date (DD/MM/YYYY)',
       fieldLabelText: 'Expiry Date',
-      // Optional: if you want a custom appearance, standard calendar works well too
     );
 
     if (picked != null) {
-      // Format to MM/YY
+      String dayStr = picked.day.toString().padLeft(2, '0');
       String monthStr = picked.month.toString().padLeft(2, '0');
-      String yearStr = (picked.year % 100).toString().padLeft(2, '0');
+      String yearStr = picked.year.toString(); // Full 4-digit Year
 
       setState(() {
-        _expiryController.text = '$monthStr/$yearStr';
+        _expiryController.text = '$dayStr/$monthStr/$yearStr';
       });
     }
   }
@@ -71,7 +68,6 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
   void _processPayment() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Sandbox card validation check
     String enteredCard = _cardNumberController.text.trim();
     if (!AppConfig.isLiveProductionMode) {
       if (!_allowedTestCards.contains(enteredCard)) {
@@ -89,7 +85,6 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulate secure gateway processing delay
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
@@ -102,16 +97,14 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
     String gatewayName = _getGatewayName(_selectedGateway);
     String amountStr = widget.cartItem.price.toStringAsFixed(0);
 
-    // Call the centralized handler to update Firestore, logs, and notifications
     await handleSuccessfulPayment(
       gateway: gatewayName,
       planName: widget.cartItem.title,
       transactionId: txnId,
-      mobileNo: 'N/A', // Cards don't require mobile numbers
+      mobileNo: 'N/A',
       amount: amountStr,
     );
 
-    // Return result back to subscription screen
     if (!mounted) return;
     Navigator.pop(context, {
       'success': true,
@@ -239,15 +232,14 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(4),
+                        LengthLimitingTextInputFormatter(8), // DDMMYYYY
                         CardExpiryFormatter(),
                       ],
                       decoration: InputDecoration(
                         labelText: 'Expiry Date',
-                        hintText: 'MM/YY',
+                        hintText: 'DD/MM/YYYY',
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.date_range),
-                        // Added calendar picker button suffix icon
                         suffixIcon: IconButton(
                           icon: const Icon(
                             Icons.calendar_month,
@@ -262,19 +254,20 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                           return 'Required';
                         }
 
-                        if (value.length < 5 || !value.contains('/')) {
-                          return 'Invalid (MM/YY)';
+                        if (value.length < 10 || !value.contains('/')) {
+                          return 'Invalid format (DD/MM/YYYY)';
                         }
 
                         List<String> parts = value.split('/');
-                        if (parts.length != 2) {
+                        if (parts.length != 3) {
                           return 'Invalid format';
                         }
 
-                        int? month = int.tryParse(parts[0]);
-                        int? year = int.tryParse(parts[1]);
+                        int? day = int.tryParse(parts[0]);
+                        int? month = int.tryParse(parts[1]);
+                        int? year = int.tryParse(parts[2]);
 
-                        if (month == null || year == null) {
+                        if (day == null || month == null || year == null) {
                           return 'Invalid numbers';
                         }
 
@@ -282,12 +275,27 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                           return 'Invalid month (01-12)';
                         }
 
-                        final now = DateTime.now();
-                        int fullYear = 2000 + year;
+                        if (day < 1 || day > 31) {
+                          return 'Invalid day (01-31)';
+                        }
 
-                        if (fullYear < now.year ||
-                            (fullYear == now.year && month < now.month)) {
-                          return 'Card has expired';
+                        // Validate real calendar date & expiration
+                        try {
+                          final expiryDate = DateTime(year, month, day);
+                          if (expiryDate.year != year ||
+                              expiryDate.month != month ||
+                              expiryDate.day != day) {
+                            return 'Invalid calendar date';
+                          }
+
+                          final now = DateTime.now();
+                          final today = DateTime(now.year, now.month, now.day);
+
+                          if (expiryDate.isBefore(today)) {
+                            return 'Card has expired';
+                          }
+                        } catch (e) {
+                          return 'Invalid date';
                         }
 
                         return null;
@@ -389,11 +397,11 @@ class CardExpiryFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     var text = newValue.text.replaceAll('/', '');
-    if (text.length > 4) text = text.substring(0, 4);
+    if (text.length > 8) text = text.substring(0, 8);
     var buffer = StringBuffer();
     for (int i = 0; i < text.length; i++) {
       buffer.write(text[i]);
-      if (i == 1 && text.length > 2) {
+      if ((i == 1 || i == 3) && text.length > i + 1) {
         buffer.write('/');
       }
     }
