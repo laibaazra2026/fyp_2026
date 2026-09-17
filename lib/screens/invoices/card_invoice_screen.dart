@@ -78,8 +78,8 @@ class CardInvoiceScreen extends StatelessWidget {
                             children: [
                               Text(
                                 AppConfig.isLiveProductionMode
-                                    ? 'PAYFAST GATEWAY (LIVE)'
-                                    : 'EASYPAISA MOBILE WALLET (SANDBOX)',
+                                    ? 'PAYFAST CARD GATEWAY (LIVE)'
+                                    : 'PAYFAST CARD GATEWAY (SANDBOX)',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
@@ -101,7 +101,7 @@ class CardInvoiceScreen extends StatelessWidget {
                                     child: Text(
                                       AppConfig.isLiveProductionMode
                                           ? 'Secure Card Transaction Voucher'
-                                          : 'PayFast Sandbox Simulation',
+                                          : 'PayFast Card Simulation',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey,
@@ -121,9 +121,7 @@ class CardInvoiceScreen extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            AppConfig.isLiveProductionMode
-                                ? Icons.credit_card
-                                : Icons.account_balance_wallet,
+                            Icons.credit_card,
                             color: themeColor,
                             size: 28,
                           ),
@@ -270,8 +268,8 @@ class CardInvoiceScreen extends StatelessWidget {
                         children: [
                           pw.Text(
                             AppConfig.isLiveProductionMode
-                                ? 'PAYFAST GATEWAY (LIVE)'
-                                : 'EASYPAISA MOBILE WALLET (SANDBOX)',
+                                ? 'PAYFAST CARD GATEWAY (LIVE)'
+                                : 'PAYFAST CARD GATEWAY (SANDBOX)',
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
                               fontSize: 18,
