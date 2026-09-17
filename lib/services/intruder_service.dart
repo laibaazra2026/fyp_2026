@@ -2,8 +2,10 @@ import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as img;
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 
 class IntruderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -32,19 +34,19 @@ class IntruderService {
 
       final controller = CameraController(
         frontCamera,
-        ResolutionPreset
-            .medium, // Medium resolution helps avoid low-light sensor glitches on some devices
+        ResolutionPreset.medium,
         enableAudio: false,
       );
 
       await controller.initialize();
 
-      // Fix for black images: Lock exposure and focus to let the sensor process light properly
+      // Fix for dark/black images: Maximize exposure offset in low light
       try {
-        await controller.setExposureMode(ExposureMode.auto);
+        double maxExposure = await controller.getMaxExposureOffset();
+        await controller.setExposureOffset(maxExposure);
         await controller.setFocusMode(FocusMode.auto);
       } catch (e) {
-        print("⚠️ Could not set auto exposure/focus modes: $e");
+        print("⚠️ Could not set exposure/focus modes: $e");
       }
 
       // Give the camera sensor enough warm-up time to calculate lighting
@@ -53,11 +55,31 @@ class IntruderService {
       XFile image = await controller.takePicture();
       await controller.dispose();
 
+      final originalBytes = await image.readAsBytes();
+      img.Image? decodedImage = img.decodeImage(originalBytes);
+
+      late Uint8List imageBytes;
+
+      if (decodedImage != null) {
+        // Fix rotation and mirror the front camera selfie properly
+        int sensorOrientation = frontCamera.sensorOrientation;
+        if (sensorOrientation != 0) {
+          decodedImage = img.copyRotate(decodedImage, angle: sensorOrientation);
+        }
+
+        decodedImage = img.flipHorizontal(decodedImage);
+
+        imageBytes = Uint8List.fromList(
+          img.encodeJpg(decodedImage, quality: 85),
+        );
+      } else {
+        imageBytes = originalBytes;
+      }
+
       final appDir = await getApplicationDocumentsDirectory();
       final fileName = "intruder_${DateTime.now().millisecondsSinceEpoch}.jpg";
       final localFile = File('${appDir.path}/$fileName');
 
-      final imageBytes = await image.readAsBytes();
       await localFile.writeAsBytes(imageBytes);
       print("✅ Intruder photo saved locally in app at: ${localFile.path}");
 
@@ -72,7 +94,7 @@ class IntruderService {
       });
 
       print(
-        "🚨 Intruder image saved locally and logged to Firestore successfully!",
+        "🚨 Intruder image saved, straightened, brightened, and logged successfully!",
       );
     } catch (e) {
       print("❌ Error during intruder capture or conversion: $e");
