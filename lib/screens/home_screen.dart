@@ -6,10 +6,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/command_service.dart';
 import '../services/security_guard_service.dart';
-import '../services/app_config.dart'; // <-- Added import for AppConfig
+import '../services/app_config.dart';
 import '../utils/feature_access_card.dart';
 import '../widgets/feature_gate.dart';
-import '../widgets/notification_bell_icon.dart'; // <-- Added import for notification bell[cite: 1]
+import '../widgets/notification_bell_icon.dart';
 import 'login_screen.dart';
 import 'gps_screen.dart';
 import 'subscription_screen.dart';
@@ -362,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          const NotificationBellIcon(), //[cite: 1]
+          const NotificationBellIcon(),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
@@ -637,7 +637,8 @@ class _HomeScreenState extends State<HomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 1.0,
+              childAspectRatio:
+                  1.15, // FIX: Updated to 1.15 to prevent bottom renderflex overflow
               children: [
                 FeatureAccessCard(
                   title: 'GPS Tracking',
