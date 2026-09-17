@@ -27,9 +27,8 @@ class JazzCashInvoiceScreen extends StatelessWidget {
     final String gatewayRef =
         '$prefix-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-    final Color themeColor = AppConfig.isLiveProductionMode
-        ? const Color(0xFFE61C24)
-        : Colors.orange.shade800;
+    // Theme color set to JazzCash red
+    final Color themeColor = const Color(0xFFE61C24);
 
     final Color containerBgColor = AppConfig.isLiveProductionMode
         ? const Color(0xFFFFEBEE)
@@ -64,45 +63,51 @@ class JazzCashInvoiceScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppConfig.isLiveProductionMode
-                                  ? 'JAZZCASH MOBILE ACCOUNT (LIVE)'
-                                  : 'JAZZCASH MOBILE ACCOUNT (SANDBOX)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: themeColor,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppConfig.isLiveProductionMode
+                                    ? 'JAZZCASH MOBILE ACCOUNT (LIVE)'
+                                    : 'JAZZCASH MOBILE ACCOUNT (SANDBOX)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: themeColor,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  AppConfig.isLiveProductionMode
-                                      ? Icons.verified
-                                      : Icons.science,
-                                  size: 14,
-                                  color: AppConfig.isLiveProductionMode
-                                      ? Colors.blue
-                                      : Colors.orange,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  AppConfig.isLiveProductionMode
-                                      ? 'PayFast Real Payment Verified'
-                                      : 'PayFast Sandbox Simulation',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    AppConfig.isLiveProductionMode
+                                        ? Icons.verified
+                                        : Icons.science,
+                                    size: 14,
+                                    color: AppConfig.isLiveProductionMode
+                                        ? Colors.blue
+                                        : Colors.orange,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      AppConfig.isLiveProductionMode
+                                          ? 'PayFast Real Payment Verified'
+                                          : 'PayFast Sandbox Simulation',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -229,10 +234,7 @@ class JazzCashInvoiceScreen extends StatelessWidget {
 
   Future<void> _printInvoice(String currentDate, String gatewayRef) async {
     final pdf = pw.Document();
-
-    final int pdfColorValue = AppConfig.isLiveProductionMode
-        ? 0xFFE61C24
-        : 0xFFEF6C00;
+    final int pdfColorValue = 0xFFE61C24;
 
     pdf.addPage(
       pw.Page(
@@ -362,13 +364,16 @@ class JazzCashInvoiceScreen extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color ?? Colors.black87,
-            fontFamily: isMonospace ? 'monospace' : null,
-            fontSize: 13,
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color ?? Colors.black87,
+              fontFamily: isMonospace ? 'monospace' : null,
+              fontSize: 13,
+            ),
           ),
         ),
       ],

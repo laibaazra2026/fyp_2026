@@ -249,9 +249,12 @@
                 let hasAccess = false;
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
-                    const plan = userData.plan || userData.subscription;
-                    // Check live plan attributes or mock/sandbox upgrade flags
-                    if (plan === 'premium' || plan === 'family' || userData.isPaid === true || userData.mockUpgraded === true) {
+                    
+                    // Check all possible variable variations (Flutter app vs Web portal schemas)
+                    const activePlan = userData.subscriptionTier || userData.plan || userData.subscription;
+                    const isActiveStatus = userData.subscriptionStatus === 'active';
+                    
+                    if ((activePlan && activePlan !== 'free') || isActiveStatus || userData.isPaid === true || userData.mockUpgraded === true) {
                         hasAccess = true;
                     }
                 }

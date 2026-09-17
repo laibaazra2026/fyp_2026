@@ -64,45 +64,52 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppConfig.isLiveProductionMode
-                                  ? 'EASYPAISA MOBILE WALLET (LIVE)'
-                                  : 'EASYPAISA MOBILE WALLET (SANDBOX)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: themeColor,
+                        // Expanded prevents text overflow error on smaller screens
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppConfig.isLiveProductionMode
+                                    ? 'EASYPAISA MOBILE WALLET (LIVE)'
+                                    : 'EASYPAISA MOBILE WALLET (SANDBOX)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: themeColor,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  AppConfig.isLiveProductionMode
-                                      ? Icons.verified
-                                      : Icons.science,
-                                  size: 14,
-                                  color: AppConfig.isLiveProductionMode
-                                      ? Colors.blue
-                                      : Colors.orange,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  AppConfig.isLiveProductionMode
-                                      ? 'PayFast Real Payment Verified'
-                                      : 'PayFast Sandbox Simulation',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    AppConfig.isLiveProductionMode
+                                        ? Icons.verified
+                                        : Icons.science,
+                                    size: 14,
+                                    color: AppConfig.isLiveProductionMode
+                                        ? Colors.blue
+                                        : Colors.orange,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      AppConfig.isLiveProductionMode
+                                          ? 'PayFast Real Payment Verified'
+                                          : 'PayFast Sandbox Simulation',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -370,13 +377,16 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color ?? Colors.black87,
-            fontFamily: isMonospace ? 'monospace' : null,
-            fontSize: 13,
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color ?? Colors.black87,
+              fontFamily: isMonospace ? 'monospace' : null,
+              fontSize: 13,
+            ),
           ),
         ),
       ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
-import '../services/app_config.dart'; // Make sure this path matches your AppConfig location
+import '../services/app_config.dart';
 
 class NotificationBellIcon extends StatefulWidget {
   const NotificationBellIcon({super.key});
@@ -36,9 +36,13 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(20),
-          height: 480,
+          // FIX: Using dynamic maxHeight constraints instead of rigid height to prevent overflow
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -124,6 +128,7 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                     final notifications = snapshot.data!;
 
                     return ListView.builder(
+                      shrinkWrap: true,
                       itemCount: notifications.length,
                       itemBuilder: (context, index) {
                         final item = notifications[index];

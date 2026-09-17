@@ -39,11 +39,9 @@ class CardInvoiceScreen extends StatelessWidget {
 
     final Color themeColor = AppConfig.isLiveProductionMode
         ? Colors.blue.shade800
-        : Colors.purple.shade700;
+        : Colors.blue.shade700;
 
-    final Color containerBgColor = AppConfig.isLiveProductionMode
-        ? Colors.blue.shade50
-        : Colors.purple.shade50;
+    final Color containerBgColor = Colors.blue.shade50;
 
     return Scaffold(
       appBar: AppBar(
@@ -74,45 +72,48 @@ class CardInvoiceScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppConfig.isLiveProductionMode
-                                  ? 'PAYFAST GATEWAY (LIVE)'
-                                  : 'PAYFAST GATEWAY (SANDBOX / MOCK)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: themeColor,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppConfig.isLiveProductionMode
+                                    ? 'PAYFAST GATEWAY (LIVE)'
+                                    : 'EASYPAISA MOBILE WALLET (SANDBOX)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: themeColor,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  AppConfig.isLiveProductionMode
-                                      ? Icons.verified
-                                      : Icons.science,
-                                  size: 14,
-                                  color: AppConfig.isLiveProductionMode
-                                      ? Colors.blue
-                                      : Colors.orange,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  AppConfig.isLiveProductionMode
-                                      ? 'Secure Card Transaction Voucher'
-                                      : 'Sandbox Card Simulation',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    AppConfig.isLiveProductionMode
+                                        ? Icons.verified
+                                        : Icons.science,
+                                    size: 14,
+                                    color: Colors.blue,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      AppConfig.isLiveProductionMode
+                                          ? 'Secure Card Transaction Voucher'
+                                          : 'PayFast Sandbox Simulation',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -135,7 +136,7 @@ class CardInvoiceScreen extends StatelessWidget {
                       'Transaction Status',
                       AppConfig.isLiveProductionMode
                           ? 'APPROVED (LIVE)'
-                          : 'APPROVED (MOCK SIMULATION)',
+                          : 'SUCCESS (MOCK SIMULATION)',
                       color: Colors.green,
                     ),
                     const SizedBox(height: 8),
@@ -248,8 +249,8 @@ class CardInvoiceScreen extends StatelessWidget {
     final pdf = pw.Document();
 
     final int pdfColorValue = AppConfig.isLiveProductionMode
-        ? 0xFF1565C0 // Colors.blue.shade800
-        : 0xFF6A1B9A; // Colors.purple.shade800
+        ? 0xFF1565C0
+        : 0xFF1976D2;
 
     pdf.addPage(
       pw.Page(
@@ -261,30 +262,32 @@ class CardInvoiceScreen extends StatelessWidget {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
                   children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          AppConfig.isLiveProductionMode
-                              ? 'PAYFAST GATEWAY (LIVE)'
-                              : 'PAYFAST GATEWAY (SANDBOX / MOCK)',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 18,
-                            color: PdfColor.fromInt(pdfColorValue),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            AppConfig.isLiveProductionMode
+                                ? 'PAYFAST GATEWAY (LIVE)'
+                                : 'EASYPAISA MOBILE WALLET (SANDBOX)',
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 18,
+                              color: PdfColor.fromInt(pdfColorValue),
+                            ),
                           ),
-                        ),
-                        pw.SizedBox(height: 4),
-                        pw.Text(
-                          'Secure Card Transaction Voucher',
-                          style: const pw.TextStyle(
-                            fontSize: 12,
-                            color: PdfColors.grey700,
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            'Secure Card Transaction Voucher',
+                            style: const pw.TextStyle(
+                              fontSize: 12,
+                              color: PdfColors.grey700,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     pw.PdfLogo(),
                   ],
@@ -294,7 +297,7 @@ class CardInvoiceScreen extends StatelessWidget {
                   'Transaction Status',
                   AppConfig.isLiveProductionMode
                       ? 'APPROVED (LIVE)'
-                      : 'APPROVED (MOCK SIMULATION)',
+                      : 'SUCCESS (MOCK SIMULATION)',
                 ),
                 pw.SizedBox(height: 8),
                 _buildPdfMetaRow('Authorization Code', authCode),
@@ -315,7 +318,7 @@ class CardInvoiceScreen extends StatelessWidget {
                   (item) => pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 4.0),
                     child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
                       children: [
                         pw.Expanded(child: pw.Text(item.title)),
                         pw.Text('PKR ${item.price}'),
@@ -325,7 +328,7 @@ class CardInvoiceScreen extends StatelessWidget {
                 ),
                 pw.Divider(height: 30),
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
                   children: [
                     pw.Text(
                       'Total Paid',
@@ -359,9 +362,14 @@ class CardInvoiceScreen extends StatelessWidget {
 
   pw.Widget _buildPdfMetaRow(String label, String value) {
     return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
       children: [
-        pw.Text(label, style: const pw.TextStyle(color: PdfColors.grey700)),
+        pw.Expanded(
+          child: pw.Text(
+            label,
+            style: const pw.TextStyle(color: PdfColors.grey700),
+          ),
+        ),
         pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
       ],
     );
@@ -377,13 +385,17 @@ class CardInvoiceScreen extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color ?? Colors.black87,
-            fontFamily: isMonospace ? 'monospace' : null,
-            fontSize: 13,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color ?? Colors.black87,
+              fontFamily: isMonospace ? 'monospace' : null,
+              fontSize: 13,
+            ),
           ),
         ),
       ],
