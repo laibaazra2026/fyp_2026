@@ -42,6 +42,32 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
     super.dispose();
   }
 
+  // Method to show a month/year picker dialog
+  Future<void> _selectExpiryDate(BuildContext context) async {
+    final DateTime now = DateTime.now();
+
+    // Show a YearPicker or DatePicker dialog constrained to months & years
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 15, 12, 31),
+      helpText: 'Select Card Expiry Month & Year',
+      fieldLabelText: 'Expiry Date',
+      // Optional: if you want a custom appearance, standard calendar works well too
+    );
+
+    if (picked != null) {
+      // Format to MM/YY
+      String monthStr = picked.month.toString().padLeft(2, '0');
+      String yearStr = (picked.year % 100).toString().padLeft(2, '0');
+
+      setState(() {
+        _expiryController.text = '$monthStr/$yearStr';
+      });
+    }
+  }
+
   void _processPayment() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -86,6 +112,7 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
     );
 
     // Return result back to subscription screen
+    if (!mounted) return;
     Navigator.pop(context, {
       'success': true,
       'method': gatewayName,
@@ -215,18 +242,26 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                         LengthLimitingTextInputFormatter(4),
                         CardExpiryFormatter(),
                       ],
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Expiry Date',
                         hintText: 'MM/YY',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.date_range),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.date_range),
+                        // Added calendar picker button suffix icon
+                        suffixIcon: IconButton(
+                          icon: const Icon(
+                            Icons.calendar_month,
+                            color: Colors.purple,
+                          ),
+                          onPressed: () => _selectExpiryDate(context),
+                          tooltip: 'Pick expiry date from calendar',
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Required';
                         }
 
-                        // Check structural length (MM/YY is 5 chars)
                         if (value.length < 5 || !value.contains('/')) {
                           return 'Invalid (MM/YY)';
                         }
@@ -243,17 +278,13 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                           return 'Invalid numbers';
                         }
 
-                        // Validate Month range (01 - 12)
                         if (month < 1 || month > 12) {
                           return 'Invalid month (01-12)';
                         }
 
-                        // Validate Expiry Year/Month against current time
                         final now = DateTime.now();
-                        // Assuming 2000s century prefix for the two-digit year
                         int fullYear = 2000 + year;
 
-                        // Compare expiration date with current year/month
                         if (fullYear < now.year ||
                             (fullYear == now.year && month < now.month)) {
                           return 'Card has expired';
