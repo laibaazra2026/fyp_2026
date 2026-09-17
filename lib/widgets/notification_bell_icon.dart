@@ -36,9 +36,9 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(20),
-          // FIX: Using dynamic maxHeight constraints instead of rigid height to prevent overflow
+          // FIX: Reduced maxHeight from 0.75 to 0.65 to prevent the 13px renderflex overflow error
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75,
+            maxHeight: MediaQuery.of(context).size.height * 0.65,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
