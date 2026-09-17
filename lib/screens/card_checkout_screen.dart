@@ -222,9 +222,43 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                         prefixIcon: Icon(Icons.date_range),
                       ),
                       validator: (value) {
-                        if (value == null || value.length < 5) {
-                          return 'Invalid expiry (MM/YY)';
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Required';
                         }
+
+                        // Check structural length (MM/YY is 5 chars)
+                        if (value.length < 5 || !value.contains('/')) {
+                          return 'Invalid (MM/YY)';
+                        }
+
+                        List<String> parts = value.split('/');
+                        if (parts.length != 2) {
+                          return 'Invalid format';
+                        }
+
+                        int? month = int.tryParse(parts[0]);
+                        int? year = int.tryParse(parts[1]);
+
+                        if (month == null || year == null) {
+                          return 'Invalid numbers';
+                        }
+
+                        // Validate Month range (01 - 12)
+                        if (month < 1 || month > 12) {
+                          return 'Invalid month (01-12)';
+                        }
+
+                        // Validate Expiry Year/Month against current time
+                        final now = DateTime.now();
+                        // Assuming 2000s century prefix for the two-digit year
+                        int fullYear = 2000 + year;
+
+                        // Compare expiration date with current year/month
+                        if (fullYear < now.year ||
+                            (fullYear == now.year && month < now.month)) {
+                          return 'Card has expired';
+                        }
+
                         return null;
                       },
                     ),
