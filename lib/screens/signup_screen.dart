@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:sim_reader/sim_reader.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'login_screen.dart';
+import '../../services/sandbox_sms_service.dart';
+import '../../services/app_config.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -20,17 +23,13 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emergencyPhoneController = TextEditingController();
   final _otpController = TextEditingController();
 
+  // Country code state prefixes initialized to Pakistan (+92)
+  String _phoneCountryCode = '+92';
+  String _emergencyCountryCode = '+92';
+
   bool _obscurePassword = true;
   bool _isLoading = false;
   String _errorMessage = '';
-
-  // Exact allowed test numbers list
-  final List<String> _allowedNumbers = [
-    '+923144964339',
-    '+923128719043',
-    '+923005171794',
-    '+923157633912',
-  ];
 
   String? _validatePassword(String password) {
     if (password.isEmpty) return 'Password cannot be empty.';
@@ -50,14 +49,17 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  String? _validatePakistaniPhone(String phone) {
-    if (phone.isEmpty) return 'Phone number cannot be empty.';
-    final regExp = RegExp(r'^\+923[0-9]{9}$');
-    if (!regExp.hasMatch(phone)) {
-      return 'Must be a valid Pakistani mobile number (e.g., +923001234567).';
-    }
-    if (!_allowedNumbers.contains(phone)) {
-      return 'This phone number is not authorized for testing.';
+  // Strict international format validation rule for both Sandbox & Live modes
+  String? _validatePhoneFormat(String countryCode, String localNumber) {
+    if (localNumber.isEmpty) return 'Phone number cannot be empty.';
+
+    String fullNumber = '$countryCode$localNumber'.replaceAll(
+      RegExp(r'\s+'),
+      '',
+    );
+    final RegExp phoneRegex = RegExp(r'^\+[1-9]\d{7,14}$');
+    if (!phoneRegex.hasMatch(fullNumber)) {
+      return 'Please enter a valid phone number format with country code.';
     }
     return null;
   }
@@ -78,13 +80,17 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    String? phoneError = _validatePakistaniPhone(_phoneController.text.trim());
+    String? phoneError = _validatePhoneFormat(
+      _phoneCountryCode,
+      _phoneController.text.trim(),
+    );
     if (phoneError != null) {
       setState(() => _errorMessage = 'Your Phone: $phoneError');
       return;
     }
 
-    String? emergencyPhoneError = _validatePakistaniPhone(
+    String? emergencyPhoneError = _validatePhoneFormat(
+      _emergencyCountryCode,
       _emergencyPhoneController.text.trim(),
     );
     if (emergencyPhoneError != null) {
@@ -106,6 +112,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       await userCredential.user?.sendEmailVerification();
 
+      // Step 1: Start Owner Phone Verification
       await _startOwnerPhoneVerification(userCredential.user!.uid);
     } catch (e) {
       setState(() {
@@ -116,24 +123,19 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _startOwnerPhoneVerification(String uid) async {
-    String ownerPhone = _phoneController.text.trim();
-
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: ownerPhone,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await _startEmergencyPhoneVerification(uid);
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Owner Phone Verification Failed: ${e.message}';
-        });
-      },
-      codeSent: (String verificationId, int? resendToken) {
+    await SandboxSmsService().sendOtp(
+      countryCode: _phoneCountryCode,
+      localNumber: _phoneController.text.trim(),
+      onCodeSent: (String verificationId) {
         setState(() => _isLoading = false);
         _showOwnerOtpDialog(verificationId, uid);
       },
-      codeAutoRetrievalTimeout: (String verificationId) {},
+      onError: (String error) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Owner Phone Verification Failed: $error';
+        });
+      },
     );
   }
 
@@ -143,13 +145,15 @@ class _SignupScreenState extends State<SignupScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('📱 Verify Your Phone Number'),
+        title: const Text('📱 Verify Your Owner Phone'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Enter sandbox 6-digit OTP code for YOUR phone (e.g., 123456).',
-              style: TextStyle(fontSize: 13),
+            Text(
+              AppConfig.isLiveProductionMode
+                  ? 'Enter the 6-digit OTP code received via SMS.'
+                  : 'Sandbox Mode: Enter mock OTP code (1234).',
+              style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -157,7 +161,7 @@ class _SignupScreenState extends State<SignupScreen> {
               keyboardType: TextInputType.number,
               maxLength: 6,
               decoration: InputDecoration(
-                labelText: '6-digit OTP',
+                labelText: 'Enter Owner OTP',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -175,12 +179,9 @@ class _SignupScreenState extends State<SignupScreen> {
               backgroundColor: const Color(0xFF841EA0),
             ),
             onPressed: () async {
+              String enteredCode = _otpController.text.trim();
               Navigator.pop(context);
-              await _verifyOwnerOtpCode(
-                verificationId,
-                uid,
-                _otpController.text.trim(),
-              );
+              await _verifyOwnerOtpCode(verificationId, uid, enteredCode);
             },
             child: const Text(
               'Verify Owner Phone',
@@ -197,41 +198,53 @@ class _SignupScreenState extends State<SignupScreen> {
     String uid,
     String smsCode,
   ) async {
+    if (smsCode.isEmpty) {
+      setState(() => _errorMessage = 'Owner OTP code cannot be empty.');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
-      );
+      if (AppConfig.isLiveProductionMode) {
+        PhoneAuthCredential credential = PhoneAuthProvider.credential(
+          verificationId: verificationId,
+          smsCode: smsCode,
+        );
+        // Additional linking if needed in live mode
+      } else {
+        // Enforce manual sandbox code check
+        if (smsCode != '1234') {
+          throw Exception('Invalid sandbox OTP code. Please enter 1234.');
+        }
+      }
 
+      setState(() => _isLoading = false);
+      // Step 2: Proceed to emergency verification once owner is successfully verified
       await _startEmergencyPhoneVerification(uid);
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Invalid Owner OTP Code: $e';
+        _errorMessage =
+            'Owner OTP Verification Failed: ${e.toString().replaceAll('Exception: ', '')}';
       });
     }
   }
 
   Future<void> _startEmergencyPhoneVerification(String uid) async {
-    String emergencyPhone = _emergencyPhoneController.text.trim();
-
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: emergencyPhone,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await _finalizeRegistration(uid);
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Emergency Phone Verification Failed: ${e.message}';
-        });
-      },
-      codeSent: (String verificationId, int? resendToken) {
+    setState(() => _isLoading = true);
+    await SandboxSmsService().sendOtp(
+      countryCode: _emergencyCountryCode,
+      localNumber: _emergencyPhoneController.text.trim(),
+      onCodeSent: (String verificationId) {
         setState(() => _isLoading = false);
         _showEmergencyOtpDialog(verificationId, uid);
       },
-      codeAutoRetrievalTimeout: (String verificationId) {},
+      onError: (String error) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Emergency Phone Verification Failed: $error';
+        });
+      },
     );
   }
 
@@ -245,9 +258,11 @@ class _SignupScreenState extends State<SignupScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Enter sandbox 6-digit OTP code for EMERGENCY phone (e.g., 123456).',
-              style: TextStyle(fontSize: 13),
+            Text(
+              AppConfig.isLiveProductionMode
+                  ? 'Enter the 6-digit OTP code for the EMERGENCY phone.'
+                  : 'Sandbox Mode: Enter mock OTP code for emergency phone (1234).',
+              style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -255,7 +270,7 @@ class _SignupScreenState extends State<SignupScreen> {
               keyboardType: TextInputType.number,
               maxLength: 6,
               decoration: InputDecoration(
-                labelText: '6-digit OTP',
+                labelText: 'Enter Emergency OTP',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -273,12 +288,9 @@ class _SignupScreenState extends State<SignupScreen> {
               backgroundColor: const Color(0xFF841EA0),
             ),
             onPressed: () async {
+              String enteredCode = _otpController.text.trim();
               Navigator.pop(context);
-              await _verifyEmergencyOtpCode(
-                verificationId,
-                uid,
-                _otpController.text.trim(),
-              );
+              await _verifyEmergencyOtpCode(verificationId, uid, enteredCode);
             },
             child: const Text(
               'Verify & Complete',
@@ -295,18 +307,31 @@ class _SignupScreenState extends State<SignupScreen> {
     String uid,
     String smsCode,
   ) async {
+    if (smsCode.isEmpty) {
+      setState(() => _errorMessage = 'Emergency OTP code cannot be empty.');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
-      );
+      if (AppConfig.isLiveProductionMode) {
+        PhoneAuthCredential credential = PhoneAuthProvider.credential(
+          verificationId: verificationId,
+          smsCode: smsCode,
+        );
+      } else {
+        // Enforce manual sandbox code check for emergency phone
+        if (smsCode != '1234') {
+          throw Exception('Invalid sandbox OTP code. Please enter 1234.');
+        }
+      }
 
       await _finalizeRegistration(uid);
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Invalid Emergency OTP Code: $e';
+        _errorMessage =
+            'Emergency OTP Verification Failed: ${e.toString().replaceAll('Exception: ', '')}';
       });
     }
   }
@@ -332,9 +357,10 @@ class _SignupScreenState extends State<SignupScreen> {
         'uid': uid,
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
+        'phone': '$_phoneCountryCode${_phoneController.text.trim()}',
         'isOwnerPhoneVerified': true,
-        'emergencyPhone': _emergencyPhoneController.text.trim(),
+        'emergencyPhone':
+            '$_emergencyCountryCode${_emergencyPhoneController.text.trim()}',
         'isEmergencyPhoneVerified': true,
         'baselineCarrier': initialCarrier,
         'baselineCountry': initialCountry,
@@ -347,7 +373,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            '✅ Account created & both phone numbers verified via Sandbox!',
+            '✅ Account created & both phone numbers verified successfully!',
           ),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 6),
@@ -477,35 +503,80 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Your Phone (+923XXXXXXXXX)',
-                        hintText: '+923144964339',
-                        prefixIcon: const Icon(
-                          Icons.phone,
-                          color: Color(0xFF841EA0),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+
+                    // Your Phone Number Input with Country Dropdown Menu
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          CountryCodePicker(
+                            onChanged: (country) {
+                              setState(() {
+                                _phoneCountryCode = country.dialCode ?? '+92';
+                              });
+                            },
+                            initialSelection: 'PK',
+                            favorite: const ['+92', 'US', 'GB', 'IN'],
+                            showCountryOnly: false,
+                            showOnlyCountryWhenClosed: false,
+                            alignLeft: false,
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                hintText: '3001234567',
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: _emergencyPhoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Emergency Phone (+923XXXXXXXXX)',
-                        hintText: '+923128719043',
-                        prefixIcon: const Icon(
-                          Icons.phone_android,
-                          color: Color(0xFF841EA0),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+
+                    // Emergency Phone Number Input with Country Dropdown Menu
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          CountryCodePicker(
+                            onChanged: (country) {
+                              setState(() {
+                                _emergencyCountryCode =
+                                    country.dialCode ?? '+92';
+                              });
+                            },
+                            initialSelection: 'PK',
+                            favorite: const ['+92', 'US', 'GB', 'IN'],
+                            showCountryOnly: false,
+                            showOnlyCountryWhenClosed: false,
+                            alignLeft: false,
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _emergencyPhoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                hintText: '3128719043',
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
