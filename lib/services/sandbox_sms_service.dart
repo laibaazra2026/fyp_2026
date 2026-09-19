@@ -10,55 +10,54 @@ class SandboxSmsService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  final List<String> allowedTestNumbers = [
-    '+923005171794',
-    '+923144964339',
-    '+923241923864',
-    '+923128719043',
-    '+923157633912',
-  ];
-
   final List<Map<String, String>> _inboxMessages = [];
 
-  /// Sends an OTP. Uses local mock inbox if in Sandbox mode,
-  /// and switches to real Firebase Phone Auth if in Live mode.
+  /// Sends an OTP following proper format & country code rules.
   Future<bool> sendOtp({
-    required String phoneNumber,
+    required String countryCode, // e.g., '+92' from country code picker/flag
+    required String localNumber, // e.g., local phone number entered by user
     required Function(String verificationId) onCodeSent,
     required Function(String error) onError,
   }) async {
-    // Normalize format
-    String cleanNumber = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    // Combine country code and local number, removing extra whitespaces
+    String rawNumber = '$countryCode$localNumber';
+    String cleanNumber = rawNumber.replaceAll(RegExp(r'\s+'), '');
+
+    // Professional formatting / regex validation rule for a valid international phone number format
+    // Ensures it starts with '+' followed by 8 to 15 digits total.
+    final RegExp phoneRegex = RegExp(r'^\+[1-9]\d{7,14}$');
+    if (!phoneRegex.hasMatch(cleanNumber)) {
+      onError(
+        'Please enter a valid phone number format with your country code.',
+      );
+      return false;
+    }
 
     // ==========================================
     // 1. SANDBOX / MOCK MODE (For University Viva)
     // ==========================================
     if (!AppConfig.isLiveProductionMode) {
-      if (!allowedTestNumbers.contains(cleanNumber)) {
-        onError('Phone number not found in sandbox allowed test numbers.');
-        return false;
-      }
-
-      // Default mock OTP for easy testing
-      String otp = '1234';
+      // Mock PIN definition for sandbox environment
+      String mockPin = '1234';
 
       _inboxMessages.insert(0, {
-        'sender': 'JazzCash/EasyPaisa (Sandbox)',
+        'sender': 'Security App (Sandbox)',
         'body':
-            'Your secure transaction OTP is $otp. Do not share this PIN with anyone.',
+            'Your sandbox verification PIN is $mockPin. Do not share this with anyone.',
         'time': DateTime.now().toString().substring(11, 16),
         'phone': cleanNumber,
       });
 
+      // Simulate network/SMS gateway delay
       await Future.delayed(const Duration(milliseconds: 800));
 
-      // Pass a mock verification ID back to keep the flow consistent
+      // Return a mock verification ID to maintain UI flow symmetry
       onCodeSent('mock_viva_verification_id');
       return true;
     }
 
     // ==========================================
-    // 2. LIVE PRODUCTION MODE (For your 3 Clients)
+    // 2. LIVE PRODUCTION MODE (For Real Users)
     // ==========================================
     try {
       await _auth.verifyPhoneNumber(
@@ -81,10 +80,11 @@ class SandboxSmsService {
     }
   }
 
-  /// Retains the original mock inbox method name for backward compatibility with your UI screens
-  Future<bool> sendMockOtp(String phoneNumber) async {
+  /// Backward compatibility helper for existing UI screens
+  Future<bool> sendMockOtp(String fullPhoneNumber) async {
     return sendOtp(
-      phoneNumber: phoneNumber,
+      countryCode: '',
+      localNumber: fullPhoneNumber,
       onCodeSent: (_) {},
       onError: (_) {},
     );
