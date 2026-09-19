@@ -40,17 +40,16 @@ class IntruderService {
 
       await controller.initialize();
 
-      // Fix for dark/black images: Maximize exposure offset in low light
+      // Let auto-exposure and auto-focus handle the lighting naturally
+      // without forcing max exposure offset which causes excessive brightness/whiteouts.
       try {
-        double maxExposure = await controller.getMaxExposureOffset();
-        await controller.setExposureOffset(maxExposure);
         await controller.setFocusMode(FocusMode.auto);
       } catch (e) {
-        print("⚠️ Could not set exposure/focus modes: $e");
+        print("⚠️ Could not set focus mode: $e");
       }
 
-      // Give the camera sensor enough warm-up time to calculate lighting
-      await Future.delayed(const Duration(milliseconds: 1200));
+      // Allow a brief stabilization delay for natural lighting adjustment
+      await Future.delayed(const Duration(milliseconds: 800));
 
       XFile image = await controller.takePicture();
       await controller.dispose();
@@ -61,12 +60,19 @@ class IntruderService {
       late Uint8List imageBytes;
 
       if (decodedImage != null) {
-        // Fix rotation and mirror the front camera selfie properly
+        // Correct rotation safely based on the sensor orientation
         int sensorOrientation = frontCamera.sensorOrientation;
-        if (sensorOrientation != 0) {
-          decodedImage = img.copyRotate(decodedImage, angle: sensorOrientation);
+
+        // If the sensor orientation requires turning, apply it cleanly
+        if (sensorOrientation == 90) {
+          decodedImage = img.copyRotate(decodedImage, angle: 90);
+        } else if (sensorOrientation == 270) {
+          decodedImage = img.copyRotate(decodedImage, angle: 270);
+        } else if (sensorOrientation == 180) {
+          decodedImage = img.copyRotate(decodedImage, angle: 180);
         }
 
+        // Mirror the image horizontally so it looks like a normal front-camera preview selfie
         decodedImage = img.flipHorizontal(decodedImage);
 
         imageBytes = Uint8List.fromList(
@@ -94,7 +100,7 @@ class IntruderService {
       });
 
       print(
-        "🚨 Intruder image saved, straightened, brightened, and logged successfully!",
+        "🚨 Intruder image captured clearly with proper lighting, rotation, and logging!",
       );
     } catch (e) {
       print("❌ Error during intruder capture or conversion: $e");
