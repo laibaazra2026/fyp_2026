@@ -1,176 +1,221 @@
-import 'package:device_protection/screens/intruder_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
-import '../services/command_service.dart';
-import '../services/security_guard_service.dart';
-import '../services/app_config.dart';
-import '../utils/feature_access_card.dart';
-import '../widgets/feature_gate.dart';
-import '../widgets/notification_bell_icon.dart';
-import 'login_screen.dart';
-import 'gps_screen.dart';
-import 'subscription_screen.dart';
-import 'sim_screen.dart';
-import 'backup_restore_screen.dart';
+import 'package:confetti/confetti.dart';
+import '../models/purchase_cart_item.dart';
 import '../services/subscription_service.dart';
-import '../services/backup_restore_service.dart';
+import '../services/app_config.dart';
+import '../services/sandbox_sms_service.dart';
+import '../services/notification_service.dart';
+import 'card_checkout_screen.dart';
+import 'invoices/jazzcash_invoice_screen.dart';
+import 'invoices/easypaisa_invoice_screen.dart';
+import 'invoices/card_invoice_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class SubscriptionScreen extends StatefulWidget {
+  const SubscriptionScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  bool _isTheftModeActive = false;
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
+  late final PageController _pageController;
+  late final ConfettiController _confettiController;
 
-  final User? user = FirebaseAuth.instance.currentUser;
-  final SecurityGuardService _securityGuard = SecurityGuardService();
+  String _currentPlan = 'free';
+  int _currentPage = 0;
+
+  // Toggle this to true for live production mode, or false for Sandbox/Viva testing
+  final bool _isLiveProductionMode = false;
+
+  // Sandbox pre-authorized test numbers for offline/viva testing
+  final List<String> _allowedTestNumbers = [
+    '+923005171794',
+    '+923144964339',
+    '+923241923864',
+    '+923128719043',
+    '+923157633912',
+    '03005171794',
+    '03144964339',
+    '03241923864',
+    '03128719043',
+    '03157633912',
+  ];
 
   @override
   void initState() {
     super.initState();
-    CommandService().listenForCommands(context);
-
-    _listenToTheftModeChanges();
+    _pageController = PageController(viewportFraction: 0.85);
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 3),
+    );
+    _loadCurrentPlan();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showUpgradePopupIfNeeded();
+      _confettiController.play();
     });
   }
 
-  void _listenToTheftModeChanges() {
-    if (user == null) return;
-
-    FirebaseFirestore.instance
-        .collection('users')
-        .doc(user!.uid)
-        .snapshots()
-        .listen((snapshot) {
-          if (snapshot.exists && mounted) {
-            var data = snapshot.data() as Map<String, dynamic>?;
-            setState(() {
-              _isTheftModeActive = data?['isTheftModeOn'] ?? false;
-            });
-          }
-        });
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _confettiController.dispose();
+    super.dispose();
   }
 
-  Future<void> _updateTheftModeToggle(bool value) async {
+  Future<void> _loadCurrentPlan() async {
+    String plan = await _subscriptionService.getCurrentPlan();
+    if (!mounted) return;
+
+    int targetPage = 0;
+    if (plan.toLowerCase() == 'premium') targetPage = 1;
+    if (plan.toLowerCase() == 'family') targetPage = 2;
+
     setState(() {
-      _isTheftModeActive = value;
+      _currentPlan = plan.toLowerCase();
+      _currentPage = targetPage;
     });
 
-    if (user != null) {
-      try {
-        await FirebaseFirestore.instance.collection('users').doc(user!.uid).set(
-          {'isTheftModeOn': value, 'theftMode': value},
-          SetOptions(merge: true),
-        );
-      } catch (e) {
-        debugPrint('Error updating theft mode: $e');
-      }
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        targetPage,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
-  Future<void> _showUpgradePopupIfNeeded() async {
-    if (user == null) return;
-
-    try {
-      String currentPlan = await _subscriptionService.getCurrentPlan();
-
-      if (currentPlan.toLowerCase() == 'free' && mounted) {
-        _showUpgradeDialogBox();
-      }
-    } catch (e) {
-      debugPrint('Error checking subscription for popup: $e');
-    }
-  }
-
-  void _showUpgradeDialogBox() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+  void _showPaymentMethodDialog(PurchaseCartItem cartItem) {
+    if (_currentPlan != 'free' && _currentPlan != 'none') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You already have an active subscription plan. Complete or manage your current subscription first.',
           ),
-          contentPadding: const EdgeInsets.all(22),
-          content: Column(
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.purple.shade50,
-                  shape: BoxShape.circle,
+              Text(
+                'Select Payment Method for ${cartItem.title}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                child: Icon(
-                  Icons.shield_outlined,
-                  color: Colors.purple.shade700,
-                  size: 36,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Unlock Protection! 🚀',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'You are on Free Tier. Upgrade to Pro to unlock '
-                'Backup & Restore and Remote Commands.',
+                'Amount to pay: Rs. ${cartItem.price.toStringAsFixed(0)} ${_isLiveProductionMode ? "(Live Mode)" : "(Sandbox Mode)"}',
                 style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
-                  height: 1.4,
+                  color: _isLiveProductionMode
+                      ? Colors.green.shade700
+                      : Colors.grey.shade600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.shade700,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SubscriptionScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Upgrade Now',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
+                  child: const Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.red,
                   ),
                 ),
+                title: const Text(
+                  'JazzCash Mobile Account',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  _isLiveProductionMode
+                      ? 'Real Live Merchant Gateway Request'
+                      : 'Secure Wallet OTP Checkout',
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSecureCheckoutDialog(cartItem, 'JazzCash');
+                },
               ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Maybe Later',
-                  style: TextStyle(color: Colors.grey.shade600),
+              const Divider(),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.phone_android, color: Colors.green),
                 ),
+                title: const Text(
+                  'EasyPaisa Wallet',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  _isLiveProductionMode
+                      ? 'Real Live Merchant Gateway Request'
+                      : 'Secure Wallet OTP Checkout',
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSecureCheckoutDialog(cartItem, 'EasyPaisa');
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.credit_card, color: Colors.blue),
+                ),
+                title: const Text(
+                  'Credit / Debit Card',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('PayFast / Visa / Mastercard / Stripe'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CardCheckoutScreen(cartItem: cartItem),
+                    ),
+                  );
+
+                  if (!mounted) return;
+
+                  if (result != null && result['success'] == true) {
+                    _processCardUpgrade(
+                      cartItem,
+                      result['method'] ?? 'Stripe Global',
+                      result['txnId'],
+                    );
+                  }
+                },
               ),
             ],
           ),
@@ -179,798 +224,653 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<bool> _checkAndRequestLocationPermission(BuildContext context) async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  void _showSecureCheckoutDialog(
+    PurchaseCartItem cartItem,
+    String paymentMethod,
+  ) {
+    final TextEditingController phoneController = TextEditingController();
+    final TextEditingController mpinController = TextEditingController();
+    bool isLoading = false;
 
-    if (!serviceEnabled) {
-      if (!context.mounted) return false;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                _isLiveProductionMode
+                    ? '$paymentMethod Live Checkout'
+                    : '$paymentMethod Sandbox Checkout',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Paying PKR ${cartItem.price.toStringAsFixed(0)} for ${cartItem.title}',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: _isLiveProductionMode
+                            ? 'Your Real Mobile Wallet No'
+                            : 'Test Mobile Wallet No',
+                        hintText: '+923XXXXXXXXX or 03XXXXXXXXX',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.phone),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: mpinController,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      maxLength: 4,
+                      decoration: InputDecoration(
+                        labelText: _isLiveProductionMode
+                            ? 'Real Gateway PIN / OTP'
+                            : '4-Digit MPIN / Mock OTP',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade700,
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          String enteredPhone = phoneController.text.trim();
+                          String enteredMpin = mpinController.text.trim();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please turn on your device location/GPS services.'),
-        ),
-      );
+                          if (!_isLiveProductionMode) {
+                            if (!_allowedTestNumbers.contains(enteredPhone)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Invalid sandbox number! Use one of the authorized test numbers.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+                          } else {
+                            if (enteredPhone.length < 10) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Please enter a valid active mobile number.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+                          }
 
-      return false;
-    }
+                          if (enteredMpin.length != 4) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please enter a valid 4-digit PIN/OTP.',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
 
-    LocationPermission permission = await Geolocator.checkPermission();
+                          setDialogState(() => isLoading = true);
 
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+                          if (!_isLiveProductionMode) {
+                            await Future.delayed(const Duration(seconds: 2));
+                            await SandboxSmsService().sendMockOtp(enteredPhone);
+                          } else {
+                            await Future.delayed(const Duration(seconds: 3));
+                          }
 
-      if (permission == LocationPermission.denied) {
-        if (!context.mounted) return false;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission was denied.')),
+                          if (!mounted) return;
+                          Navigator.pop(dialogContext);
+                          _processUpgrade(
+                            cartItem,
+                            paymentMethod,
+                            enteredPhone,
+                          );
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Authorize & Pay',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                ),
+              ],
+            );
+          },
         );
-
-        return false;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      if (!context.mounted) return false;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Location permissions are permanently denied. '
-            'Opening settings...',
-          ),
-        ),
-      );
-
-      await openAppSettings();
-
-      return false;
-    }
-
-    return true;
+      },
+    );
   }
 
-  Future<bool> _checkAndRequestSimPermission(BuildContext context) async {
-    PermissionStatus status = await Permission.phone.request();
-
-    if (status.isDenied || status.isPermanentlyDenied) {
-      if (!context.mounted) return false;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Phone state permission is required '
-            'for SIM detection.',
-          ),
-        ),
-      );
-
-      return false;
-    }
-
-    return true;
-  }
-
-  Future<bool> _checkAndRequestCameraPermission(BuildContext context) async {
-    PermissionStatus cameraStatus = await Permission.camera.request();
-
-    if (cameraStatus.isDenied || cameraStatus.isPermanentlyDenied) {
-      if (!context.mounted) return false;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Camera permission is required '
-            'to capture intruders.',
-          ),
-        ),
-      );
-
-      return false;
-    }
-
-    return true;
-  }
-
-  Future<bool> _checkAndRequestBackupPermissions(BuildContext context) async {
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.contacts,
-      Permission.storage,
-    ].request();
-
-    if (statuses[Permission.contacts] != PermissionStatus.granted) {
-      if (!context.mounted) return false;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Contacts permission is required for backups.'),
-        ),
-      );
-
-      return false;
-    }
-
-    return true;
-  }
-
-  void _logout(BuildContext context) async {
+  Future<void> _processCardUpgrade(
+    PurchaseCartItem cartItem,
+    String paymentMethod,
+    String txnId,
+  ) async {
     try {
-      await FirebaseFirestore.instance.clearPersistence();
-    } catch (_) {}
-    await FirebaseAuth.instance.signOut();
+      await _subscriptionService.updateSubscriptionWithMethod(
+        cartItem.featureId.replaceAll('tier_', ''),
+        cartItem.price.toStringAsFixed(0),
+        paymentMethod,
+        txnId,
+      );
 
-    if (!context.mounted) return;
+      if (!mounted) return;
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (route) => false,
+      setState(() => _currentPlan = cartItem.featureId.replaceAll('tier_', ''));
+      _confettiController.play();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CardInvoiceScreen(
+            authCode: txnId,
+            totalAmount: cartItem.price,
+            cartItemOrItems: cartItem,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to complete upgrade: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _processUpgrade(
+    PurchaseCartItem cartItem,
+    String paymentMethod,
+    String mobileNo,
+  ) async {
+    try {
+      String txnId = _isLiveProductionMode
+          ? 'LIVE-TXN-${DateTime.now().millisecondsSinceEpoch}'
+          : 'TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
+      await _subscriptionService.updateSubscriptionWithMethod(
+        cartItem.featureId.replaceAll('tier_', ''),
+        cartItem.price.toStringAsFixed(0),
+        paymentMethod,
+        txnId,
+      );
+
+      if (!mounted) return;
+
+      setState(() => _currentPlan = cartItem.featureId.replaceAll('tier_', ''));
+      _confettiController.play();
+
+      if (paymentMethod.toLowerCase().contains('jazzcash')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => JazzCashInvoiceScreen(
+              items: [cartItem],
+              txnId: txnId,
+              totalAmount: cartItem.price,
+            ),
+          ),
+        );
+      } else if (paymentMethod.toLowerCase().contains('easypaisa')) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EasypaisaInvoiceScreen(
+              items: [cartItem],
+              token: txnId,
+              totalAmount: cartItem.price,
+            ),
+          ),
+        );
+      } else {
+        _showSuccessDialog(cartItem, paymentMethod, txnId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to complete upgrade: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showSuccessDialog(
+    PurchaseCartItem cartItem,
+    String paymentMethod,
+    String txnId,
+  ) {
+    _confettiController.play();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 10),
+            Text('Payment Successful!'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('You are now subscribed to the ${cartItem.title}.'),
+            const SizedBox(height: 8),
+            Text('Amount Paid: Rs. ${cartItem.price.toStringAsFixed(0)}'),
+            Text('Method: $paymentMethod'),
+            Text('Transaction ID: $txnId'),
+            Text(
+              'Mode: ${_isLiveProductionMode ? "Live Production" : "Sandbox"}',
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple.shade700,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('Done', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final String? photoUrl = user?.photoURL;
-    final String displayName =
-        user?.displayName ?? user?.email?.split('@')[0] ?? 'User';
-    final String email = user?.email ?? 'No email';
-    final bool isLive = AppConfig.isLiveProductionMode;
+    bool hasActivePlan = _currentPlan != 'free' && _currentPlan != 'none';
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-
-      appBar: AppBar(
-        backgroundColor: Colors.purple.shade700,
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Home Dashboard',
-              style: TextStyle(
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Text(
+              _isLiveProductionMode
+                  ? 'Subscription Plans (Live)'
+                  : 'Subscription Plans (Sandbox)',
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
               ),
             ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 1,
+            backgroundColor: Colors.purple.shade700,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.purple.shade700, Colors.purple.shade900],
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [
+                        Colors.yellowAccent,
+                        Colors.pinkAccent,
+                        Colors.cyanAccent,
+                      ],
+                    ).createShader(bounds),
+                    child: const Text(
+                      'Choose Your Protection Plan',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: isLive
-                        ? Colors.green.shade800
-                        : Colors.purple.shade900,
-                    borderRadius: BorderRadius.circular(4),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      'Select a tier that matches your security needs. Only one active plan can be held at a time.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                        });
+                      },
+                      children: [
+                        _buildTierCard(
+                          name: 'Free',
+                          price: 'Rs. 0',
+                          subtitle: 'Basic Security',
+                          features: [
+                            'GPS Tracking',
+                            'Intruder Capture',
+                            'View Dashboard',
+                          ],
+                          isCurrent: _currentPlan == 'free',
+                          buttonText: 'Current Plan',
+                          onTap: null,
+                          hasActiveConflict: hasActivePlan,
+                        ),
+                        _buildTierCard(
+                          name: 'Premium',
+                          price: 'Rs. 50 / month',
+                          subtitle: 'Advanced Control',
+                          features: [
+                            'All Free Features',
+                            'Remote Commands (Lock / Ring / Enable Theft Mode)',
+                          ],
+                          isCurrent: _currentPlan == 'premium',
+                          buttonText: 'Upgrade to Premium',
+                          onTap: () {
+                            final cartItem = PurchaseCartItem(
+                              featureId: 'tier_premium',
+                              title: 'Premium Plan',
+                              price: 50.0,
+                            );
+                            _showPaymentMethodDialog(cartItem);
+                          },
+                          hasActiveConflict:
+                              hasActivePlan && _currentPlan != 'premium',
+                        ),
+                        _buildTierCard(
+                          name: 'Family',
+                          price: 'Rs. 100 / month',
+                          subtitle: 'Ultimate Protection',
+                          features: [
+                            'All Premium Features',
+                            'Backup & Restore',
+                          ],
+                          isCurrent: _currentPlan == 'family',
+                          buttonText: 'Upgrade to Family',
+                          onTap: () {
+                            final cartItem = PurchaseCartItem(
+                              featureId: 'tier_family',
+                              title: 'Family Plan',
+                              price: 100.0,
+                            );
+                            _showPaymentMethodDialog(cartItem);
+                          },
+                          hasActiveConflict:
+                              hasActivePlan && _currentPlan != 'family',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(3, (index) {
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: _currentPage == index ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentPage == index
+                              ? Colors.white
+                              : Colors.white38,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive,
+            shouldLoop: false,
+            numberOfParticles: 30,
+            gravity: 0.2,
+            colors: const [
+              Colors.green,
+              Colors.blue,
+              Colors.pink,
+              Colors.orange,
+              Colors.purple,
+              Colors.yellowAccent,
+              Colors.cyanAccent,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTierCard({
+    required String name,
+    required String price,
+    required String subtitle,
+    required List<String> features,
+    required bool isCurrent,
+    required String buttonText,
+    required VoidCallback? onTap,
+    required bool hasActiveConflict,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                if (isCurrent)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'ACTIVE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              price,
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.purple.shade700,
+              ),
+            ),
+            const Divider(height: 24),
+            Expanded(
+              child: ListView(
+                children: features.map((feature) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            feature,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (onTap != null && !isCurrent && !hasActiveConflict)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: onTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
                   ),
                   child: Text(
-                    isLive ? 'MODE: LIVE' : 'MODE: SANDBOX',
+                    buttonText,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 9,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          const NotificationBellIcon(),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
-              },
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.purple.shade200,
-                backgroundImage: photoUrl != null
-                    ? NetworkImage(photoUrl)
-                    : null,
-                child: photoUrl == null
-                    ? Text(
-                        displayName.isNotEmpty
-                            ? displayName[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      drawer: Drawer(
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Colors.purple.shade700),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                backgroundImage: photoUrl != null
-                    ? NetworkImage(photoUrl)
-                    : null,
-                child: photoUrl == null
-                    ? Text(
-                        displayName.isNotEmpty
-                            ? displayName[0].toUpperCase()
-                            : 'U',
-                        style: TextStyle(
-                          color: Colors.purple.shade700,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              accountName: Text(
-                displayName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              accountEmail: Text(email),
-              onDetailsPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star, color: Colors.amber),
-              title: const Text('Subscription & Plans'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SubscriptionScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: Colors.grey),
-              title: const Text('Settings & Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
-                );
-              },
-            ),
-            const Spacer(),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onTap: () => _logout(context),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _isTheftModeActive
-                      ? [const Color(0xFF2E7D32), Colors.teal.shade500]
-                      : [Colors.red.shade800, Colors.deepOrange.shade600],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isTheftModeActive ? Colors.green : Colors.red)
-                        .withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isTheftModeActive
-                          ? Icons.security
-                          : Icons.warning_amber_rounded,
-                      color: Colors.white,
-                      size: 32,
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: null,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _isTheftModeActive
-                              ? 'Theft Mode is ACTIVE'
-                              : 'Theft Mode is OFF',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _isTheftModeActive
-                              ? 'All security modules are fully running'
-                              : 'Tap switch to enable device protection',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.85),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                  child: Text(
+                    isCurrent
+                        ? 'Current Active Plan'
+                        : hasActiveConflict
+                        ? 'Plan Locked (Active Plan Exists)'
+                        : buttonText,
+                    style: TextStyle(
+                      color: isCurrent ? Colors.green : Colors.grey,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  Switch(
-                    value: _isTheftModeActive,
-                    activeColor: Colors.white,
-                    activeTrackColor: Colors.green.shade900,
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: Colors.red.shade900,
-                    onChanged: _updateTheftModeToggle,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.star_border,
-                    color: Colors.blue.shade700,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Free Tier Plan',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        Text(
-                          'Upgrade to unlock Backup & Remote Commands',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple.shade700,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SubscriptionScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'Upgrade',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Security Modules',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio:
-                  1.25, // Updated to 1.25 to prevent bottom overflow
-              children: [
-                FeatureAccessCard(
-                  title: 'GPS Tracking',
-                  subtitle: 'Live Map Location',
-                  icon: Icons.my_location,
-                  color: Colors.blue,
-                  onTap: () {
-                    _securityGuard.runModuleIfTheftModeOn(
-                      context: context,
-                      moduleName: 'GPS Tracking',
-                      moduleTask: () async {
-                        bool hasPermission =
-                            await _checkAndRequestLocationPermission(context);
-
-                        if (hasPermission && context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const GpsScreen(),
-                            ),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-                FeatureAccessCard(
-                  title: 'SIM/Device Alert',
-                  subtitle: 'Tap to check security',
-                  icon: Icons.sim_card,
-                  color: Colors.orange,
-                  onTap: () {
-                    _securityGuard.runModuleIfTheftModeOn(
-                      context: context,
-                      moduleName: 'SIM Detection',
-                      moduleTask: () async {
-                        bool hasPermission =
-                            await _checkAndRequestSimPermission(context);
-
-                        if (hasPermission && context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SimScreen(),
-                            ),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-                FeatureAccessCard(
-                  title: 'Intruder Capture',
-                  subtitle: 'Failed unlock snaps',
-                  icon: Icons.camera_alt,
-                  color: Colors.red,
-                  isLocked: false,
-                  onTap: () {
-                    _securityGuard.runModuleIfTheftModeOn(
-                      context: context,
-                      moduleName: 'Intruder Capture',
-                      moduleTask: () async {
-                        bool hasPermission =
-                            await _checkAndRequestCameraPermission(context);
-
-                        if (hasPermission && context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const IntruderScreen(),
-                            ),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-                FeatureAccessCard(
-                  title: 'Backup & Restore',
-                  subtitle: 'Contacts & Call Logs ☁️',
-                  icon: Icons.cloud_sync,
-                  color: Colors.purple,
-                  isLocked: true,
-                  onTap: () {
-                    _securityGuard.runModuleIfTheftModeOn(
-                      context: context,
-                      moduleName: 'Backup & Restore',
-                      moduleTask: () async {
-                        bool hasPermission =
-                            await _checkAndRequestBackupPermissions(context);
-
-                        if (hasPermission && context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const FeatureGate(
-                                requiredPlan: 'family',
-                                featureName: 'Backup & Restore',
-                                child: BackupRestoreScreen(),
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  final User? user = FirebaseAuth.instance.currentUser;
-  late TextEditingController _nameController;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: user?.displayName ?? '');
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _updateProfileName() async {
-    String newName = _nameController.text.trim();
-
-    if (newName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Name cannot be empty.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await user?.updateDisplayName(newName);
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user?.uid)
-          .update({'name': newName});
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile name updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating name: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _resetPassword() async {
-    if (user?.email == null) return;
-
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: user!.email!);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password reset email sent! Check your inbox.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  void _logout() async {
-    try {
-      await FirebaseFirestore.instance.clearPersistence();
-    } catch (_) {}
-    await FirebaseAuth.instance.signOut();
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (route) => false,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Profile & Settings',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Colors.purple.shade700,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.purple.shade200,
-              backgroundImage: user?.photoURL != null
-                  ? NetworkImage(user!.photoURL!)
-                  : null,
-              child: user?.photoURL == null
-                  ? Text(
-                      user?.email != null && user!.email!.isNotEmpty
-                          ? user!.email![0].toUpperCase()
-                          : 'U',
-                      style: TextStyle(
-                        fontSize: 32,
-                        color: Colors.purple.shade700,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              user?.email ?? 'No email',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Display Name',
-                prefixIcon: const Icon(Icons.person, color: Colors.purple),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple.shade700,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-                onPressed: _isLoading ? null : _updateProfileName,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Update Profile Name',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
               ),
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.lock_reset, color: Colors.purple),
-              title: const Text('Reset Password'),
-              subtitle: const Text('Send password reset email'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: _resetPassword,
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              subtitle: const Text('Sign out from your account'),
-              onTap: _logout,
-            ),
           ],
         ),
       ),
