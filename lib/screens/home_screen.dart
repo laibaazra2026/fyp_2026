@@ -638,7 +638,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
               childAspectRatio:
-                  1.15, // FIX: Updated to 1.15 to prevent bottom renderflex overflow
+                  1.25, // Updated to 1.25 to prevent bottom overflow
               children: [
                 FeatureAccessCard(
                   title: 'GPS Tracking',

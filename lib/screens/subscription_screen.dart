@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 import '../models/purchase_cart_item.dart';
 import '../services/subscription_service.dart';
 import '../services/app_config.dart';
@@ -228,6 +229,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     PurchaseCartItem cartItem,
     String paymentMethod,
   ) {
+    String selectedCountryCode = '+92'; // Default international code
     final TextEditingController phoneController = TextEditingController();
     final TextEditingController mpinController = TextEditingController();
     bool isLoading = false;
@@ -260,19 +262,48 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: _isLiveProductionMode
-                            ? 'Your Real Mobile Wallet No'
-                            : 'Test Mobile Wallet No',
-                        hintText: '+923XXXXXXXXX or 03XXXXXXXXX',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.phone),
+
+                    // Country Code Picker integrated alongside the phone text field
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          CountryCodePicker(
+                            onChanged: (country) {
+                              selectedCountryCode = country.dialCode ?? '+92';
+                            },
+                            initialSelection: 'PK',
+                            favorite: const ['+92', 'PK'],
+                            showCountryOnly: false,
+                            showOnlyCountryWhenClosed: false,
+                            alignLeft: false,
+                          ),
+                          Container(
+                            height: 30,
+                            width: 1,
+                            color: Colors.grey.shade300,
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                hintText: '3001234567',
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 12),
+
                     TextField(
                       controller: mpinController,
                       keyboardType: TextInputType.number,
@@ -282,8 +313,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         labelText: _isLiveProductionMode
                             ? 'Real Gateway PIN / OTP'
                             : '4-Digit MPIN / Mock OTP',
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         prefixIcon: const Icon(Icons.lock),
+                        counterText: '',
                       ),
                     ),
                   ],
@@ -306,27 +340,48 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   onPressed: isLoading
                       ? null
                       : () async {
-                          String enteredPhone = phoneController.text.trim();
+                          String localNumber = phoneController.text.trim();
+
+                          // Strip leading 0 if entered with country code selector
+                          if (localNumber.startsWith('0')) {
+                            localNumber = localNumber.substring(1);
+                          }
+
+                          String cleanNumber =
+                              '$selectedCountryCode$localNumber'.replaceAll(
+                                RegExp(r'\s+'),
+                                '',
+                              );
                           String enteredMpin = mpinController.text.trim();
 
+                          // Standard E.164 Phone format validation regex
+                          final RegExp phoneRegex = RegExp(
+                            r'^\+[1-9]\d{7,14}$',
+                          );
+
+                          if (!phoneRegex.hasMatch(cleanNumber)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please enter a valid phone number format with country code.',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
                           if (!_isLiveProductionMode) {
-                            if (!_allowedTestNumbers.contains(enteredPhone)) {
+                            bool isAuthorized =
+                                _allowedTestNumbers.contains(cleanNumber) ||
+                                _allowedTestNumbers.contains(
+                                  phoneController.text.trim(),
+                                );
+                            if (!isAuthorized) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
                                     'Invalid sandbox number! Use one of the authorized test numbers.',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              return;
-                            }
-                          } else {
-                            if (enteredPhone.length < 10) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Please enter a valid active mobile number.',
                                   ),
                                   backgroundColor: Colors.red,
                                 ),
@@ -351,18 +406,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                           if (!_isLiveProductionMode) {
                             await Future.delayed(const Duration(seconds: 2));
-                            await SandboxSmsService().sendMockOtp(enteredPhone);
+                            await SandboxSmsService().sendMockOtp(cleanNumber);
                           } else {
                             await Future.delayed(const Duration(seconds: 3));
                           }
 
                           if (!mounted) return;
                           Navigator.pop(dialogContext);
-                          _processUpgrade(
-                            cartItem,
-                            paymentMethod,
-                            enteredPhone,
-                          );
+                          _processUpgrade(cartItem, paymentMethod, cleanNumber);
                         },
                   child: isLoading
                       ? const SizedBox(
