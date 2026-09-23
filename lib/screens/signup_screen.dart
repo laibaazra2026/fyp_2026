@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:sim_reader/sim_reader.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'login_screen.dart';
 import '../../services/sandbox_sms_service.dart';
 import '../../services/app_config.dart';
@@ -23,9 +22,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _phoneController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
   final _otpController = TextEditingController();
-
-  // Secure storage instance for local SIM baseline comparison cache
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   // Country code state prefixes initialized to Pakistan (+92)
   String _phoneCountryCode = '+92';
@@ -340,39 +336,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> _finalizeRegistration(String uid) async {
     try {
-      await Permission.phone.request();
-
-      String initialCarrier = 'Unknown';
-      String initialCountry = 'Unknown';
-      String initialIdentifier = 'Unknown_ID';
-
-      try {
-        SimInfo? simInfo = await SimReader.getSimInfo();
-        if (simInfo != null) {
-          initialCarrier = simInfo.carrierName ?? 'Unknown';
-          initialCountry = simInfo.countryCode ?? 'Unknown';
-          String rawId =
-              simInfo.simSerialNumber ??
-              simInfo.subscriberId ??
-              simInfo.countryCode ??
-              'Unknown_ID';
-          initialIdentifier = "${initialCarrier}_$rawId";
-        }
-      } catch (e) {
-        print("Could not fetch initial SIM info: $e");
-      }
-
-      // 🔐 Save baseline securely so SimService can evaluate and detect SIM swaps later
-      await _secureStorage.write(
-        key: 'baseline_carrier_name',
-        value: initialCarrier,
-      );
-      await _secureStorage.write(
-        key: 'baseline_sim_serial',
-        value: initialIdentifier,
-      );
-
-      // Save user profile along with initial baseline data and SIM-change tracking field initialized to false
+      // Save user profile without SIM data fields
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'uid': uid,
         'name': _nameController.text.trim(),
@@ -382,9 +346,6 @@ class _SignupScreenState extends State<SignupScreen> {
         'emergencyPhone':
             '$_emergencyCountryCode${_emergencyPhoneController.text.trim()}',
         'isEmergencyPhoneVerified': true,
-        'baselineCarrier': initialCarrier,
-        'baselineCountry': initialCountry,
-        'isSimChanged': false, // Initialized safely as false upon registration
         'createdAt': FieldValue.serverTimestamp(),
       });
 

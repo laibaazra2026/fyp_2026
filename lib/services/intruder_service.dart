@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
-import 'package:geolocator/geolocator.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -22,30 +21,6 @@ class IntruderService {
         return;
       }
 
-      // 1. Fetch current GPS location coordinates
-      Position? position;
-      try {
-        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (serviceEnabled) {
-          LocationPermission permission = await Geolocator.checkPermission();
-          if (permission == LocationPermission.denied) {
-            permission = await Geolocator.requestPermission();
-          }
-          if (permission == LocationPermission.whileInUse ||
-              permission == LocationPermission.always) {
-            position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high,
-            );
-            print(
-              "📍 Intruder GPS Location captured: Lat ${position.latitude}, Lng ${position.longitude}",
-            );
-          }
-        }
-      } catch (e) {
-        print("⚠️ Could not fetch GPS location: $e");
-      }
-
-      // 2. Camera setup and image capture
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
         print("❌ No cameras available on device.");
@@ -65,12 +40,15 @@ class IntruderService {
 
       await controller.initialize();
 
+      // Let auto-exposure and auto-focus handle the lighting naturally
+      // without forcing max exposure offset which causes excessive brightness/whiteouts.
       try {
         await controller.setFocusMode(FocusMode.auto);
       } catch (e) {
         print("⚠️ Could not set focus mode: $e");
       }
 
+      // Allow a brief stabilization delay for natural lighting adjustment
       await Future.delayed(const Duration(milliseconds: 800));
 
       XFile image = await controller.takePicture();
@@ -82,8 +60,10 @@ class IntruderService {
       late Uint8List imageBytes;
 
       if (decodedImage != null) {
+        // Correct rotation safely based on the sensor orientation
         int sensorOrientation = frontCamera.sensorOrientation;
 
+        // If the sensor orientation requires turning, apply it cleanly
         if (sensorOrientation == 90) {
           decodedImage = img.copyRotate(decodedImage, angle: 90);
         } else if (sensorOrientation == 270) {
@@ -92,6 +72,7 @@ class IntruderService {
           decodedImage = img.copyRotate(decodedImage, angle: 180);
         }
 
+        // Mirror the image horizontally so it looks like a normal front-camera preview selfie
         decodedImage = img.flipHorizontal(decodedImage);
 
         imageBytes = Uint8List.fromList(
@@ -110,36 +91,19 @@ class IntruderService {
 
       String base64Image = base64Encode(imageBytes);
 
-      // 3. Package all intruder security data together
-      final intruderData = {
+      await _firestore.collection('intruder_photos').add({
         'userId': user.uid,
-        'userEmail': user.email ?? 'Unknown',
         'localPath': localFile.path,
         'imageBase64': base64Image,
-        'latitude': position?.latitude,
-        'longitude': position?.longitude,
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'unresolved',
-      };
-
-      // 4. Log to user's personal intruder collection
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('intruder_logs')
-          .add(intruderData);
-
-      // 5. Log to global collection for Admin Portal visibility
-      await _firestore.collection('all_intruder_logs').add(intruderData);
-
-      // (Optional legacy collection sync)
-      await _firestore.collection('intruder_photos').add(intruderData);
+      });
 
       print(
-        "🚨 Intruder photo, GPS coordinates, and logs successfully saved & synced to Firebase!",
+        "🚨 Intruder image captured clearly with proper lighting, rotation, and logging!",
       );
     } catch (e) {
-      print("❌ Error during intruder capture or location logging: $e");
+      print("❌ Error during intruder capture or conversion: $e");
     }
   }
 }

@@ -72,7 +72,7 @@ class SimService {
         // Save locally first so logs never disappear from the app UI
         await _saveLogLocally(currentCarrier, currentIdentifier);
 
-        // Log the swap event to Firestore (User + Admin portals) & update user profile status
+        // Log the swap event to Firestore (User + Admin portals)
         await _logSimSwapToFirestore(currentCarrier, currentIdentifier);
 
         // Update baseline to the new SIM so it stops spamming alerts
@@ -151,26 +151,17 @@ class SimService {
         'status': 'Mismatch Alert',
       };
 
-      // 1. Log to user portal collection
+      // Log to user portal collection
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('sim_logs')
           .add(logData);
 
-      // 2. Log to global collection for admin portal visibility
+      // Log to global collection for admin portal visibility
       await _firestore.collection('all_sim_swap_logs').add(logData);
 
-      // 3. Update main user profile document to flag that a SIM change has happened
-      await _firestore.collection('users').doc(user.uid).update({
-        'isSimChanged': true,
-        'latestCarrier': newCarrier,
-        'lastSimChangeTimestamp': FieldValue.serverTimestamp(),
-      });
-
-      print(
-        "☁️ SIM swap successfully logged to Firestore, Admin portal, and user profile updated.",
-      );
+      print("☁️ SIM swap successfully logged to Firestore & Admin portal.");
     } catch (e) {
       print("❌ Failed to log SIM swap to Firestore: $e");
     }
