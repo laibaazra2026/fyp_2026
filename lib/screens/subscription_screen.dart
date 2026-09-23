@@ -229,7 +229,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     PurchaseCartItem cartItem,
     String paymentMethod,
   ) {
-    String selectedCountryCode = '+92'; // Default international code
+    String selectedCountryCode = '+92';
     final TextEditingController phoneController = TextEditingController();
     final TextEditingController mpinController = TextEditingController();
     bool isLoading = false;
@@ -262,8 +262,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Country Code Picker integrated alongside the phone text field
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
@@ -303,7 +301,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     TextField(
                       controller: mpinController,
                       keyboardType: TextInputType.number,
@@ -342,7 +339,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       : () async {
                           String localNumber = phoneController.text.trim();
 
-                          // Strip leading 0 if entered with country code selector
                           if (localNumber.startsWith('0')) {
                             localNumber = localNumber.substring(1);
                           }
@@ -354,7 +350,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               );
                           String enteredMpin = mpinController.text.trim();
 
-                          // Standard E.164 Phone format validation regex
                           final RegExp phoneRegex = RegExp(
                             r'^\+[1-9]\d{7,14}$',
                           );
@@ -450,6 +445,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         txnId,
       );
 
+      // Added notification call here
+      await NotificationService().showNotification(
+        title: 'Payment Successful',
+        body: 'Upgraded to ${cartItem.title} via $paymentMethod. Ref: $txnId',
+      );
+
       if (!mounted) return;
 
       setState(() => _currentPlan = cartItem.featureId.replaceAll('tier_', ''));
@@ -491,6 +492,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         cartItem.price.toStringAsFixed(0),
         paymentMethod,
         txnId,
+      );
+
+      // Added notification call here
+      await NotificationService().showNotification(
+        title: 'Payment Successful',
+        body: 'Upgraded to ${cartItem.title} via $paymentMethod. Ref: $txnId',
       );
 
       if (!mounted) return;
