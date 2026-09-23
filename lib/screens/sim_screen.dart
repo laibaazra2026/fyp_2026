@@ -13,18 +13,43 @@ class SimScreen extends StatefulWidget {
 
 class _SimScreenState extends State<SimScreen> {
   final SimService _simService = SimService();
-  final String? _userId = FirebaseAuth.instance.currentUser?.uid;
+  bool _isScanning = false;
 
   @override
   void initState() {
     super.initState();
-    // Check for SIM swap on screen open
-    _simService.checkPhysicalSimSwap();
+    // Check for SIM swap silently on screen open
+    _checkSim(isManual: false);
+  }
+
+  Future<void> _checkSim({required bool isManual}) async {
+    if (isManual) {
+      setState(() => _isScanning = true);
+    }
+
+    bool isSwapped = await _simService.checkPhysicalSimSwap();
+
+    if (isManual && mounted) {
+      setState(() => _isScanning = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isSwapped
+                ? '🚨 SIM Swap detected and logged!'
+                : '✅ SIM status is secure. No changes found.',
+          ),
+          backgroundColor: isSwapped ? Colors.red : Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_userId == null) {
+    final String? userId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (userId == null) {
       return const Scaffold(body: Center(child: Text('User not logged in')));
     }
 
@@ -38,16 +63,25 @@ class _SimScreenState extends State<SimScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: _isScanning
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(Icons.refresh),
             tooltip: 'Check SIM Now',
-            onPressed: () => _simService.checkPhysicalSimSwap(),
+            onPressed: _isScanning ? null : () => _checkSim(isManual: true),
           ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
-            .doc(_userId)
+            .doc(userId)
             .collection('sim_logs')
             .orderBy('timestamp', descending: true)
             .snapshots(),
@@ -90,7 +124,9 @@ class _SimScreenState extends State<SimScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.purple.shade700,
                       ),
-                      onPressed: () => _simService.checkPhysicalSimSwap(),
+                      onPressed: _isScanning
+                          ? null
+                          : () => _checkSim(isManual: true),
                       icon: const Icon(Icons.search, color: Colors.white),
                       label: const Text(
                         'Re-Scan SIM Status',

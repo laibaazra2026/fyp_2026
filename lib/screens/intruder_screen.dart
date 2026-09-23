@@ -52,10 +52,14 @@ class _IntruderScreenState extends State<IntruderScreen> {
 
   Future<void> _enableDeviceAdmin(BuildContext context) async {
     final cameraStatus = await Permission.camera.request();
-    if (!cameraStatus.isGranted) {
+    final locationStatus = await Permission.location.request();
+
+    if (!cameraStatus.isGranted || !locationStatus.isGranted) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Camera permission is required.")),
+          const SnackBar(
+            content: Text("Camera and Location permissions are required."),
+          ),
         );
       }
       return;
@@ -114,8 +118,9 @@ class _IntruderScreenState extends State<IntruderScreen> {
                   )
                 : StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('intruder_photos')
-                        .where('userId', isEqualTo: user.uid)
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('intruder_logs')
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
@@ -150,13 +155,16 @@ class _IntruderScreenState extends State<IntruderScreen> {
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: 0.75,
+                              childAspectRatio:
+                                  0.65, // Adjusted to fit GPS info nicely
                             ),
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
                           final data =
                               docs[index].data() as Map<String, dynamic>;
                           final String? base64String = data['imageBase64'];
+                          final double? latitude = data['latitude'];
+                          final double? longitude = data['longitude'];
 
                           var rawTimestamp = data['timestamp'];
                           String formattedTime = 'Unknown time';
@@ -177,6 +185,7 @@ class _IntruderScreenState extends State<IntruderScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
+                                  flex: 3,
                                   child: (() {
                                     if (base64String == null ||
                                         base64String.isEmpty) {
@@ -236,55 +245,62 @@ class _IntruderScreenState extends State<IntruderScreen> {
                                     }
                                   }()),
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.person_outline,
-                                            size: 14,
-                                            color: Colors.grey,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              user.email ?? 'Account User',
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
+                                Expanded(
+                                  flex: 2,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.access_time,
+                                              size: 12,
+                                              color: Colors.red,
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.access_time,
-                                            size: 14,
-                                            color: Colors.red,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              formattedTime,
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                color: Colors.black54,
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                formattedTime,
+                                                style: const TextStyle(
+                                                  fontSize: 9.5,
+                                                  color: Colors.black54,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.location_on,
+                                              size: 12,
+                                              color: Colors.purple,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                latitude != null &&
+                                                        longitude != null
+                                                    ? '${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}'
+                                                    : 'Location unknown',
+                                                style: const TextStyle(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black87,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],

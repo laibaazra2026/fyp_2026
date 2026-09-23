@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:sim_reader/sim_reader.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'login_screen.dart';
 import '../../services/sandbox_sms_service.dart';
 import '../../services/app_config.dart';
@@ -22,6 +23,9 @@ class _SignupScreenState extends State<SignupScreen> {
   final _phoneController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
   final _otpController = TextEditingController();
+
+  // Secure storage instance for local SIM baseline comparison cache
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   // Country code state prefixes initialized to Pakistan (+92)
   String _phoneCountryCode = '+92';
@@ -49,7 +53,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  // Strict international format validation rule for both Sandbox & Live modes
+  // Strict international format validation rule for any country's phone number
   String? _validatePhoneFormat(String countryCode, String localNumber) {
     if (localNumber.isEmpty) return 'Phone number cannot be empty.';
 
@@ -59,7 +63,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
     final RegExp phoneRegex = RegExp(r'^\+[1-9]\d{7,14}$');
     if (!phoneRegex.hasMatch(fullNumber)) {
-      return 'Please enter a valid phone number format with country code.';
+      return 'Please enter a valid international phone number format.';
     }
     return null;
   }
@@ -112,7 +116,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       await userCredential.user?.sendEmailVerification();
 
-      // Step 1: Start Owner Phone Verification
+      // Step 1: Start Owner Phone Verification (Sandbox or Live based on config)
       await _startOwnerPhoneVerification(userCredential.user!.uid);
     } catch (e) {
       setState(() {
@@ -151,8 +155,8 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             Text(
               AppConfig.isLiveProductionMode
-                  ? 'Enter the 6-digit OTP code received via SMS.'
-                  : 'Sandbox Mode: Enter mock OTP code (1234).',
+                  ? 'Enter the 6-digit real OTP code received via SMS.'
+                  : 'Sandbox Mode: Enter mock OTP code (1234). Check in-app sandbox inbox if needed.',
               style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 16),
@@ -210,16 +214,15 @@ class _SignupScreenState extends State<SignupScreen> {
           verificationId: verificationId,
           smsCode: smsCode,
         );
-        // Additional linking if needed in live mode
+        // Link credential to authenticated user session if required
       } else {
-        // Enforce manual sandbox code check
         if (smsCode != '1234') {
           throw Exception('Invalid sandbox OTP code. Please enter 1234.');
         }
       }
 
       setState(() => _isLoading = false);
-      // Step 2: Proceed to emergency verification once owner is successfully verified
+      // Step 2: Proceed to emergency phone verification
       await _startEmergencyPhoneVerification(uid);
     } catch (e) {
       setState(() {
@@ -260,7 +263,7 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             Text(
               AppConfig.isLiveProductionMode
-                  ? 'Enter the 6-digit OTP code for the EMERGENCY phone.'
+                  ? 'Enter the 6-digit real OTP code for the EMERGENCY phone.'
                   : 'Sandbox Mode: Enter mock OTP code for emergency phone (1234).',
               style: const TextStyle(fontSize: 13),
             ),
@@ -320,7 +323,6 @@ class _SignupScreenState extends State<SignupScreen> {
           smsCode: smsCode,
         );
       } else {
-        // Enforce manual sandbox code check for emergency phone
         if (smsCode != '1234') {
           throw Exception('Invalid sandbox OTP code. Please enter 1234.');
         }
@@ -342,17 +344,35 @@ class _SignupScreenState extends State<SignupScreen> {
 
       String initialCarrier = 'Unknown';
       String initialCountry = 'Unknown';
+      String initialIdentifier = 'Unknown_ID';
 
       try {
         SimInfo? simInfo = await SimReader.getSimInfo();
         if (simInfo != null) {
           initialCarrier = simInfo.carrierName ?? 'Unknown';
           initialCountry = simInfo.countryCode ?? 'Unknown';
+          String rawId =
+              simInfo.simSerialNumber ??
+              simInfo.subscriberId ??
+              simInfo.countryCode ??
+              'Unknown_ID';
+          initialIdentifier = "${initialCarrier}_$rawId";
         }
       } catch (e) {
         print("Could not fetch initial SIM info: $e");
       }
 
+      // 🔐 Save baseline securely so SimService can evaluate and detect SIM swaps later
+      await _secureStorage.write(
+        key: 'baseline_carrier_name',
+        value: initialCarrier,
+      );
+      await _secureStorage.write(
+        key: 'baseline_sim_serial',
+        value: initialIdentifier,
+      );
+
+      // Save user profile along with initial baseline data and SIM-change tracking field initialized to false
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'uid': uid,
         'name': _nameController.text.trim(),
@@ -364,7 +384,7 @@ class _SignupScreenState extends State<SignupScreen> {
         'isEmergencyPhoneVerified': true,
         'baselineCarrier': initialCarrier,
         'baselineCountry': initialCountry,
-        'isSimChanged': false,
+        'isSimChanged': false, // Initialized safely as false upon registration
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -504,7 +524,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Your Phone Number Input with Country Dropdown Menu
+                    // Owner Phone Number Input with Country Dropdown Menu
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
