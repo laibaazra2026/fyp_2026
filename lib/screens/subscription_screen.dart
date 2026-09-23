@@ -29,20 +29,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   // Toggle this to true for live production mode, or false for Sandbox/Viva testing
   final bool _isLiveProductionMode = false;
 
-  // Sandbox pre-authorized test numbers for offline/viva testing
-  final List<String> _allowedTestNumbers = [
-    '+923005171794',
-    '+923144964339',
-    '+923241923864',
-    '+923128719043',
-    '+923157633912',
-    '03005171794',
-    '03144964339',
-    '03241923864',
-    '03128719043',
-    '03157633912',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -366,25 +352,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             return;
                           }
 
-                          if (!_isLiveProductionMode) {
-                            bool isAuthorized =
-                                _allowedTestNumbers.contains(cleanNumber) ||
-                                _allowedTestNumbers.contains(
-                                  phoneController.text.trim(),
-                                );
-                            if (!isAuthorized) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Invalid sandbox number! Use one of the authorized test numbers.',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              return;
-                            }
-                          }
-
                           if (enteredMpin.length != 4) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -445,8 +412,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         txnId,
       );
 
-      // Added notification call here
-      await NotificationService().showNotification(
+      // Fixed notification call using static method or class instance
+      await NotificationService.showNotification(
         title: 'Payment Successful',
         body: 'Upgraded to ${cartItem.title} via $paymentMethod. Ref: $txnId',
       );
@@ -494,8 +461,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         txnId,
       );
 
-      // Added notification call here
-      await NotificationService().showNotification(
+      // Fixed notification call using static method or class instance
+      await NotificationService.showNotification(
         title: 'Payment Successful',
         body: 'Upgraded to ${cartItem.title} via $paymentMethod. Ref: $txnId',
       );
