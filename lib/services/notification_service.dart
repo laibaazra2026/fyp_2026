@@ -27,6 +27,26 @@ class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Add and save a notification to Firestore for the current user
+  static Future<void> showNotification({
+    required String title,
+    required String body,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('notifications')
+        .add({
+      'title': title,
+      'body': body,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+  }
+
   /// Stream of notifications for the current user from Firestore, ordered by newest first.
   Stream<List<NotificationItem>> getUserNotifications() {
     final user = _auth.currentUser;
