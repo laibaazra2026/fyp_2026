@@ -13,10 +13,10 @@ android {
     ndkVersion = flutter.ndkVersion
     
     lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
+        checkReleaseBuilds = false
+        abortOnError = false
     }
-    
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
