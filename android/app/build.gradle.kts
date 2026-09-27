@@ -12,9 +12,11 @@ android {
     compileSdk = 37   
     ndkVersion = flutter.ndkVersion
     
-    lintOptions {
+   lint {
         checkReleaseBuilds = false
         abortOnError = false
+        disable.add("InvalidPackage")
+        disable.add("MissingTranslation")
     }
 
 
