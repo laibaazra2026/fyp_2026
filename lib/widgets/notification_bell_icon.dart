@@ -43,48 +43,18 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // FIXED HEADER: Wrapped title/badge in Expanded to prevent horizontal overflow
+              // Header without environment badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Flexible(
-                          child: Text(
-                            'Payment Notifications',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Dual-Mode Environment Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppConfig.isLiveProductionMode
-                                ? Colors.green.shade100
-                                : Colors.purple.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            AppConfig.isLiveProductionMode ? 'LIVE' : 'SANDBOX',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: AppConfig.isLiveProductionMode
-                                  ? Colors.green.shade800
-                                  : Colors.purple.shade800,
-                            ),
-                          ),
-                        ),
-                      ],
+                  const Expanded(
+                    child: Text(
+                      'Payment Notifications',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Row(
@@ -130,12 +100,10 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
                     }
 
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return Center(
+                      return const Center(
                         child: Text(
-                          AppConfig.isLiveProductionMode
-                              ? 'No live payment notifications.'
-                              : 'No sandbox mock notifications.',
-                          style: const TextStyle(color: Colors.grey),
+                          'No payment notifications.',
+                          style: TextStyle(color: Colors.grey),
                         ),
                       );
                     }
