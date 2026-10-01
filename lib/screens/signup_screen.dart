@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'login_screen.dart';
 import '../../services/sandbox_sms_service.dart';
 import '../../services/app_config.dart';
@@ -62,26 +61,6 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  // Strict international format validation rule for any country's phone number
-  String? _validatePhoneFormat(
-    String countryCode,
-    String localNumber,
-    String label,
-  ) {
-    if (localNumber.isEmpty) return '$label cannot be empty.';
-
-    String fullNumber = '$countryCode$localNumber'.replaceAll(
-      RegExp(r'\s+'),
-      '',
-    );
-    // International phone regex supporting 7 to 14 digits after country code
-    final RegExp phoneRegex = RegExp(r'^\+[1-9]\d{7,14}$');
-    if (!phoneRegex.hasMatch(fullNumber)) {
-      return '$label format or length is invalid for the selected country code.';
-    }
-    return null;
-  }
-
   Future<void> _signup() async {
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
@@ -110,33 +89,13 @@ class _SignupScreenState extends State<SignupScreen> {
     String phoneTrimmed = _phoneController.text.trim();
     String emergencyTrimmed = _emergencyPhoneController.text.trim();
 
-    // Check that owner phone and emergency phone are not identical
+    // Check that phone number and emergency phone number are not identical
     if (_phoneCountryCode == _emergencyCountryCode &&
         phoneTrimmed == emergencyTrimmed) {
       setState(
         () => _errorMessage =
-            'Owner Phone number and Emergency Phone number must be different.',
+            'Phone Number and Emergency Phone Number must be different.',
       );
-      return;
-    }
-
-    String? phoneError = _validatePhoneFormat(
-      _phoneCountryCode,
-      phoneTrimmed,
-      'Owner Phone',
-    );
-    if (phoneError != null) {
-      setState(() => _errorMessage = phoneError);
-      return;
-    }
-
-    String? emergencyPhoneError = _validatePhoneFormat(
-      _emergencyCountryCode,
-      emergencyTrimmed,
-      'Emergency Phone',
-    );
-    if (emergencyPhoneError != null) {
-      setState(() => _errorMessage = emergencyPhoneError);
       return;
     }
 
@@ -154,7 +113,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       await userCredential.user?.sendEmailVerification();
 
-      // Step 1: Start Owner Phone Verification (Sandbox or Live based on config)
+      // Step 1: Start Owner Phone Verification
       await _startOwnerPhoneVerification(userCredential.user!.uid);
     } catch (e) {
       setState(() {
@@ -175,7 +134,7 @@ class _SignupScreenState extends State<SignupScreen> {
       onError: (String error) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Owner Phone Verification Failed: $error';
+          _errorMessage = 'Phone Verification Failed: $error';
         });
       },
     );
@@ -187,14 +146,14 @@ class _SignupScreenState extends State<SignupScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('📱 Verify Your Owner Phone'),
+        title: const Text('📱 Verify Your Phone'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               AppConfig.isLiveProductionMode
                   ? 'Enter the 6-digit real OTP code received via SMS.'
-                  : 'Sandbox Mode: Enter mock OTP code (1234). Check in-app sandbox inbox if needed.',
+                  : 'Sandbox Mode: Enter mock OTP code (1234).',
               style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 16),
@@ -203,7 +162,7 @@ class _SignupScreenState extends State<SignupScreen> {
               keyboardType: TextInputType.number,
               maxLength: 6,
               decoration: InputDecoration(
-                labelText: 'Enter Owner OTP',
+                labelText: 'Enter OTP',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -226,7 +185,7 @@ class _SignupScreenState extends State<SignupScreen> {
               await _verifyOwnerOtpCode(verificationId, uid, enteredCode);
             },
             child: const Text(
-              'Verify Owner Phone',
+              'Verify Phone',
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -241,7 +200,7 @@ class _SignupScreenState extends State<SignupScreen> {
     String smsCode,
   ) async {
     if (smsCode.isEmpty) {
-      setState(() => _errorMessage = 'Owner OTP code cannot be empty.');
+      setState(() => _errorMessage = 'OTP code cannot be empty.');
       return;
     }
 
@@ -265,7 +224,7 @@ class _SignupScreenState extends State<SignupScreen> {
       setState(() {
         _isLoading = false;
         _errorMessage =
-            'Owner OTP Verification Failed: ${e.toString().replaceAll('Exception: ', '')}';
+            'OTP Verification Failed: ${e.toString().replaceAll('Exception: ', '')}';
       });
     }
   }
@@ -300,7 +259,7 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             Text(
               AppConfig.isLiveProductionMode
-                  ? 'Enter the 6-digit real OTP code for the EMERGENCY phone.'
+                  ? 'Enter the 6-digit real OTP code for emergency phone.'
                   : 'Sandbox Mode: Enter mock OTP code for emergency phone (1234).',
               style: const TextStyle(fontSize: 13),
             ),
@@ -549,21 +508,9 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Owner Phone Number Section
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Owner Phone Number',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
+                    // Phone Number Field styled uniformly
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
@@ -588,7 +535,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
                               decoration: const InputDecoration(
-                                hintText: '3001234567',
+                                labelText: 'Phone Number',
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -601,19 +548,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Emergency Phone Number Section
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Emergency Phone Number (Must be different)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
+                    // Emergency Phone Number Field styled uniformly
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
@@ -639,7 +574,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               controller: _emergencyPhoneController,
                               keyboardType: TextInputType.phone,
                               decoration: const InputDecoration(
-                                hintText: '3128719043',
+                                labelText: 'Emergency Phone Number',
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -704,7 +639,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Professional Already have an account? Login footer
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
