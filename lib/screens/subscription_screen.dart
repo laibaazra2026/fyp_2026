@@ -26,7 +26,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String _currentPlan = 'free';
   int _currentPage = 0;
 
-  // Toggle this to true for live production mode, or false for Sandbox/Viva testing
+  // Toggle this to true for live production mode, or false for simulation testing
   final bool _isLiveProductionMode = false;
 
   @override
@@ -108,7 +108,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Amount to pay: Rs. ${cartItem.price.toStringAsFixed(0)} ${_isLiveProductionMode ? "(Live Mode)" : "(Sandbox Mode)"}',
+                'Amount to pay: Rs. ${cartItem.price.toStringAsFixed(0)} ${_isLiveProductionMode ? "(Live Mode)" : "(Standard Mode)"}',
                 style: TextStyle(
                   color: _isLiveProductionMode
                       ? Colors.green.shade700
@@ -233,7 +233,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               title: Text(
                 _isLiveProductionMode
                     ? '$paymentMethod Live Checkout'
-                    : '$paymentMethod Sandbox Checkout',
+                    : '$paymentMethod Secure Checkout',
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -295,7 +295,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       decoration: InputDecoration(
                         labelText: _isLiveProductionMode
                             ? 'Real Gateway PIN / OTP'
-                            : '4-Digit MPIN / Mock OTP',
+                            : '4-Digit PIN / OTP',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -412,7 +412,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         txnId,
       );
 
-      // Fixed notification call using static method or class instance
       await NotificationService.showNotification(
         title: 'Payment Successful',
         body: 'Upgraded to ${cartItem.title} via $paymentMethod. Ref: $txnId',
@@ -461,7 +460,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         txnId,
       );
 
-      // Fixed notification call using static method or class instance
       await NotificationService.showNotification(
         title: 'Payment Successful',
         body: 'Upgraded to ${cartItem.title} via $paymentMethod. Ref: $txnId',
@@ -537,7 +535,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             Text('Method: $paymentMethod'),
             Text('Transaction ID: $txnId'),
             Text(
-              'Mode: ${_isLiveProductionMode ? "Live Production" : "Sandbox"}',
+              'Mode: ${_isLiveProductionMode ? "Live Production" : "Standard"}',
             ),
           ],
         ),
@@ -568,7 +566,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             title: Text(
               _isLiveProductionMode
                   ? 'Subscription Plans (Live)'
-                  : 'Subscription Plans (Sandbox)',
+                  : 'Subscription Plans',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,

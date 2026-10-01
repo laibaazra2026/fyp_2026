@@ -40,11 +40,11 @@ class NotificationService {
         .doc(user.uid)
         .collection('notifications')
         .add({
-      'title': title,
-      'body': body,
-      'timestamp': FieldValue.serverTimestamp(),
-      'isRead': false,
-    });
+          'title': title,
+          'body': body,
+          'timestamp': FieldValue.serverTimestamp(),
+          'isRead': false,
+        });
   }
 
   /// Stream of notifications for the current user from Firestore, ordered by newest first.
@@ -162,7 +162,7 @@ class NotificationService {
   }
 }
 
-/// Centralized helper function supporting both Sandbox (Mock) and Real Live Payments
+/// Centralized helper function supporting dual mode silently
 Future<void> handleSuccessfulPayment({
   required String gateway,
   required String planName,
@@ -176,23 +176,17 @@ Future<void> handleSuccessfulPayment({
   final firestore = FirebaseFirestore.instance;
   final bool isLive = AppConfig.isLiveProductionMode;
 
-  // Determine prefixes/labels based on live vs sandbox status
-  final String modeLabel = isLive ? 'LIVE' : 'SANDBOX (MOCK)';
-  final String statusLabel = isLive
-      ? 'Verified (Live)'
-      : 'Verified (Sandbox Simulation)';
-
   // 1. Update user subscription in Firestore
   await firestore.collection('users').doc(user.uid).set({
     'subscriptionPlan': planName,
-    'paymentGateway': '$gateway ($modeLabel)',
+    'paymentGateway': gateway,
     'verifiedPhoneNumber': mobileNo,
     'lastTransactionId': transactionId,
     'isLivePayment': isLive,
     'subscribedAt': FieldValue.serverTimestamp(),
   }, SetOptions(merge: true));
 
-  // 2. Log to payment_requests collection for admin review (tagged by mode)
+  // 2. Log payment request for admin review
   await firestore.collection('payment_requests').add({
     'userId': user.uid,
     'email': user.email ?? 'N/A',
@@ -200,22 +194,21 @@ Future<void> handleSuccessfulPayment({
     'gateway': gateway,
     'transactionId': transactionId,
     'mobileNo': mobileNo,
-    'mode': modeLabel,
     'timestamp': FieldValue.serverTimestamp(),
-    'status': statusLabel,
+    'status': 'Verified',
   });
 
-  // 3. Save a permanent notification to Firestore with clear mode indicators
-  await firestore.collection('users').doc(user.uid).collection('notifications').add({
-    'title': isLive
-        ? 'Payment Successful ($gateway)'
-        : 'Mock Payment Simulation ($gateway)',
-    'body': isLive
-        ? 'Your live payment of PKR $amount was verified. Ref: $transactionId'
-        : '[SANDBOX TEST] Simulated payment of PKR $amount processed. Ref: $transactionId',
-    'type': isLive ? 'payment_success_live' : 'payment_success_sandbox',
-    'isLive': isLive,
-    'timestamp': FieldValue.serverTimestamp(),
-    'isRead': false,
-  });
+  // 3. Save a clean permanent notification to Firestore without mode text
+  await firestore
+      .collection('users')
+      .doc(user.uid)
+      .collection('notifications')
+      .add({
+        'title': 'Payment Successful ($gateway)',
+        'body': 'Your payment of PKR $amount was verified. Ref: $transactionId',
+        'type': 'payment_success',
+        'isLive': isLive,
+        'timestamp': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
 }
