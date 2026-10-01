@@ -510,11 +510,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Phone Number Field styled uniformly
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(12),
+                    // Phone Number Field styled uniformly with standard input decoration
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -535,8 +541,8 @@ class _SignupScreenState extends State<SignupScreen> {
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
                               decoration: const InputDecoration(
-                                labelText: 'Phone Number',
                                 border: InputBorder.none,
+                                hintText: 'Phone Number',
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8,
                                 ),
@@ -548,11 +554,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Emergency Phone Number Field styled uniformly
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(12),
+                    // Emergency Phone Number Field styled uniformly with standard input decoration
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Emergency Phone Number',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -574,8 +586,8 @@ class _SignupScreenState extends State<SignupScreen> {
                               controller: _emergencyPhoneController,
                               keyboardType: TextInputType.phone,
                               decoration: const InputDecoration(
-                                labelText: 'Emergency Phone Number',
                                 border: InputBorder.none,
+                                hintText: 'Emergency Phone Number',
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8,
                                 ),
