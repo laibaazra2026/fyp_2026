@@ -440,6 +440,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF841EA0),
+                            width: 2,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -454,6 +461,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF841EA0),
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
@@ -479,6 +493,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF841EA0),
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
@@ -506,95 +527,77 @@ class _SignupScreenState extends State<SignupScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF841EA0),
+                            width: 2,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // Phone Number Field styled uniformly with standard input decoration
-                    InputDecorator(
+                    // Phone Number Field using CountryCodePicker inside prefixIcon
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         labelText: 'Phone Number',
+                        prefixIcon: CountryCodePicker(
+                          onChanged: (country) {
+                            setState(() {
+                              _phoneCountryCode = country.dialCode ?? '+92';
+                            });
+                          },
+                          initialSelection: 'PK',
+                          favorite: const ['+92', 'US', 'GB', 'IN'],
+                          showCountryOnly: false,
+                          showOnlyCountryWhenClosed: false,
+                          alignLeft: false,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF841EA0),
+                            width: 2,
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          CountryCodePicker(
-                            onChanged: (country) {
-                              setState(() {
-                                _phoneCountryCode = country.dialCode ?? '+92';
-                              });
-                            },
-                            initialSelection: 'PK',
-                            favorite: const ['+92', 'US', 'GB', 'IN'],
-                            showCountryOnly: false,
-                            showOnlyCountryWhenClosed: false,
-                            alignLeft: false,
-                          ),
-                          Expanded(
-                            child: TextField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'Phone Number',
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // Emergency Phone Number Field styled uniformly with standard input decoration
-                    InputDecorator(
+                    // Emergency Phone Number Field using CountryCodePicker inside prefixIcon
+                    TextField(
+                      controller: _emergencyPhoneController,
+                      keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         labelText: 'Emergency Phone Number',
+                        prefixIcon: CountryCodePicker(
+                          onChanged: (country) {
+                            setState(() {
+                              _emergencyCountryCode = country.dialCode ?? '+92';
+                            });
+                          },
+                          initialSelection: 'PK',
+                          favorite: const ['+92', 'US', 'GB', 'IN'],
+                          showCountryOnly: false,
+                          showOnlyCountryWhenClosed: false,
+                          alignLeft: false,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF841EA0),
+                            width: 2,
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          CountryCodePicker(
-                            onChanged: (country) {
-                              setState(() {
-                                _emergencyCountryCode =
-                                    country.dialCode ?? '+92';
-                              });
-                            },
-                            initialSelection: 'PK',
-                            favorite: const ['+92', 'US', 'GB', 'IN'],
-                            showCountryOnly: false,
-                            showOnlyCountryWhenClosed: false,
-                            alignLeft: false,
-                          ),
-                          Expanded(
-                            child: TextField(
-                              controller: _emergencyPhoneController,
-                              keyboardType: TextInputType.phone,
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'Emergency Phone Number',
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
 
