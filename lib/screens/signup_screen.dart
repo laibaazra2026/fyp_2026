@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:sim_reader/sim_reader.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'login_screen.dart';
 import '../../services/sandbox_sms_service.dart';
@@ -19,6 +18,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
   final _otpController = TextEditingController();
@@ -28,8 +28,21 @@ class _SignupScreenState extends State<SignupScreen> {
   String _emergencyCountryCode = '+92';
 
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   String _errorMessage = '';
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _phoneController.dispose();
+    _emergencyPhoneController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
 
   String? _validatePassword(String password) {
     if (password.isEmpty) return 'Password cannot be empty.';
@@ -50,16 +63,21 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   // Strict international format validation rule for any country's phone number
-  String? _validatePhoneFormat(String countryCode, String localNumber) {
-    if (localNumber.isEmpty) return 'Phone number cannot be empty.';
+  String? _validatePhoneFormat(
+    String countryCode,
+    String localNumber,
+    String label,
+  ) {
+    if (localNumber.isEmpty) return '$label cannot be empty.';
 
     String fullNumber = '$countryCode$localNumber'.replaceAll(
       RegExp(r'\s+'),
       '',
     );
+    // International phone regex supporting 7 to 14 digits after country code
     final RegExp phoneRegex = RegExp(r'^\+[1-9]\d{7,14}$');
     if (!phoneRegex.hasMatch(fullNumber)) {
-      return 'Please enter a valid international phone number format.';
+      return '$label format or length is invalid for the selected country code.';
     }
     return null;
   }
@@ -68,6 +86,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _emergencyPhoneController.text.isEmpty) {
       setState(() => _errorMessage = 'Please fill out all input fields.');
@@ -80,21 +99,44 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
+    if (_passwordController.text != _confirmPasswordController.text) {
+      setState(
+        () => _errorMessage =
+            'Passwords do not match. Please check confirm password.',
+      );
+      return;
+    }
+
+    String phoneTrimmed = _phoneController.text.trim();
+    String emergencyTrimmed = _emergencyPhoneController.text.trim();
+
+    // Check that owner phone and emergency phone are not identical
+    if (_phoneCountryCode == _emergencyCountryCode &&
+        phoneTrimmed == emergencyTrimmed) {
+      setState(
+        () => _errorMessage =
+            'Owner Phone number and Emergency Phone number must be different.',
+      );
+      return;
+    }
+
     String? phoneError = _validatePhoneFormat(
       _phoneCountryCode,
-      _phoneController.text.trim(),
+      phoneTrimmed,
+      'Owner Phone',
     );
     if (phoneError != null) {
-      setState(() => _errorMessage = 'Your Phone: $phoneError');
+      setState(() => _errorMessage = phoneError);
       return;
     }
 
     String? emergencyPhoneError = _validatePhoneFormat(
       _emergencyCountryCode,
-      _emergencyPhoneController.text.trim(),
+      emergencyTrimmed,
+      'Emergency Phone',
     );
     if (emergencyPhoneError != null) {
-      setState(() => _errorMessage = 'Emergency Phone: $emergencyPhoneError');
+      setState(() => _errorMessage = emergencyPhoneError);
       return;
     }
 
@@ -206,11 +248,10 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
     try {
       if (AppConfig.isLiveProductionMode) {
-        PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        PhoneAuthProvider.credential(
           verificationId: verificationId,
           smsCode: smsCode,
         );
-        // Link credential to authenticated user session if required
       } else {
         if (smsCode != '1234') {
           throw Exception('Invalid sandbox OTP code. Please enter 1234.');
@@ -314,7 +355,7 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
     try {
       if (AppConfig.isLiveProductionMode) {
-        PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        PhoneAuthProvider.credential(
           verificationId: verificationId,
           smsCode: smsCode,
         );
@@ -336,7 +377,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> _finalizeRegistration(String uid) async {
     try {
-      // Save user profile without SIM data fields
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'uid': uid,
         'name': _nameController.text.trim(),
@@ -484,8 +524,46 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm Password',
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: Color(0xFF841EA0),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscureConfirmPassword =
+                                !_obscureConfirmPassword,
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
-                    // Owner Phone Number Input with Country Dropdown Menu
+                    // Owner Phone Number Section
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Owner Phone Number',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
@@ -523,7 +601,19 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Emergency Phone Number Input with Country Dropdown Menu
+                    // Emergency Phone Number Section
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Emergency Phone Number (Must be different)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
@@ -611,6 +701,39 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                               ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Professional Already have an account? Login footer
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Already have an account? ',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LoginScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Login',
+                            style: TextStyle(
+                              color: Color(0xFF841EA0),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
