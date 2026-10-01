@@ -314,6 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final String displayName =
         user?.displayName ?? user?.email?.split('@')[0] ?? 'User';
     final String email = user?.email ?? 'No email';
+    // _isLive logic remains preserved internally without displaying badges on UI[cite: 6]
     final bool isLive = AppConfig.isLiveProductionMode;
 
     return Scaffold(
@@ -322,43 +323,13 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.purple.shade700,
         elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Home Dashboard',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isLive
-                        ? Colors.green.shade800
-                        : Colors.purple.shade900,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    isLive ? 'MODE: LIVE' : 'MODE: SANDBOX',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+        title: const Text(
+          'Home Dashboard',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
@@ -637,8 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio:
-                  1.15, // FIX: Updated to 1.15 to prevent bottom renderflex overflow
+              childAspectRatio: 1.15,
               children: [
                 FeatureAccessCard(
                   title: 'GPS Tracking',
