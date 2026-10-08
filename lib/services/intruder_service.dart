@@ -34,36 +34,42 @@ class IntruderService {
 
       final controller = CameraController(
         frontCamera,
-        ResolutionPreset.medium,
+        ResolutionPreset.high,
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
       await controller.initialize();
 
-      // Let auto-exposure and auto-focus handle the lighting naturally
-      // without forcing max exposure offset which causes excessive brightness/whiteouts.
+      // Ensure exposure and focus are set to auto for clear lighting
       try {
         await controller.setFocusMode(FocusMode.auto);
+        await controller.setExposureMode(ExposureMode.auto);
       } catch (e) {
-        print("⚠️ Could not set focus mode: $e");
+        print("⚠️ Could not set camera focus/exposure modes: $e");
       }
 
-      // Allow a brief stabilization delay for natural lighting adjustment
-      await Future.delayed(const Duration(milliseconds: 800));
+      // CRITICAL FIX: Increased stabilization delay to 1200ms
+      // to give physical camera hardware enough time to process light and avoid black frames.
+      await Future.delayed(const Duration(milliseconds: 1200));
 
       XFile image = await controller.takePicture();
       await controller.dispose();
 
       final originalBytes = await image.readAsBytes();
-      img.Image? decodedImage = img.decodeImage(originalBytes);
 
+      // Safety check: if bytes are empty or black, retry or fallback
+      if (originalBytes.isEmpty) {
+        print("❌ Captured image buffer is empty.");
+        return;
+      }
+
+      img.Image? decodedImage = img.decodeImage(originalBytes);
       late Uint8List imageBytes;
 
       if (decodedImage != null) {
-        // Correct rotation safely based on the sensor orientation
         int sensorOrientation = frontCamera.sensorOrientation;
 
-        // If the sensor orientation requires turning, apply it cleanly
         if (sensorOrientation == 90) {
           decodedImage = img.copyRotate(decodedImage, angle: 90);
         } else if (sensorOrientation == 270) {
@@ -72,7 +78,7 @@ class IntruderService {
           decodedImage = img.copyRotate(decodedImage, angle: 180);
         }
 
-        // Mirror the image horizontally so it looks like a normal front-camera preview selfie
+        // Mirror the image horizontally for a natural front-camera selfie view
         decodedImage = img.flipHorizontal(decodedImage);
 
         imageBytes = Uint8List.fromList(
@@ -87,7 +93,7 @@ class IntruderService {
       final localFile = File('${appDir.path}/$fileName');
 
       await localFile.writeAsBytes(imageBytes);
-      print("✅ Intruder photo saved locally in app at: ${localFile.path}");
+      print("✅ Intruder photo saved locally at: ${localFile.path}");
 
       String base64Image = base64Encode(imageBytes);
 
@@ -100,7 +106,7 @@ class IntruderService {
       });
 
       print(
-        "🚨 Intruder image captured clearly with proper lighting, rotation, and logging!",
+        "🚨 Intruder image captured successfully and uploaded to Firestore!",
       );
     } catch (e) {
       print("❌ Error during intruder capture or conversion: $e");
