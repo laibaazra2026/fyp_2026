@@ -314,7 +314,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final String displayName =
         user?.displayName ?? user?.email?.split('@')[0] ?? 'User';
     final String email = user?.email ?? 'No email';
-    // _isLive logic remains preserved internally without displaying badges on UI[cite: 6]
     final bool isLive = AppConfig.isLiveProductionMode;
 
     return Scaffold(
@@ -608,7 +607,8 @@ class _HomeScreenState extends State<HomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 1.15,
+              childAspectRatio:
+                  0.95, // 👈 Fixed aspect ratio to prevent card text clipping
               children: [
                 FeatureAccessCard(
                   title: 'GPS Tracking',
