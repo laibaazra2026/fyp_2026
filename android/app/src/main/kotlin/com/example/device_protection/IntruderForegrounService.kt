@@ -57,7 +57,7 @@ class IntruderForegroundService : Service() {
             } ?: manager.cameraIdList[0]
 
             val handler = Handler(Looper.getMainLooper())
-            val imageReader = ImageReader.newInstance(640, 480, ImageFormat.JPEG, 1)
+            val imageReader = ImageReader.newInstance(640, 480, ImageFormat.JPEG, 2)
 
             imageReader.setOnImageAvailableListener({ reader ->
                 val image = reader.acquireLatestImage()
@@ -75,15 +75,41 @@ class IntruderForegroundService : Service() {
             manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     val surface = imageReader.surface
-                    val requestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
-                    requestBuilder.addTarget(surface)
+                    
+                    // Create a preview request first to wake up the sensor and calculate light exposure
+                    val previewRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+                        addTarget(surface)
+                        set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+                        set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                    }
+
+                    // Create still capture builder for the actual snapshot
+                    val stillRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                        addTarget(surface)
+                        set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+                    }
 
                     camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             try {
-                                session.capture(requestBuilder.build(), null, handler)
+                                // Start a repeating preview request so the sensor exposes itself to light
+                                session.setRepeatingRequest(previewRequestBuilder.build(), null, handler)
+
+                                // Delay for 2200ms to let the hardware sensor adjust lighting on lock screen
+                                handler.postDelayed({
+                                    try {
+                                        // Stop repeating preview and fire the final still capture
+                                        session.stopRepeating()
+                                        session.capture(stillRequestBuilder.build(), null, handler)
+                                    } catch (e: Exception) {
+                                        Log.e("IntruderService", "Still capture failed: ${e.message}")
+                                        camera.close()
+                                        stopSelf()
+                                    }
+                                }, 2200)
+
                             } catch (e: Exception) {
-                                Log.e("IntruderService", "Capture execution failed: ${e.message}")
+                                Log.e("IntruderService", "Session execution failed: ${e.message}")
                                 camera.close()
                                 stopSelf()
                             }
