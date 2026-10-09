@@ -9,6 +9,9 @@ import android.app.NotificationManager
 import android.os.Build
 import android.hardware.camera2.*
 import android.graphics.ImageFormat
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.media.ImageReader
 import android.os.Handler
 import android.os.Looper
@@ -18,6 +21,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.io.File
+import java.io.ByteArrayOutputStream
 
 class IntruderForegroundService : Service() {
 
@@ -56,6 +60,9 @@ class IntruderForegroundService : Service() {
                 manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
             } ?: manager.cameraIdList[0]
 
+            val characteristics = manager.getCameraCharacteristics(cameraId)
+            val sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 270
+
             val handler = Handler(Looper.getMainLooper())
             val imageReader = ImageReader.newInstance(640, 480, ImageFormat.JPEG, 2)
 
@@ -68,7 +75,7 @@ class IntruderForegroundService : Service() {
                     image.close()
                     reader.close()
 
-                    handleCapturedImage(bytes)
+                    handleCapturedImage(bytes, sensorOrientation)
                 }
             }, handler)
 
@@ -76,14 +83,11 @@ class IntruderForegroundService : Service() {
                 override fun onOpened(camera: CameraDevice) {
                     val surface = imageReader.surface
                     
-                    // Create a preview request first to wake up the sensor and calculate light exposure
                     val previewRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                         addTarget(surface)
                         set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
-                        set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
                     }
 
-                    // Create still capture builder for the actual snapshot
                     val stillRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
                         addTarget(surface)
                         set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
@@ -92,13 +96,10 @@ class IntruderForegroundService : Service() {
                     camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             try {
-                                // Start a repeating preview request so the sensor exposes itself to light
                                 session.setRepeatingRequest(previewRequestBuilder.build(), null, handler)
 
-                                // Delay for 2200ms to let the hardware sensor adjust lighting on lock screen
                                 handler.postDelayed({
                                     try {
-                                        // Stop repeating preview and fire the final still capture
                                         session.stopRepeating()
                                         session.capture(stillRequestBuilder.build(), null, handler)
                                     } catch (e: Exception) {
@@ -130,13 +131,28 @@ class IntruderForegroundService : Service() {
         }
     }
 
-    private fun handleCapturedImage(bytes: ByteArray) {
+    private fun handleCapturedImage(bytes: ByteArray, sensorOrientation: Int) {
         try {
+            // Decode raw bytes into a Bitmap
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
+            // Rotate and mirror horizontally for a natural front-camera selfie view
+            val matrix = Matrix().apply {
+                postRotate(sensorOrientation.toFloat())
+                postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+            }
+
+            val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            
+            val stream = ByteArrayOutputStream()
+            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+            val correctedBytes = stream.toByteArray()
+
             val fileName = "intruder_${System.currentTimeMillis()}.jpg"
             val file = File(filesDir, fileName)
-            file.writeBytes(bytes)
+            file.writeBytes(correctedBytes)
 
-            val base64Image = Base64.encodeToString(bytes, Base64.DEFAULT)
+            val base64Image = Base64.encodeToString(correctedBytes, Base64.DEFAULT)
             val auth = FirebaseAuth.getInstance()
             val userId = auth.currentUser?.uid ?: "anonymous_intruder"
 
