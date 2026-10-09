@@ -12,6 +12,7 @@ class IntruderService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<void> onIncorrectUnlockAttempt() async {
+    CameraController? controller;
     try {
       print("📸 Starting intruder capture sequence...");
       User? user = _auth.currentUser;
@@ -32,9 +33,10 @@ class IntruderService {
         orElse: () => cameras.first,
       );
 
-      final controller = CameraController(
+      // Changed resolution preset to medium for better stability during quick background sensor access[cite: 2]
+      controller = CameraController(
         frontCamera,
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -49,12 +51,12 @@ class IntruderService {
         print("⚠️ Could not set camera focus/exposure modes: $e");
       }
 
-      // CRITICAL FIX: Increased stabilization delay to 1200ms
-      // to give physical camera hardware enough time to process light and avoid black frames.
-      await Future.delayed(const Duration(milliseconds: 1200));
+      // Increased stabilization delay to 2200ms to allow physical camera sensor enough light adjustment time[cite: 2]
+      await Future.delayed(const Duration(milliseconds: 2200));
 
       XFile image = await controller.takePicture();
       await controller.dispose();
+      controller = null;
 
       final originalBytes = await image.readAsBytes();
 
@@ -110,6 +112,8 @@ class IntruderService {
       );
     } catch (e) {
       print("❌ Error during intruder capture or conversion: $e");
+    } finally {
+      await controller?.dispose();
     }
   }
 }
