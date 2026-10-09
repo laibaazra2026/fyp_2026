@@ -65,11 +65,11 @@
         <service
             android:name=".IntruderForegroundService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="camera|specialUse" />
             
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
-            android:foregroundServiceType="specialUse"
+            android:foregroundServiceType="camera|specialUse"
             android:stopWithTask="false"
             android:exported="false" 
             />
