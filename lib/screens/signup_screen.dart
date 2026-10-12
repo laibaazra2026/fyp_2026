@@ -22,7 +22,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emergencyPhoneController = TextEditingController();
   final _otpController = TextEditingController();
 
-  // Country code state prefixes initialized to Pakistan (+92)
   String _phoneCountryCode = '+92';
   String _emergencyCountryCode = '+92';
 
@@ -89,7 +88,6 @@ class _SignupScreenState extends State<SignupScreen> {
     String phoneTrimmed = _phoneController.text.trim();
     String emergencyTrimmed = _emergencyPhoneController.text.trim();
 
-    // Check that phone number and emergency phone number are not identical
     if (_phoneCountryCode == _emergencyCountryCode &&
         phoneTrimmed == emergencyTrimmed) {
       setState(
@@ -113,7 +111,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
       await userCredential.user?.sendEmailVerification();
 
-      // Step 1: Start Owner Phone Verification
       await _startOwnerPhoneVerification(userCredential.user!.uid);
     } catch (e) {
       setState(() {
@@ -218,7 +215,6 @@ class _SignupScreenState extends State<SignupScreen> {
       }
 
       setState(() => _isLoading = false);
-      // Step 2: Proceed to emergency phone verification
       await _startEmergencyPhoneVerification(uid);
     } catch (e) {
       setState(() {
@@ -538,7 +534,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Phone Number Field using CountryCodePicker inside prefixIcon
                     TextField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
@@ -570,7 +565,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Emergency Phone Number Field using CountryCodePicker inside prefixIcon
                     TextField(
                       controller: _emergencyPhoneController,
                       keyboardType: TextInputType.phone,

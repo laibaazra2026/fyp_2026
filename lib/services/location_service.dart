@@ -7,29 +7,23 @@ class LocationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ========== REQUEST PERMISSION (Foreground & Background) ==========
   Future<bool> requestPermission() async {
-    // 1. Request standard foreground location permission first
     PermissionStatus foregroundStatus = await Permission.location.request();
 
     if (foregroundStatus.isDenied || foregroundStatus.isPermanentlyDenied) {
       return false;
     }
 
-    // 2. Request background location permission ("Allow all the time") for Android 14+
     PermissionStatus backgroundStatus = await Permission.locationAlways
         .request();
 
-    // Returns true if location access is granted (either while-in-use or all-the-time)
     return foregroundStatus.isGranted || backgroundStatus.isGranted;
   }
 
-  // ========== CHECK GPS ENABLED ==========
   Future<bool> isGpsEnabled() async {
     return await Geolocator.isLocationServiceEnabled();
   }
 
-  // ========== GET CURRENT LOCATION ==========
   Future<Position?> getCurrentLocation() async {
     bool hasPermission = await requestPermission();
     if (!hasPermission) return null;
@@ -49,7 +43,6 @@ class LocationService {
     }
   }
 
-  // ========== SAVE LOCATION TO FIREBASE ==========
   Future<void> saveLocation(Position position) async {
     try {
       User? user = _auth.currentUser;
@@ -68,7 +61,6 @@ class LocationService {
     }
   }
 
-  // ========== GET LOCATION HISTORY ==========
   Future<List<Map<String, dynamic>>> getLocationHistory() async {
     try {
       User? user = _auth.currentUser;

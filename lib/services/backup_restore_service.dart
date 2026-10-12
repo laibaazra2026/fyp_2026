@@ -10,7 +10,6 @@ class BackupRestoreService {
 
   Future<bool> _checkSubscription(String userId) async {
     try {
-      // Queries Firestore directly in both Live and Sandbox modes so your gating works everywhere!
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
           .doc(userId)

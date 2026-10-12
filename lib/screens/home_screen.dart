@@ -607,8 +607,7 @@ class _HomeScreenState extends State<HomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio:
-                  0.95, // 👈 Fixed aspect ratio to prevent card text clipping
+              childAspectRatio: 0.95,
               children: [
                 FeatureAccessCard(
                   title: 'GPS Tracking',

@@ -41,7 +41,6 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
     super.dispose();
   }
 
-  // Exact Day/Month/Year Calendar Picker Method
   Future<void> _selectExpiryDate(BuildContext context) async {
     final DateTime now = DateTime.now();
 
@@ -279,7 +278,6 @@ class _CardCheckoutScreenState extends State<CardCheckoutScreen> {
                           return 'Invalid day (01-31)';
                         }
 
-                        // Validate real calendar date & expiration
                         try {
                           final expiryDate = DateTime(year, month, day);
                           if (expiryDate.year != year ||

@@ -27,7 +27,6 @@ class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Add and save a notification to Firestore for the current user
   static Future<void> showNotification({
     required String title,
     required String body,
@@ -47,7 +46,6 @@ class NotificationService {
         });
   }
 
-  /// Stream of notifications for the current user from Firestore, ordered by newest first.
   Stream<List<NotificationItem>> getUserNotifications() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);
@@ -62,7 +60,6 @@ class NotificationService {
           return snapshot.docs.map((doc) {
             final data = doc.data();
 
-            // Format timestamp for UI display
             String timeString = '';
             var rawTimestamp = data['timestamp'];
             if (rawTimestamp is Timestamp) {
@@ -82,7 +79,6 @@ class NotificationService {
         });
   }
 
-  /// Get total count of unread notifications for badge counters.
   Stream<int> getUnreadCountStream() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value(0);
@@ -96,7 +92,6 @@ class NotificationService {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  /// Mark a specific notification as read in Firestore.
   Future<void> markAsRead(String notificationId) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -109,7 +104,6 @@ class NotificationService {
         .update({'isRead': true});
   }
 
-  /// Mark all unread notifications as read.
   Future<void> markAllAsRead() async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -129,7 +123,6 @@ class NotificationService {
     await batch.commit();
   }
 
-  /// Completely delete all notifications for the current user.
   Future<void> clearAllNotifications() async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -148,7 +141,6 @@ class NotificationService {
     await batch.commit();
   }
 
-  /// Delete a notification document from Firestore.
   Future<void> deleteNotification(String notificationId) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -162,7 +154,6 @@ class NotificationService {
   }
 }
 
-/// Centralized helper function supporting both Sandbox (Mock) and Real Live Payments
 Future<void> handleSuccessfulPayment({
   required String gateway,
   required String planName,
@@ -176,13 +167,11 @@ Future<void> handleSuccessfulPayment({
   final firestore = FirebaseFirestore.instance;
   final bool isLive = AppConfig.isLiveProductionMode;
 
-  // Determine prefixes/labels based on live vs sandbox status
   final String modeLabel = isLive ? 'LIVE' : 'SANDBOX (MOCK)';
   final String statusLabel = isLive
       ? 'Verified (Live)'
       : 'Verified (Sandbox Simulation)';
 
-  // 1. Update user subscription in Firestore
   await firestore.collection('users').doc(user.uid).set({
     'subscriptionPlan': planName,
     'paymentGateway': '$gateway ($modeLabel)',
@@ -192,7 +181,6 @@ Future<void> handleSuccessfulPayment({
     'subscribedAt': FieldValue.serverTimestamp(),
   }, SetOptions(merge: true));
 
-  // 2. Log to payment_requests collection for admin review (tagged by mode)
   await firestore.collection('payment_requests').add({
     'userId': user.uid,
     'email': user.email ?? 'N/A',
@@ -205,7 +193,6 @@ Future<void> handleSuccessfulPayment({
     'status': statusLabel,
   });
 
-  // 3. Save a permanent notification to Firestore with clear mode indicators
   await firestore.collection('users').doc(user.uid).collection('notifications').add({
     'title': isLive
         ? 'Payment Successful ($gateway)'

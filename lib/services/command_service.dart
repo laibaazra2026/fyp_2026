@@ -39,7 +39,6 @@ class CommandService {
     }
   }
 
-  // 🚀 Added: Send remote commands to target user device from any portal
   Future<void> sendCommandToUser(
     String targetUserId,
     String commandType,
@@ -47,7 +46,7 @@ class CommandService {
     try {
       await _firestore.collection('commands').add({
         'userId': targetUserId,
-        'type': commandType, // e.g., 'LOCK', 'RING', 'THEFT_MODE'
+        'type': commandType,
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -78,10 +77,8 @@ class CommandService {
             for (var doc in snapshot.docs) {
               String docId = doc.id;
 
-              // Immediately skip if already processed in memory
               if (_processedCommands.contains(docId)) continue;
 
-              // Lock it into memory instantly to block concurrent loops
               _processedCommands.add(docId);
 
               var data = doc.data();
@@ -203,7 +200,6 @@ class CommandService {
         await _audioPlayer.stop();
       }
 
-      // Configure audio context to bypass standard media limits on Android
       await _audioPlayer.setAudioContext(
         AudioContext(
           android: AudioContextAndroid(
@@ -218,10 +214,8 @@ class CommandService {
 
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
 
-      // Force volume level explicitly to maximum
       await _audioPlayer.setVolume(1.0);
 
-      // Play sound asset
       await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
       print('✅ Ringtone audio playback started successfully.');
     } catch (audioError) {

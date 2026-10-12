@@ -27,7 +27,6 @@ class JazzCashInvoiceScreen extends StatelessWidget {
     final String gatewayRef =
         '$prefix-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-    // Theme color set to JazzCash red
     final Color themeColor = const Color(0xFFE61C24);
 
     final Color containerBgColor = AppConfig.isLiveProductionMode

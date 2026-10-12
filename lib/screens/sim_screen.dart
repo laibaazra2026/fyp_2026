@@ -18,7 +18,6 @@ class _SimScreenState extends State<SimScreen> {
   @override
   void initState() {
     super.initState();
-    // Check for SIM swap on screen open
     _simService.checkPhysicalSimSwap();
   }
 

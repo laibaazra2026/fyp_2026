@@ -27,7 +27,6 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
     final String transactionId =
         '$prefix-TXN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-    // Force Easypaisa Green branding for both Live and Mock/Sandbox modes
     final Color themeColor = const Color(0xFF00A651);
 
     final Color containerBgColor = const Color(0xFFE8F5E9);
@@ -242,7 +241,6 @@ class EasypaisaInvoiceScreen extends StatelessWidget {
   ) async {
     final pdf = pw.Document();
 
-    // Force Easypaisa Green color integer value for the exported PDF document too
     final int pdfColorValue = 0xFF00A651;
 
     pdf.addPage(

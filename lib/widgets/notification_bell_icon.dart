@@ -23,7 +23,7 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
         lowerTitle.contains('visa')) {
       return Colors.blue;
     }
-    return Colors.green; // Default fallback
+    return Colors.green;
   }
 
   void _showNotificationsPanel(BuildContext context) {
@@ -43,7 +43,6 @@ class _NotificationBellIconState extends State<NotificationBellIcon> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header without environment badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

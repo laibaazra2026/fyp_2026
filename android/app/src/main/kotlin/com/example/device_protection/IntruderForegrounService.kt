@@ -133,7 +133,7 @@ class IntruderForegroundService : Service() {
 
     private fun handleCapturedImage(bytes: ByteArray, sensorOrientation: Int) {
         try {
-            // Safe decode with error validation
+            
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             if (bitmap == null) {
                 Log.e("IntruderService", "Failed to decode bitmap from byte array.")
@@ -141,7 +141,7 @@ class IntruderForegroundService : Service() {
                 return
             }
 
-            // Rotate and mirror horizontally for a natural front-camera selfie view
+            
             val matrix = Matrix().apply {
                 postRotate(sensorOrientation.toFloat())
                 postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)

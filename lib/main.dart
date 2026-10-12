@@ -21,7 +21,6 @@ void callbackDispatcher() {
       WidgetsFlutterBinding.ensureInitialized();
       await Firebase.initializeApp();
 
-      // Run background SIM swap check
       SimService simService = SimService();
       await simService.checkPhysicalSimSwap();
 
@@ -45,7 +44,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // 🔊 Force global audio context to use Media stream so it follows the media volume slider
   await AudioPlayer.global.setAudioContext(
     AudioContext(
       android: AudioContextAndroid(
@@ -59,10 +57,8 @@ void main() async {
     ),
   );
 
-  // Initialize Workmanager for background tasks (like SIM swap monitoring)
   Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
 
-  // Register periodic background task (runs approximately every 15 minutes)
   Workmanager().registerPeriodicTask(
     "sim_swap_background_task_id",
     "checkSimSwapTask",

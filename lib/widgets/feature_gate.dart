@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/subscription_service.dart';
 import '../screens/subscription_screen.dart';
-import '../services/app_config.dart'; // Make sure this path matches your AppConfig location
+import '../services/app_config.dart';
 
 class FeatureGate extends StatelessWidget {
-  final String requiredPlan; // 'free', 'premium', or 'family'
+  final String requiredPlan;
   final Widget child;
   final String featureName;
 
@@ -16,12 +16,7 @@ class FeatureGate extends StatelessWidget {
   });
 
   bool _hasAccess(String currentPlan, String required) {
-    // If we are in Sandbox mode, you can optionally grant all access for your defense,
-    // or let it enforce normally based on the user's plan.
-    if (!AppConfig.isLiveProductionMode) {
-      // Option: Uncomment the line below if you want everything unlocked during your Viva/Defense
-      // return true;
-    }
+    if (!AppConfig.isLiveProductionMode) {}
 
     if (required == 'free') return true;
     if (required == 'premium') {

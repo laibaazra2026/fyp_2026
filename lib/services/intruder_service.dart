@@ -33,7 +33,6 @@ class IntruderService {
         orElse: () => cameras.first,
       );
 
-      // Changed resolution preset to medium for better stability during quick background sensor access[cite: 2]
       controller = CameraController(
         frontCamera,
         ResolutionPreset.medium,
@@ -43,7 +42,6 @@ class IntruderService {
 
       await controller.initialize();
 
-      // Ensure exposure and focus are set to auto for clear lighting
       try {
         await controller.setFocusMode(FocusMode.auto);
         await controller.setExposureMode(ExposureMode.auto);
@@ -51,7 +49,6 @@ class IntruderService {
         print("⚠️ Could not set camera focus/exposure modes: $e");
       }
 
-      // Increased stabilization delay to 2200ms to allow physical camera sensor enough light adjustment time[cite: 2]
       await Future.delayed(const Duration(milliseconds: 2200));
 
       XFile image = await controller.takePicture();
@@ -60,7 +57,6 @@ class IntruderService {
 
       final originalBytes = await image.readAsBytes();
 
-      // Safety check: if bytes are empty or black, retry or fallback
       if (originalBytes.isEmpty) {
         print("❌ Captured image buffer is empty.");
         return;
@@ -80,7 +76,6 @@ class IntruderService {
           decodedImage = img.copyRotate(decodedImage, angle: 180);
         }
 
-        // Mirror the image horizontally for a natural front-camera selfie view
         decodedImage = img.flipHorizontal(decodedImage);
 
         imageBytes = Uint8List.fromList(

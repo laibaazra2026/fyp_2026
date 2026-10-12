@@ -12,10 +12,8 @@ class SimService {
   static const String _baselineSerialKey = 'baseline_sim_serial';
   static const String _localLogsKey = 'local_sim_swap_logs';
 
-  /// Step 1: Real physical SIM check method called on app boot or manual screen refresh
   Future<bool> checkPhysicalSimSwap() async {
     try {
-      // 1. Fetch real SIM info using the package
       SimInfo? simInfo = await SimReader.getSimInfo();
       if (simInfo == null) {
         print("⚠️ SimReader returned null. No active SIM info found.");
@@ -24,7 +22,6 @@ class SimService {
 
       String currentCarrier = simInfo.carrierName ?? 'Unknown';
 
-      // Combine carrier name with identifier/country code to guarantee uniqueness on Android
       String rawIdentifier =
           simInfo.simSerialNumber ??
           simInfo.subscriberId ??
@@ -37,7 +34,6 @@ class SimService {
         "🔍 Live SIM Check -> Carrier: $currentCarrier, Identifier: $currentIdentifier",
       );
 
-      // 2. Read stored baseline values from local secure storage
       String? baselineCarrier = await _secureStorage.read(
         key: _baselineCarrierKey,
       );
@@ -45,7 +41,6 @@ class SimService {
         key: _baselineSerialKey,
       );
 
-      // 3. If no baseline exists, this is the very first run
       if (baselineCarrier == null || baselineIdentifier == null) {
         await _secureStorage.write(
           key: _baselineCarrierKey,
@@ -58,10 +53,9 @@ class SimService {
         print(
           "📌 Baseline SIM successfully registered: $currentCarrier ($currentIdentifier)",
         );
-        return false; // No swap yet, baseline established
+        return false;
       }
 
-      // 4. Compare current SIM data against the baseline to detect a real physical swap
       if ((currentIdentifier != baselineIdentifier ||
               currentCarrier != baselineCarrier) &&
           currentIdentifier != 'Unknown_ID') {
@@ -69,13 +63,10 @@ class SimService {
           "🚨 REAL PHYSICAL SIM SWAP DETECTED! Old: $baselineCarrier, New: $currentCarrier",
         );
 
-        // Save locally first so logs never disappear from the app UI
         await _saveLogLocally(currentCarrier, currentIdentifier);
 
-        // Log the swap event to Firestore (User + Admin portals)
         await _logSimSwapToFirestore(currentCarrier, currentIdentifier);
 
-        // Update baseline to the new SIM so it stops spamming alerts
         await _secureStorage.write(
           key: _baselineCarrierKey,
           value: currentCarrier,
@@ -85,7 +76,7 @@ class SimService {
           value: currentIdentifier,
         );
 
-        return true; // Swap detected
+        return true;
       }
 
       print("✅ SIM status secure: No mismatch found.");
@@ -96,7 +87,6 @@ class SimService {
     }
   }
 
-  /// Save logs locally on the device to prevent them from disappearing
   Future<void> _saveLogLocally(String carrier, String identifier) async {
     try {
       List<Map<String, dynamic>> existingLogs = await getUserSimLogs();
@@ -108,9 +98,8 @@ class SimService {
         'status': 'Mismatch Alert',
       };
 
-      existingLogs.insert(0, newLog); // Keep latest at top
+      existingLogs.insert(0, newLog);
 
-      // Convert any Timestamp objects back to strings before encoding to JSON storage
       final encodableLogs = existingLogs.map((log) {
         final map = Map<String, dynamic>.from(log);
         if (map['timestamp'] is Timestamp) {
@@ -151,14 +140,12 @@ class SimService {
         'status': 'Mismatch Alert',
       };
 
-      // Log to user portal collection
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('sim_logs')
           .add(logData);
 
-      // Log to global collection for admin portal visibility
       await _firestore.collection('all_sim_swap_logs').add(logData);
 
       print("☁️ SIM swap successfully logged to Firestore & Admin portal.");
@@ -167,7 +154,6 @@ class SimService {
     }
   }
 
-  /// Fetch logs for the User Portal (reads local storage first so they never vanish)
   Future<List<Map<String, dynamic>>> getUserSimLogs() async {
     try {
       String? localData = await _secureStorage.read(key: _localLogsKey);
@@ -187,7 +173,6 @@ class SimService {
       print("❌ Error reading local logs: $e");
     }
 
-    // Fallback to Firestore if local storage cache is empty
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return [];
 
@@ -208,7 +193,6 @@ class SimService {
     }
   }
 
-  /// Fetch all users' logs for the Admin Portal
   Future<List<Map<String, dynamic>>> getAllUsersSimLogsForAdmin() async {
     try {
       QuerySnapshot snapshot = await _firestore

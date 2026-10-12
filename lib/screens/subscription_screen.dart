@@ -26,7 +26,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String _currentPlan = 'free';
   int _currentPage = 0;
 
-  // Toggle this to true for live production mode, or false for simulation testing
   final bool _isLiveProductionMode = false;
 
   @override

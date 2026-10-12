@@ -53,7 +53,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen>
     }
   }
 
-  // Full Backup Flow
   Future<void> _handleBackup() async {
     setState(() {
       _isLoading = true;
