@@ -222,7 +222,7 @@
                 let locationsCount = 0;
                 let intrudersCount = 0;
 
-                // FIXED: Querying top-level collections directly instead of subcollections
+                
                 const locationsSnapshot = await db.collection('locations').get();
                 locationsCount = locationsSnapshot.size;
 

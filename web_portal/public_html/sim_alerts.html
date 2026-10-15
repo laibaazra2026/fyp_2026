@@ -199,15 +199,15 @@
 </head>
 <body>
 
-    <div class="sidebar">
+     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
         <a href="users.html">👥 Users</a>
-        <a href="sim_alerts.html" class="active">📱 SIM Logs</a>
+        <a href="sim_alerts.html" class="active" >📱 SIM Logs</a>
         <a href="locations.html">📍 Locations</a>
         <a href="intruders.html">📸 Intruders</a>
         <a href="commands.html">🎮 Commands</a>
-        <a href="backups.html">☁️ Backups</a>
+        <a href="backups.html"  >☁️ Backups</a>
         <a href="payments.html">💳 Subscriptions</a>
     </div>
 
@@ -291,14 +291,14 @@
                 empty.style.display = 'none';
                 table.style.display = 'none';
 
-                // FIXED: Use collectionGroup to pull all "sim_logs" subcollections across all users in ONE read request
+               
                 const simLogsSnapshot = await db.collectionGroup('sim_logs').get();
                 let allLogs = [];
 
                 simLogsSnapshot.forEach(logDoc => {
                     const data = logDoc.data();
                     
-                    // Extract the user's UID directly from the document's Firestore path: "users/{uid}/sim_logs/{logId}"
+                   
                     const pathSegments = logDoc.ref.path.split('/');
                     const uid = pathSegments.length > 1 ? pathSegments[1] : 'Unknown';
 
@@ -310,7 +310,7 @@
                     });
                 });
 
-                // Sort logs by timestamp (newest first)
+                
                 allLogs.sort((a, b) => {
                     const timeA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : new Date(a.timestamp || 0).getTime();
                     const timeB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : new Date(b.timestamp || 0).getTime();

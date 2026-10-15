@@ -171,14 +171,14 @@
 </head>
 <body>
 
-    <div class="sidebar">
+     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
         <a href="users.html">👥 Users</a>
         <a href="sim_alerts.html" >📱 SIM Logs</a>
         <a href="locations.html">📍 Locations</a>
         <a href="intruders.html">📸 Intruders</a>
-        <a href="commands.html"  class="active">🎮 Commands</a>
+        <a href="commands.html" class="active">🎮 Commands</a>
         <a href="backups.html">☁️ Backups</a>
         <a href="payments.html">💳 Subscriptions</a>
     </div>
@@ -276,7 +276,7 @@
             const responseMsg = document.getElementById('responseMsg');
 
             try {
-                // 1. Write the command document to Firestore for real-time app state synchronization
+                
                 await db.collection('commands').add({
                     'userId': targetUserId,
                     'type': type,
@@ -285,13 +285,12 @@
                     'executedAt': null,
                 });
 
-                // 2. Fetch the target user's document to retrieve their FCM token
+                
                 const userDoc = await db.collection('users').doc(targetUserId).get();
                 if (userDoc.exists && userDoc.data().fcmToken) {
                     const fcmToken = userDoc.data().fcmToken;
                     console.log("Target User FCM Token found:", fcmToken);
-                    // Note: If you implement a cloud function or backend handler for FCM push notifications, 
-                    // pass the fcmToken and command type payload there to wake up the app in the background.
+                    
                 }
 
                 loading.innerHTML = '✅ Command sent to device!';

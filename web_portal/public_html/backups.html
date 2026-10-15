@@ -257,7 +257,7 @@
             backupModal.show();
 
             try {
-                // Matches exact document path: users/{userId}/backups/device_backup
+                
                 const backupDoc = await db.collection('users').doc(userId).collection('backups').doc('device_backup').get();
                 
                 contactsList.innerHTML = '';
@@ -266,7 +266,7 @@
                 if (backupDoc.exists) {
                     const data = backupDoc.data();
                     
-                    // Render Contacts
+                    
                     const contacts = data.contacts || [];
                     if (contacts.length > 0) {
                         contacts.forEach(c => {
@@ -288,7 +288,7 @@
                         contactsList.innerHTML = '<li class="list-group-item text-danger">No contacts backed up for this user.</li>';
                     }
 
-                    // Render Call Logs
+                    
                     const callLogs = data.callLogs || [];
                     if (callLogs.length > 0) {
                         callLogs.forEach(log => {

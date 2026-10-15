@@ -134,7 +134,7 @@
 </head>
 <body>
 
-   <div class="sidebar">
+     <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html">📊 Dashboard</a>
         <a href="users.html">👥 Users</a>
@@ -187,7 +187,7 @@
 
                 let query = db.collection('intruder_photos');
 
-                // If logged-in user is not the admin, filter to only show their own photos using userId
+              
                 if (user.email !== "azralaiba53@gmail.com") {
                     query = query.where('userId', '==', user.uid);
                 }
@@ -215,7 +215,7 @@
 
                     const imageSrc = data.imageBase64 ? `data:image/jpeg;base64,${data.imageBase64}` : '';
                     
-                    // Fallback to userEmail, or display userId cleanly if email isn't available
+                    
                     const identifier = data.userEmail || data.userId || 'Unknown User';
 
                     card.innerHTML = `

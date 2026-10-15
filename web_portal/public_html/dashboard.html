@@ -143,7 +143,7 @@
 </head>
 <body>
 
-    <div class="sidebar">
+   <div class="sidebar">
         <h2>🔒 Admin</h2>
         <a href="dashboard.html" class="active">📊 Dashboard</a>
         <a href="users.html">👥 Users</a>
@@ -222,7 +222,7 @@
                 let locationsCount = 0;
                 let intrudersCount = 0;
 
-                // FIXED: Querying top-level collections directly instead of subcollections
+                
                 const locationsSnapshot = await db.collection('locations').get();
                 locationsCount = locationsSnapshot.size;
 
