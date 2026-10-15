@@ -14,7 +14,7 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex text-gray-800 overflow-hidden">
 
-    <!-- Sidebar -->
+    
     <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between hidden md:flex select-none shrink-0 sidebar-transition relative z-20">
         <div>
             <div class="p-5 flex items-center justify-between border-b border-gray-100">
@@ -73,10 +73,10 @@
         </div>
     </aside>
 
-    <!-- Main Content Area -->
+    
     <div class="flex-grow flex flex-col min-w-0 relative h-screen overflow-y-auto">
         
-        <!-- Header -->
+        
         <header class="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center shadow-xs sticky top-0 z-40">
             <div class="flex items-center space-x-3">
                 <span class="text-base font-bold text-gray-800 tracking-tight">Backup & Restore Center</span>
@@ -113,7 +113,7 @@
             </div>
         </header>
 
-        <!-- Main Body Content -->
+        
         <main class="p-6 md:p-10 max-w-7xl w-full mx-auto flex-grow space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -126,7 +126,7 @@
                 </button>
             </div>
 
-            <!-- Synced Contacts Card -->
+            
             <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
                 <div class="p-4 border-b border-gray-100 flex items-center space-x-2">
                     <i class="fa-solid fa-address-book text-[#841EA0]"></i>
@@ -149,7 +149,7 @@
                 </div>
             </div>
 
-            <!-- Synced Call Logs Card -->
+            
             <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
                 <div class="p-4 border-b border-gray-100 flex items-center space-x-2">
                     <i class="fa-solid fa-phone-volume text-[#841EA0]"></i>
@@ -175,7 +175,7 @@
         </main>
     </div>
 
-    <!-- Interface Toggle Scripts -->
+    
     <script>
         window.toggleSidebar = function() {
             const sidebar = document.getElementById('sidebar');
@@ -202,7 +202,7 @@
         };
     </script>
 
-    <!-- Firebase & Access Control Script -->
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -242,7 +242,7 @@
             }
 
             try {
-                // 1. Verify subscription/plan status for both live and mock/sandbox cases
+                
                 const userDocRef = doc(db, 'users', activeUserId);
                 const userSnap = await getDoc(userDocRef);
 
@@ -250,7 +250,7 @@
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
                     
-                    // Check all possible variable variations (Flutter app vs Web portal schemas)
+                    
                     const activePlan = userData.subscriptionTier || userData.plan || userData.subscription;
                     const isActiveStatus = userData.subscriptionStatus === 'active';
                     
@@ -259,13 +259,13 @@
                     }
                 }
 
-                // Restrict access if unpaid
+                
                 if (!hasAccess) {
                     alert("🔒 Access Restricted: Please complete payment (Live) or simulate upgrade (Mock/Sandbox) to view your cloud device backups.");
                     return;
                 }
 
-                // 2. Fetch the backup data if authorized
+                
                 const docRef = doc(db, 'users', activeUserId, 'backups', 'device_backup');
                 const docSnap = await getDoc(docRef);
 
@@ -280,7 +280,7 @@
                 const contacts = data.contacts || data.contactList || [];
                 const callLogs = data.callLogs || [];
 
-                // Render Contacts
+                
                 const contactBody = document.getElementById('contactsTableBody');
                 if (contacts.length === 0) {
                     contactBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-400">No contacts found in backup.</td></tr>`;
@@ -293,7 +293,7 @@
                     `).join('');
                 }
 
-                // Render Call Logs
+                
                 const callBody = document.getElementById('callLogsTableBody');
                 if (callLogs.length === 0) {
                     callBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">No call logs found in backup.</td></tr>`;

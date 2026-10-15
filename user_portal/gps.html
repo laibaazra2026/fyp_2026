@@ -237,12 +237,12 @@
                         if (map) {
                             clearInterval(checkMapLoaded);
                             
-                            // Exciting Zoom Effect: Center first at wide zoom, then zoom in dynamically!
+                           
                             map.setCenter(position);
-                            map.setZoom(5); // Start wide view
+                            map.setZoom(5); 
                             
                             setTimeout(() => {
-                                map.setZoom(16); // Smoothly zoom in to the device location
+                                map.setZoom(16); 
                             }, 500);
 
                             if (marker) {

@@ -162,7 +162,7 @@
         });
 
         function fetchSimLogs(uid) {
-            // Directly target the authenticated user's private subcollection
+            
             const subCollectionQuery = collection(db, 'users', uid, 'sim_logs');
             
             onSnapshot(subCollectionQuery, (snapshot) => {
