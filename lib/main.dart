@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
@@ -13,6 +14,7 @@ import 'services/command_service.dart';
 import 'services/intruder_service.dart';
 import 'services/background_task.dart';
 import 'services/sim_service.dart';
+import 'services/location_task_handler.dart'; // 🚀 Added location foreground task import
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -35,7 +37,68 @@ void callbackDispatcher() {
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print("📩 Background message received in headless isolate: ${message.data}");
+  print("Background message received in headless isolate: ${message.data}");
+
+  String? commandType = message.data['type'];
+  String? docId = message.data['docId'];
+
+  if (commandType != null) {
+    final FirebaseFirestore db = FirebaseFirestore.instance;
+    const MethodChannel platform = MethodChannel('device_protection/admin');
+
+    if (commandType == 'THEFT_MODE') {
+      try {
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await db.collection('users').doc(user.uid).set({
+            'isTheftModeOn': true,
+          }, SetOptions(merge: true));
+          print('🛡️ Theft Mode Enabled from background handler');
+        }
+      } catch (e) {
+        print('❌ Background theft mode error: $e');
+      }
+    } else if (commandType == 'LOCK') {
+      try {
+        await platform.invokeMethod('lockDevice');
+        print('✅ Device locked successfully from background handler');
+      } catch (e) {
+        print('❌ Background lock error: $e');
+      }
+    } else if (commandType == 'RING') {
+      try {
+        final AudioPlayer bgPlayer = AudioPlayer();
+        await bgPlayer.setAudioContext(
+          AudioContext(
+            android: AudioContextAndroid(
+              isSpeakerphoneOn: true,
+              stayAwake: true,
+              contentType: AndroidContentType.sonification,
+              usageType: AndroidUsageType.media,
+            ),
+            iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+          ),
+        );
+        await bgPlayer.setReleaseMode(ReleaseMode.loop);
+        await bgPlayer.setVolume(1.0);
+        await bgPlayer.play(AssetSource('sounds/ringtone.mp3'));
+        print('✅ Background ringtone started successfully');
+      } catch (e) {
+        print('❌ Background ring error: $e');
+      }
+    }
+
+    if (docId != null) {
+      try {
+        await db.collection('commands').doc(docId).update({
+          'status': 'completed',
+          'executedAt': DateTime.now().toIso8601String(),
+        });
+      } catch (e) {
+        print('❌ Failed to update status in background: $e');
+      }
+    }
+  }
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -50,7 +113,7 @@ void main() async {
         isSpeakerphoneOn: true,
         stayAwake: true,
         contentType: AndroidContentType.sonification,
-        usageType: AndroidUsageType.media, // 👈 Changed from 'alarm' to 'media'
+        usageType: AndroidUsageType.media,
         audioFocus: AndroidAudioFocus.gain,
       ),
       iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
@@ -67,6 +130,10 @@ void main() async {
   );
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // 🚀 Initialize and start continuous background location service
+  await initForegroundTask();
+  await startLocationService();
 
   runApp(const MyApp());
 }
@@ -96,7 +163,7 @@ class _MyAppState extends State<MyApp> {
     ) {
       if (user != null) {
         print(
-          "🔑 Auth state active for user: ${user.uid}. Initializing command listener...",
+          "Auth state active for user: ${user.uid}. Initializing command listener...",
         );
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -104,7 +171,7 @@ class _MyAppState extends State<MyApp> {
           _commandService.listenForCommands(activeContext);
         });
       } else {
-        print("🔒 User logged out. Commands listener paused.");
+        print("User logged out. Commands listener paused.");
       }
     });
   }
@@ -118,7 +185,7 @@ class _MyAppState extends State<MyApp> {
   void _initIntruderListener() {
     _adminChannel.setMethodCallHandler((call) async {
       if (call.method == "onPasswordFailed") {
-        print("🚨 Intruder alert signal received from native Android!");
+        print("Intruder alert signal received from native Android!");
 
         final intruderService = IntruderService();
         await intruderService.onIncorrectUnlockAttempt();

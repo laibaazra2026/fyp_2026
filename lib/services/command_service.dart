@@ -6,6 +6,62 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
 
+// 🚀 1. TOP-LEVEL BACKGROUND MESSAGE HANDLER (Runs when app is closed/terminated)
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print("background message received: ${message.messageId}");
+
+  // Extract command type from notification data payload
+  String? commandType = message.data['type'];
+  String? docId = message.data['docId'];
+
+  if (commandType != null) {
+    final FirebaseFirestore db = FirebaseFirestore.instance;
+    const MethodChannel platform = MethodChannel('device_protection/admin');
+
+    if (commandType == 'LOCK') {
+      try {
+        await platform.invokeMethod('lockDevice');
+        print('✅ Device locked successfully from background handler');
+      } catch (e) {
+        print('❌ Background lock error: $e');
+      }
+    } else if (commandType == 'RING') {
+      try {
+        final AudioPlayer bgPlayer = AudioPlayer();
+        await bgPlayer.setAudioContext(
+          AudioContext(
+            android: AudioContextAndroid(
+              isSpeakerphoneOn: true,
+              stayAwake: true,
+              contentType: AndroidContentType.sonification,
+              usageType: AndroidUsageType.media,
+            ),
+            iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+          ),
+        );
+        await bgPlayer.setReleaseMode(ReleaseMode.loop);
+        await bgPlayer.setVolume(1.0);
+        await bgPlayer.play(AssetSource('sounds/ringtone.mp3'));
+        print('✅ Background ringtone started successfully');
+      } catch (e) {
+        print('❌ Background ring error: $e');
+      }
+    }
+
+    if (docId != null) {
+      try {
+        await db.collection('commands').doc(docId).update({
+          'status': 'completed',
+          'executedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        print('❌ Failed to update status in background: $e');
+      }
+    }
+  }
+}
+
 class CommandService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -32,10 +88,10 @@ class CommandService {
           print('📱 FCM Token saved successfully: $token');
         }
       } else {
-        print('⚠️ Notification permissions declined by user');
+        print('⚠️ Notification permissions declined by user[cite: 6].');
       }
     } catch (e) {
-      print('❌ Error saving FCM token: $e');
+      print('❌ Error saving FCM token: $e[cite: 6]');
     }
   }
 
@@ -50,22 +106,27 @@ class CommandService {
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
-      print('🚀 Command $commandType sent successfully to user $targetUserId');
+      print(
+        '🚀 Command $commandType sent successfully to user $targetUserId[cite: 6]',
+      );
     } catch (e) {
-      print('❌ Error sending command: $e');
+      print('❌ Error sending command: $e[cite: 6]');
     }
   }
 
   void listenForCommands(BuildContext context) {
     User? user = _auth.currentUser;
     if (user == null) {
-      print('❌ No user logged in');
+      print('❌ No user logged in[cite: 6]');
       return;
     }
 
-    print('✅ Listening for commands...');
+    print('✅ Listening for commands...[cite: 6]');
 
     saveFCMToken();
+
+    // Register background message handler listener
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     _firestore
         .collection('commands')
@@ -82,13 +143,13 @@ class CommandService {
               _processedCommands.add(docId);
 
               var data = doc.data();
-              print('📩 Command received: ${data['type']}');
+              print('📩 Command received: ${data['type']}[cite: 6]');
 
               _executeCommand(context, docId, data);
             }
           },
           onError: (e) {
-            print('❌ Command listener error: $e');
+            print('❌ Command listener error: $e[cite: 6]');
           },
         );
   }
@@ -111,7 +172,7 @@ class CommandService {
         await _ringPhone(context, docId);
         break;
       default:
-        print('❌ Unknown command: $type');
+        print('❌ Unknown command: $type[cite: 6]');
         await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -132,13 +193,13 @@ class CommandService {
           await platform.invokeMethod('isDeviceAdminActive') ?? false;
       if (!isActive) {
         print(
-          '⚠️ Admin not active yet. Prompting user to enable it for intruder capture...',
+          '⚠️ Admin not active yet. Prompting user to enable it for intruder capture...[cite: 6]',
         );
         await platform.invokeMethod('enableAdmin');
       }
 
       await _updateCommandStatus(docId, 'completed');
-      print('🛡️ Theft Mode Enabled Remotely!');
+      print('🛡️ Theft Mode Enabled Remotely![cite: 6]');
 
       try {
         BuildContext? activeContext = context.mounted
@@ -154,10 +215,10 @@ class CommandService {
           );
         }
       } catch (uiError) {
-        print('⚠️ UI notification skipped: $uiError');
+        print('⚠️ UI notification skipped: $uiError[cite: 6]');
       }
     } catch (e) {
-      print('❌ Error enabling theft mode: $e');
+      print('❌ Error enabling theft mode: $e[cite: 6]');
       await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -176,19 +237,21 @@ class CommandService {
       if (isActive) {
         try {
           await platform.invokeMethod('lockDevice');
-          print('✅ Physical device locked successfully via Method Channel');
+          print(
+            '✅ Physical device locked successfully via Method Channel[cite: 6]',
+          );
           await _updateCommandStatus(docId, 'completed');
         } catch (platformError) {
-          print('❌ Native lock method error: $platformError');
+          print('❌ Native lock method error: $platformError[cite: 6]');
           await _updateCommandStatus(docId, 'failed');
         }
       } else {
-        print('⚠️ Device Admin is not active, prompting user...');
+        print('⚠️ Device Admin is not active, prompting user...[cite: 6]');
         await platform.invokeMethod('enableAdmin');
         await _updateCommandStatus(docId, 'failed');
       }
     } catch (e) {
-      print('❌ Error locking phone: $e');
+      print('❌ Error locking phone: $e[cite: 6]');
       await _updateCommandStatus(docId, 'failed');
     }
   }
@@ -206,7 +269,7 @@ class CommandService {
             isSpeakerphoneOn: true,
             stayAwake: true,
             contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.alarm,
+            usageType: AndroidUsageType.media,
           ),
           iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
         ),
@@ -217,9 +280,9 @@ class CommandService {
       await _audioPlayer.setVolume(1.0);
 
       await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
-      print('✅ Ringtone audio playback started successfully.');
+      print('✅ Ringtone audio playback started successfully.[cite: 6]');
     } catch (audioError) {
-      print('❌ CRITICAL AUDIO PLAYER ERROR: $audioError');
+      print('❌ CRITICAL AUDIO PLAYER ERROR: $audioError[cite: 6]');
     }
 
     await _updateCommandStatus(docId, 'completed');
@@ -245,7 +308,7 @@ class CommandService {
                     await _audioPlayer.stop();
                   }
                 } catch (stopError) {
-                  print('⚠️ Error stopping audio: $stopError');
+                  print('⚠️ Error stopping audio: $stopError[cite: 6]');
                 }
                 if (Navigator.canPop(dialogCtx)) {
                   Navigator.pop(dialogCtx);
@@ -265,9 +328,9 @@ class CommandService {
         'status': status,
         'executedAt': FieldValue.serverTimestamp(),
       });
-      print('✅ Command status updated to: $status');
+      print('✅ Command status updated to: $status[cite: 6]');
     } catch (e) {
-      print('❌ Failed to update command status ($status): $e');
+      print('❌ Failed to update command status ($status): $e[cite: 6]');
     }
   }
 }
