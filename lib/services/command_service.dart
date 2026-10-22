@@ -6,12 +6,10 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import '../main.dart';
 
-// 🚀 1. TOP-LEVEL BACKGROUND MESSAGE HANDLER (Runs when app is closed/terminated)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("background message received: ${message.messageId}");
 
-  // Extract command type from notification data payload
   String? commandType = message.data['type'];
   String? docId = message.data['docId'];
 

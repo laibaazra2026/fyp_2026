@@ -19,7 +19,7 @@ class LocationTaskHandler extends TaskHandler {
 
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 1, // Triggers update when user moves 1 meter
+      distanceFilter: 1,
     );
 
     _positionStream =
@@ -47,9 +47,7 @@ class LocationTaskHandler extends TaskHandler {
   }
 
   @override
-  void onRepeatEvent(DateTime timestamp) async {
-    // Keep-alive loop event
-  }
+  void onRepeatEvent(DateTime timestamp) async {}
 
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
@@ -57,7 +55,6 @@ class LocationTaskHandler extends TaskHandler {
   }
 }
 
-// Function to initialize the task configuration
 Future<void> initForegroundTask() async {
   FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
@@ -80,7 +77,6 @@ Future<void> initForegroundTask() async {
   );
 }
 
-// Function to start the service (Returns Future<void> to avoid type conflicts)
 Future<void> startLocationService() async {
   if (await FlutterForegroundTask.isRunningService) {
     await FlutterForegroundTask.restartService();

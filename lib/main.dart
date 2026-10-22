@@ -14,7 +14,7 @@ import 'services/command_service.dart';
 import 'services/intruder_service.dart';
 import 'services/background_task.dart';
 import 'services/sim_service.dart';
-import 'services/location_task_handler.dart'; // 🚀 Added location foreground task import
+import 'services/location_task_handler.dart';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -131,7 +131,6 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // 🚀 Initialize and start continuous background location service
   await initForegroundTask();
   await startLocationService();
 
