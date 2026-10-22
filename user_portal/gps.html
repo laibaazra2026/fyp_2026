@@ -210,7 +210,7 @@
                 const q = query(
                     collection(db, 'locations'),
                     where('userId', '==', userId),
-                    orderBy('timetsamp', 'desc'),
+                    orderBy('timestamp', 'desc'),
                     limit(1)
                 );
 
