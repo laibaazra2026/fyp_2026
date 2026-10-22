@@ -173,11 +173,11 @@
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD6vbhrGLQFjXi4nGNvxCfjntSCyr-EHDc&callback=initMap" async defer></script>
 
-    <!-- Firebase Real-Time Location Fetcher -->
+    <!-- Firebase Real-Time Location Fetcher (Index-Free Safe Query) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAN01pVGbotIaZWgi59Hs3M9sh9_3lWjHo",
@@ -206,21 +206,27 @@
         async function fetchDeviceLocation(userId) {
             const metaBox = document.getElementById('location-meta');
             try {
-                
+                // Safe query filtering only by userId (requires no composite indexes)
                 const q = query(
                     collection(db, 'locations'),
-                    where('userId', '==', userId),
-                    orderBy('timestamp', 'desc'),
-                    limit(1)
+                    where('userId', '==', userId)
                 );
 
                 const querySnapshot = await getDocs(q);
 
                 if (!querySnapshot.empty) {
-                    const docData = querySnapshot.docs[0].data();
+                    // Sort records in memory to get the latest timestamp safely
+                    const docs = querySnapshot.docs.map(doc => doc.data());
+                    docs.sort((a, b) => {
+                        const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(0);
+                        const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(0);
+                        return timeB - timeA;
+                    });
+
+                    const docData = docs[0];
                     const lat = docData.latitude;
                     const lng = docData.longitude;
-                    const timestamp = docData.timestamp ? new Date(docData.timestamp.toDate()).toLocaleString() : 'Just now';
+                    const timestamp = docData.timestamp?.toDate ? new Date(docData.timestamp.toDate()).toLocaleString() : 'Just now';
 
                     const position = { lat: lat, lng: lng };
 
