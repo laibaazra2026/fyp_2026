@@ -206,11 +206,11 @@
         async function fetchDeviceLocation(userId) {
             const metaBox = document.getElementById('location-meta');
             try {
-                // 🚀 FIXED: Added orderBy('timestamp', 'desc') to fetch the newest background location coordinate
+                
                 const q = query(
                     collection(db, 'locations'),
                     where('userId', '==', userId),
-                    orderBy('timestamp', 'desc'),
+                    orderBy('timetsamp', 'desc'),
                     limit(1)
                 );
 
